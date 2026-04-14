@@ -283,6 +283,76 @@ export interface CommerceRefundDto {
   createdAt?: string;
 }
 
+export interface CommerceReturnLineDto {
+  id: string;
+  returnId: string;
+  orderLineId: string;
+  variantId: string;
+  quantity: number;
+  resolutionType: "refund" | "exchange";
+  replacementVariantId?: string;
+  restockOnReceive: boolean;
+  lineAmountMinor: number;
+  notes?: string;
+  createdAt?: string;
+}
+
+export interface CommerceReturnDto {
+  id: string;
+  tenantId: string;
+  orderId: string;
+  returnNumber: string;
+  status: "requested" | "approved" | "rejected" | "received" | "completed" | "cancelled";
+  reasonSummary?: string;
+  notes?: string;
+  inventoryRestocked: boolean;
+  requestedAt: string;
+  approvedAt?: string;
+  receivedAt?: string;
+  closedAt?: string;
+  createdByUserId: string;
+  closedByUserId?: string;
+  lines: CommerceReturnLineDto[];
+  createdAt?: string;
+}
+
+export interface CommerceSettlementEntryDto {
+  id: string;
+  settlementId: string;
+  entryType: "payment" | "refund" | "fee" | "adjustment";
+  paymentId?: string;
+  refundId?: string;
+  amountMinor: number;
+  label?: string;
+  notes?: string;
+  payment?: CommercePaymentDto | null;
+  refund?: CommerceRefundDto | null;
+  createdAt?: string;
+}
+
+export interface CommerceSettlementDto {
+  id: string;
+  tenantId: string;
+  settlementNumber: string;
+  provider: string;
+  settlementReference?: string;
+  currency: string;
+  status: "draft" | "reported" | "reconciled" | "closed" | "disputed";
+  paymentsMinor: number;
+  refundsMinor: number;
+  feesMinor: number;
+  adjustmentsMinor: number;
+  netMinor: number;
+  reportedAt: string;
+  reconciledAt?: string;
+  closedAt?: string;
+  notes?: string;
+  createdByUserId: string;
+  closedByUserId?: string;
+  entries: CommerceSettlementEntryDto[];
+  createdAt?: string;
+}
+
 export interface CommerceInvoiceDto {
   id: string;
   tenantId: string;
@@ -330,6 +400,7 @@ export interface CommerceOrderDto {
   payments?: CommercePaymentDto[] | null;
   refunds?: CommerceRefundDto[] | null;
   invoices?: CommerceInvoiceDto[] | null;
+  returns?: CommerceReturnDto[] | null;
   inventoryReserved?: boolean;
   placedAt?: string;
   createdAt?: string;

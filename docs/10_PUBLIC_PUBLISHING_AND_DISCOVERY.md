@@ -96,6 +96,8 @@ without losing operational consistency.
 - Canonical travel APIs are implemented in
   `/Users/apple/Desktop/WORK/GIT/kalpzero-enterprise/apps/api/app/services/travel.py`
   and now supply live travel-specific blocks and discovery materializations
+- Canonical commerce APIs now supply live catalog blocks, product detail pages,
+  and commerce discovery materializations through the same blueprint runtime
 - Public and admin preview routes are implemented in
   `/Users/apple/Desktop/WORK/GIT/kalpzero-enterprise/apps/web/app/[tenantSlug]/[[...pageSlug]]/page.tsx`
   and

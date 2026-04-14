@@ -19,6 +19,10 @@ from app.db.models import (
     CommerceProductAttributeValueModel,
     CommerceProductModel,
     CommerceRefundModel,
+    CommerceReturnLineModel,
+    CommerceReturnModel,
+    CommerceSettlementEntryModel,
+    CommerceSettlementModel,
     CommerceShipmentModel,
     CommerceStockLedgerEntryModel,
     CommerceTaxProfileModel,
@@ -1240,6 +1244,238 @@ def list_invoices(db: Session, *, tenant_id: str, order_id: str | None = None) -
         query = query.where(CommerceInvoiceModel.order_id == order_id)
     query = query.order_by(CommerceInvoiceModel.created_at.desc())
     return list(db.scalars(query))
+
+
+def list_returns(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[CommerceReturnModel]:
+    query = select(CommerceReturnModel).where(CommerceReturnModel.tenant_id == tenant_id)
+    if order_id:
+        query = query.where(CommerceReturnModel.order_id == order_id)
+    query = query.order_by(CommerceReturnModel.created_at.desc())
+    return list(db.scalars(query))
+
+
+def get_return(db: Session, *, tenant_id: str, return_id: str) -> CommerceReturnModel | None:
+    query = select(CommerceReturnModel).where(
+        CommerceReturnModel.tenant_id == tenant_id,
+        CommerceReturnModel.id == return_id,
+    )
+    return db.scalar(query)
+
+
+def create_return(
+    db: Session,
+    *,
+    tenant_id: str,
+    order_id: str,
+    return_number: str,
+    status: str,
+    reason_summary: str | None,
+    notes: str | None,
+    inventory_restocked: bool,
+    requested_at: str,
+    approved_at: str | None,
+    received_at: str | None,
+    closed_at: str | None,
+    created_by_user_id: str,
+    closed_by_user_id: str | None,
+) -> CommerceReturnModel:
+    model = CommerceReturnModel(
+        tenant_id=tenant_id,
+        order_id=order_id,
+        return_number=return_number,
+        status=status,
+        reason_summary=reason_summary,
+        notes=notes,
+        inventory_restocked=inventory_restocked,
+        requested_at=requested_at,
+        approved_at=approved_at,
+        received_at=received_at,
+        closed_at=closed_at,
+        created_by_user_id=created_by_user_id,
+        closed_by_user_id=closed_by_user_id,
+    )
+    db.add(model)
+    db.flush()
+    return model
+
+
+def list_return_lines(
+    db: Session,
+    *,
+    tenant_id: str,
+    return_ids: list[str],
+) -> list[CommerceReturnLineModel]:
+    if not return_ids:
+        return []
+    query = select(CommerceReturnLineModel).where(
+        CommerceReturnLineModel.tenant_id == tenant_id,
+        CommerceReturnLineModel.return_id.in_(return_ids),
+    )
+    query = query.order_by(CommerceReturnLineModel.created_at.asc())
+    return list(db.scalars(query))
+
+
+def create_return_line(
+    db: Session,
+    *,
+    tenant_id: str,
+    return_id: str,
+    order_line_id: str,
+    variant_id: str,
+    quantity: int,
+    resolution_type: str,
+    replacement_variant_id: str | None,
+    restock_on_receive: bool,
+    line_amount_minor: int,
+    notes: str | None,
+) -> CommerceReturnLineModel:
+    model = CommerceReturnLineModel(
+        tenant_id=tenant_id,
+        return_id=return_id,
+        order_line_id=order_line_id,
+        variant_id=variant_id,
+        quantity=quantity,
+        resolution_type=resolution_type,
+        replacement_variant_id=replacement_variant_id,
+        restock_on_receive=restock_on_receive,
+        line_amount_minor=line_amount_minor,
+        notes=notes,
+    )
+    db.add(model)
+    db.flush()
+    return model
+
+
+def list_settlements(db: Session, *, tenant_id: str) -> list[CommerceSettlementModel]:
+    query = select(CommerceSettlementModel).where(CommerceSettlementModel.tenant_id == tenant_id)
+    query = query.order_by(CommerceSettlementModel.created_at.desc())
+    return list(db.scalars(query))
+
+
+def get_settlement(db: Session, *, tenant_id: str, settlement_id: str) -> CommerceSettlementModel | None:
+    query = select(CommerceSettlementModel).where(
+        CommerceSettlementModel.tenant_id == tenant_id,
+        CommerceSettlementModel.id == settlement_id,
+    )
+    return db.scalar(query)
+
+
+def create_settlement(
+    db: Session,
+    *,
+    tenant_id: str,
+    settlement_number: str,
+    provider: str,
+    settlement_reference: str | None,
+    currency: str,
+    status: str,
+    payments_minor: int,
+    refunds_minor: int,
+    fees_minor: int,
+    adjustments_minor: int,
+    net_minor: int,
+    reported_at: str,
+    reconciled_at: str | None,
+    closed_at: str | None,
+    notes: str | None,
+    created_by_user_id: str,
+    closed_by_user_id: str | None,
+) -> CommerceSettlementModel:
+    model = CommerceSettlementModel(
+        tenant_id=tenant_id,
+        settlement_number=settlement_number,
+        provider=provider,
+        settlement_reference=settlement_reference,
+        currency=currency,
+        status=status,
+        payments_minor=payments_minor,
+        refunds_minor=refunds_minor,
+        fees_minor=fees_minor,
+        adjustments_minor=adjustments_minor,
+        net_minor=net_minor,
+        reported_at=reported_at,
+        reconciled_at=reconciled_at,
+        closed_at=closed_at,
+        notes=notes,
+        created_by_user_id=created_by_user_id,
+        closed_by_user_id=closed_by_user_id,
+    )
+    db.add(model)
+    db.flush()
+    return model
+
+
+def list_settlement_entries(
+    db: Session,
+    *,
+    tenant_id: str,
+    settlement_ids: list[str],
+) -> list[CommerceSettlementEntryModel]:
+    if not settlement_ids:
+        return []
+    query = select(CommerceSettlementEntryModel).where(
+        CommerceSettlementEntryModel.tenant_id == tenant_id,
+        CommerceSettlementEntryModel.settlement_id.in_(settlement_ids),
+    )
+    query = query.order_by(CommerceSettlementEntryModel.created_at.asc())
+    return list(db.scalars(query))
+
+
+def list_settlement_entries_for_payment_ids(
+    db: Session,
+    *,
+    tenant_id: str,
+    payment_ids: list[str],
+) -> list[CommerceSettlementEntryModel]:
+    if not payment_ids:
+        return []
+    query = select(CommerceSettlementEntryModel).where(
+        CommerceSettlementEntryModel.tenant_id == tenant_id,
+        CommerceSettlementEntryModel.payment_id.in_(payment_ids),
+    )
+    return list(db.scalars(query))
+
+
+def list_settlement_entries_for_refund_ids(
+    db: Session,
+    *,
+    tenant_id: str,
+    refund_ids: list[str],
+) -> list[CommerceSettlementEntryModel]:
+    if not refund_ids:
+        return []
+    query = select(CommerceSettlementEntryModel).where(
+        CommerceSettlementEntryModel.tenant_id == tenant_id,
+        CommerceSettlementEntryModel.refund_id.in_(refund_ids),
+    )
+    return list(db.scalars(query))
+
+
+def create_settlement_entry(
+    db: Session,
+    *,
+    tenant_id: str,
+    settlement_id: str,
+    entry_type: str,
+    payment_id: str | None,
+    refund_id: str | None,
+    amount_minor: int,
+    label: str | None,
+    notes: str | None,
+) -> CommerceSettlementEntryModel:
+    model = CommerceSettlementEntryModel(
+        tenant_id=tenant_id,
+        settlement_id=settlement_id,
+        entry_type=entry_type,
+        payment_id=payment_id,
+        refund_id=refund_id,
+        amount_minor=amount_minor,
+        label=label,
+        notes=notes,
+    )
+    db.add(model)
+    db.flush()
+    return model
 
 
 def create_invoice(

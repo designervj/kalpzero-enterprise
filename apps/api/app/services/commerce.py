@@ -30,6 +30,25 @@ WAREHOUSE_ACTIVE_STATUSES = {"active", "inactive"}
 STOCK_LEDGER_ENTRY_TYPES = {"adjustment", "reservation", "release", "fulfillment", "restock"}
 FULFILLMENT_STATUSES = {"pending_pick", "packed", "shipped", "delivered", "cancelled"}
 SHIPMENT_STATUSES = {"shipped", "delivered", "cancelled"}
+RETURN_STATUSES = {"requested", "approved", "rejected", "received", "completed", "cancelled"}
+RETURN_RESOLUTION_TYPES = {"refund", "exchange"}
+RETURN_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "requested": {"approved", "rejected", "cancelled"},
+    "approved": {"received", "cancelled"},
+    "received": {"completed"},
+    "rejected": set(),
+    "completed": set(),
+    "cancelled": set(),
+}
+SETTLEMENT_STATUSES = {"draft", "reported", "reconciled", "closed", "disputed"}
+SETTLEMENT_ENTRY_TYPES = {"payment", "refund", "fee", "adjustment"}
+SETTLEMENT_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "draft": {"reported", "reconciled", "disputed"},
+    "reported": {"reconciled", "closed", "disputed"},
+    "reconciled": {"closed", "disputed"},
+    "disputed": {"reconciled", "closed"},
+    "closed": set(),
+}
 
 
 def _tenant(db: Session, tenant_slug: str):
@@ -268,6 +287,84 @@ def _serialize_invoice(model) -> dict[str, object]:
     }
 
 
+def _serialize_return_line(model) -> dict[str, object]:
+    return {
+        "id": model.id,
+        "return_id": model.return_id,
+        "order_line_id": model.order_line_id,
+        "variant_id": model.variant_id,
+        "quantity": model.quantity,
+        "resolution_type": model.resolution_type,
+        "replacement_variant_id": model.replacement_variant_id,
+        "restock_on_receive": model.restock_on_receive,
+        "line_amount_minor": model.line_amount_minor,
+        "notes": model.notes,
+        "created_at": model.created_at.isoformat(),
+    }
+
+
+def _serialize_return(model, lines_by_return: dict[str, list[dict[str, object]]]) -> dict[str, object]:
+    return {
+        "id": model.id,
+        "tenant_id": model.tenant_id,
+        "order_id": model.order_id,
+        "return_number": model.return_number,
+        "status": model.status,
+        "reason_summary": model.reason_summary,
+        "notes": model.notes,
+        "inventory_restocked": model.inventory_restocked,
+        "requested_at": model.requested_at,
+        "approved_at": model.approved_at,
+        "received_at": model.received_at,
+        "closed_at": model.closed_at,
+        "created_by_user_id": model.created_by_user_id,
+        "closed_by_user_id": model.closed_by_user_id,
+        "lines": lines_by_return.get(model.id, []),
+        "created_at": model.created_at.isoformat(),
+    }
+
+
+def _serialize_settlement_entry(model, *, payment=None, refund=None) -> dict[str, object]:
+    return {
+        "id": model.id,
+        "settlement_id": model.settlement_id,
+        "entry_type": model.entry_type,
+        "payment_id": model.payment_id,
+        "refund_id": model.refund_id,
+        "amount_minor": model.amount_minor,
+        "label": model.label,
+        "notes": model.notes,
+        "payment": _serialize_payment(payment) if payment is not None else None,
+        "refund": _serialize_refund(refund) if refund is not None else None,
+        "created_at": model.created_at.isoformat(),
+    }
+
+
+def _serialize_settlement(model, entries_by_settlement: dict[str, list[dict[str, object]]]) -> dict[str, object]:
+    return {
+        "id": model.id,
+        "tenant_id": model.tenant_id,
+        "settlement_number": model.settlement_number,
+        "provider": model.provider,
+        "settlement_reference": model.settlement_reference,
+        "currency": model.currency,
+        "status": model.status,
+        "payments_minor": model.payments_minor,
+        "refunds_minor": model.refunds_minor,
+        "fees_minor": model.fees_minor,
+        "adjustments_minor": model.adjustments_minor,
+        "net_minor": model.net_minor,
+        "reported_at": model.reported_at,
+        "reconciled_at": model.reconciled_at,
+        "closed_at": model.closed_at,
+        "notes": model.notes,
+        "created_by_user_id": model.created_by_user_id,
+        "closed_by_user_id": model.closed_by_user_id,
+        "entries": entries_by_settlement.get(model.id, []),
+        "created_at": model.created_at.isoformat(),
+    }
+
+
 def _serialize_attribute(model) -> dict[str, object]:
     return {
         "id": model.id,
@@ -410,6 +507,7 @@ def _serialize_order(
     payments: list | None = None,
     refunds: list | None = None,
     invoices: list | None = None,
+    returns: list | None = None,
 ) -> dict[str, object]:
     return {
         "id": model.id,
@@ -436,6 +534,7 @@ def _serialize_order(
         "payments": [_serialize_payment(item) for item in payments] if payments is not None else None,
         "refunds": [_serialize_refund(item) for item in refunds] if refunds is not None else None,
         "invoices": [_serialize_invoice(item) for item in invoices] if invoices is not None else None,
+        "returns": returns,
         "created_at": model.created_at.isoformat(),
     }
 
@@ -521,6 +620,37 @@ def _outbox_shipment(db: Session, *, tenant_id: str, shipment) -> None:
     )
 
 
+def _outbox_return(db: Session, *, tenant_id: str, return_request) -> None:
+    platform_repository.enqueue_outbox_event(
+        db,
+        tenant_id=tenant_id,
+        aggregate_id=return_request.id,
+        event_name="commerce.return.updated",
+        payload_json={
+            "return_id": return_request.id,
+            "order_id": return_request.order_id,
+            "return_number": return_request.return_number,
+            "status": return_request.status,
+        },
+    )
+
+
+def _outbox_settlement(db: Session, *, tenant_id: str, settlement) -> None:
+    platform_repository.enqueue_outbox_event(
+        db,
+        tenant_id=tenant_id,
+        aggregate_id=settlement.id,
+        event_name="commerce.settlement.updated",
+        payload_json={
+            "settlement_id": settlement.id,
+            "settlement_number": settlement.settlement_number,
+            "provider": settlement.provider,
+            "status": settlement.status,
+            "net_minor": settlement.net_minor,
+        },
+    )
+
+
 def _order_or_raise(db: Session, *, tenant_id: str, order_id: str):
     order = commerce_repository.get_order(db, tenant_id=tenant_id, order_id=order_id)
     if order is None:
@@ -556,12 +686,34 @@ def _payment_or_raise(db: Session, *, tenant_id: str, payment_id: str):
     return payment
 
 
+def _return_or_raise(db: Session, *, tenant_id: str, return_id: str):
+    return_request = commerce_repository.get_return(db, tenant_id=tenant_id, return_id=return_id)
+    if return_request is None:
+        raise NotFoundError(f"Commerce return '{return_id}' was not found.")
+    return return_request
+
+
+def _settlement_or_raise(db: Session, *, tenant_id: str, settlement_id: str):
+    settlement = commerce_repository.get_settlement(db, tenant_id=tenant_id, settlement_id=settlement_id)
+    if settlement is None:
+        raise NotFoundError(f"Commerce settlement '{settlement_id}' was not found.")
+    return settlement
+
+
 def _invoice_number(order) -> str:
     return order.invoice_number or f"INV-{order.id[:8].upper()}"
 
 
 def _fulfillment_number(order, count: int) -> str:
     return f"FUL-{order.id[:6].upper()}-{count + 1:02d}"
+
+
+def _return_number(order, count: int) -> str:
+    return f"RET-{order.id[:6].upper()}-{count + 1:02d}"
+
+
+def _settlement_number(count: int) -> str:
+    return f"SET-{count + 1:04d}"
 
 
 def _sync_variant_inventory_from_stocks(db: Session, *, tenant_id: str, variant_ids: list[str]) -> None:
@@ -871,12 +1023,29 @@ def get_overview(db: Session, *, tenant_slug: str) -> dict[str, object]:
     payments = commerce_repository.list_payments(db, tenant_id=tenant.id)
     refunds = commerce_repository.list_refunds(db, tenant_id=tenant.id)
     invoices = commerce_repository.list_invoices(db, tenant_id=tenant.id)
+    return_requests = commerce_repository.list_returns(db, tenant_id=tenant.id)
+    settlements = commerce_repository.list_settlements(db, tenant_id=tenant.id)
+    settlement_entries = commerce_repository.list_settlement_entries(
+        db,
+        tenant_id=tenant.id,
+        settlement_ids=[item.id for item in settlements],
+    )
 
     order_statuses = Counter(order.status for order in orders)
     payment_statuses = Counter(order.payment_status for order in orders)
     fulfillment_statuses = Counter(item.status for item in fulfillments)
     shipment_statuses = Counter(item.status for item in shipments)
+    return_statuses = Counter(item.status for item in return_requests)
+    settlement_statuses = Counter(item.status for item in settlements)
     inventory_units = sum(variant.inventory_quantity for variant in variants)
+    settled_payment_ids = {item.payment_id for item in settlement_entries if item.payment_id}
+    settled_refund_ids = {item.refund_id for item in settlement_entries if item.refund_id}
+    unreconciled_payments = sum(
+        1 for item in payments if item.status in {"captured", "refunded"} and item.id not in settled_payment_ids
+    )
+    unreconciled_refunds = sum(
+        1 for item in refunds if item.status == "processed" and item.id not in settled_refund_ids
+    )
     low_stock_items = sum(
         1
         for stock in stock_levels
@@ -908,11 +1077,17 @@ def get_overview(db: Session, *, tenant_slug: str) -> dict[str, object]:
         "payments": len(payments),
         "refunds": len(refunds),
         "invoices": len(invoices),
+        "returns": dict(return_statuses),
+        "settlements": dict(settlement_statuses),
+        "unreconciled_payments": unreconciled_payments,
+        "unreconciled_refunds": unreconciled_refunds,
         "focus": [
             "catalog governance and reusable attribute taxonomy",
             "pricing and tax contracts",
             "payment, refund, and invoice closure",
+            "settlement and reconciliation control",
             "warehouse stock and fulfillment operations",
+            "returns and post-fulfillment resolution workflows",
         ],
     }
 
@@ -1966,6 +2141,99 @@ def list_invoices(db: Session, *, tenant_slug: str, order_id: str | None) -> lis
     ]
 
 
+def list_settlements(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
+    tenant = _tenant(db, tenant_slug)
+    settlements = commerce_repository.list_settlements(db, tenant_id=tenant.id)
+    settlement_entries = commerce_repository.list_settlement_entries(
+        db,
+        tenant_id=tenant.id,
+        settlement_ids=[item.id for item in settlements],
+    )
+    payment_lookup = {
+        item.id: item
+        for item in commerce_repository.list_payments(db, tenant_id=tenant.id)
+    }
+    refund_lookup = {
+        item.id: item
+        for item in commerce_repository.list_refunds(db, tenant_id=tenant.id)
+    }
+    entries_by_settlement: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for entry in settlement_entries:
+        entries_by_settlement[entry.settlement_id].append(
+            _serialize_settlement_entry(
+                entry,
+                payment=payment_lookup.get(entry.payment_id) if entry.payment_id else None,
+                refund=refund_lookup.get(entry.refund_id) if entry.refund_id else None,
+            )
+        )
+    return [_serialize_settlement(item, entries_by_settlement) for item in settlements]
+
+
+def get_settlement_detail(db: Session, *, tenant_slug: str, settlement_id: str) -> dict[str, object]:
+    tenant = _tenant(db, tenant_slug)
+    settlement = _settlement_or_raise(db, tenant_id=tenant.id, settlement_id=settlement_id)
+    entries = commerce_repository.list_settlement_entries(
+        db,
+        tenant_id=tenant.id,
+        settlement_ids=[settlement.id],
+    )
+    payment_ids = [item.payment_id for item in entries if item.payment_id]
+    refund_ids = [item.refund_id for item in entries if item.refund_id]
+    payment_lookup = {
+        item.id: item
+        for item in commerce_repository.list_payments(db, tenant_id=tenant.id)
+        if item.id in payment_ids
+    }
+    refund_lookup = {
+        item.id: item
+        for item in commerce_repository.list_refunds(db, tenant_id=tenant.id)
+        if item.id in refund_ids
+    }
+    return _serialize_settlement(
+        settlement,
+        {
+            settlement.id: [
+                _serialize_settlement_entry(
+                    entry,
+                    payment=payment_lookup.get(entry.payment_id) if entry.payment_id else None,
+                    refund=refund_lookup.get(entry.refund_id) if entry.refund_id else None,
+                )
+                for entry in entries
+            ]
+        },
+    )
+
+
+def list_returns(db: Session, *, tenant_slug: str, order_id: str | None) -> list[dict[str, object]]:
+    tenant = _tenant(db, tenant_slug)
+    if order_id:
+        _order_or_raise(db, tenant_id=tenant.id, order_id=order_id)
+    return_requests = commerce_repository.list_returns(db, tenant_id=tenant.id, order_id=order_id)
+    return_lines = commerce_repository.list_return_lines(
+        db,
+        tenant_id=tenant.id,
+        return_ids=[item.id for item in return_requests],
+    )
+    lines_by_return: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for line in return_lines:
+        lines_by_return[line.return_id].append(_serialize_return_line(line))
+    return [_serialize_return(item, lines_by_return) for item in return_requests]
+
+
+def get_return_detail(db: Session, *, tenant_slug: str, return_id: str) -> dict[str, object]:
+    tenant = _tenant(db, tenant_slug)
+    return_request = _return_or_raise(db, tenant_id=tenant.id, return_id=return_id)
+    return_lines = commerce_repository.list_return_lines(
+        db,
+        tenant_id=tenant.id,
+        return_ids=[return_request.id],
+    )
+    return _serialize_return(
+        return_request,
+        {return_request.id: [_serialize_return_line(line) for line in return_lines]},
+    )
+
+
 def get_order_finance_detail(db: Session, *, tenant_slug: str, order_id: str) -> dict[str, object]:
     tenant = _tenant(db, tenant_slug)
     order = _order_or_raise(db, tenant_id=tenant.id, order_id=order_id)
@@ -1975,12 +2243,22 @@ def get_order_finance_detail(db: Session, *, tenant_slug: str, order_id: str) ->
     payments = commerce_repository.list_payments(db, tenant_id=tenant.id, order_id=order.id)
     refunds = commerce_repository.list_refunds(db, tenant_id=tenant.id, order_id=order.id)
     invoices = commerce_repository.list_invoices(db, tenant_id=tenant.id, order_id=order.id)
+    return_requests = commerce_repository.list_returns(db, tenant_id=tenant.id, order_id=order.id)
+    return_lines = commerce_repository.list_return_lines(
+        db,
+        tenant_id=tenant.id,
+        return_ids=[item.id for item in return_requests],
+    )
+    serialized_returns_by_id: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for line in return_lines:
+        serialized_returns_by_id[line.return_id].append(_serialize_return_line(line))
     return _serialize_order(
         order,
         {order.id: [_serialize_order_line(line) for line in lines]},
         payments=payments,
         refunds=refunds,
         invoices=invoices,
+        returns=[_serialize_return(item, serialized_returns_by_id) for item in return_requests],
     )
 
 
@@ -2075,6 +2353,124 @@ def _release_order_lines_from_warehouses(
 def _mark_order_fulfillment_state(order_lines: list, order) -> None:
     if order_lines and all(line.fulfilled_quantity >= line.quantity for line in order_lines):
         order.status = "fulfilled"
+
+
+def _delivered_quantities_by_order_line(db: Session, *, tenant_id: str, order_id: str) -> dict[str, int]:
+    fulfillments = commerce_repository.list_fulfillments(db, tenant_id=tenant_id, order_id=order_id)
+    delivered_fulfillment_ids = [item.id for item in fulfillments if item.status == "delivered"]
+    delivered_quantities: dict[str, int] = defaultdict(int)
+    if not delivered_fulfillment_ids:
+        return delivered_quantities
+    fulfillment_lines = commerce_repository.list_fulfillment_lines(
+        db,
+        tenant_id=tenant_id,
+        fulfillment_ids=delivered_fulfillment_ids,
+    )
+    for line in fulfillment_lines:
+        delivered_quantities[line.order_line_id] += line.quantity
+    return delivered_quantities
+
+
+def _active_return_quantities_by_order_line(
+    db: Session,
+    *,
+    tenant_id: str,
+    order_id: str,
+    exclude_return_id: str | None = None,
+) -> dict[str, int]:
+    return_requests = commerce_repository.list_returns(db, tenant_id=tenant_id, order_id=order_id)
+    active_returns = [
+        item
+        for item in return_requests
+        if item.status not in {"rejected", "cancelled"} and item.id != exclude_return_id
+    ]
+    active_return_ids = [item.id for item in active_returns]
+    returned_quantities: dict[str, int] = defaultdict(int)
+    if not active_return_ids:
+        return returned_quantities
+    return_lines = commerce_repository.list_return_lines(
+        db,
+        tenant_id=tenant_id,
+        return_ids=active_return_ids,
+    )
+    for line in return_lines:
+        returned_quantities[line.order_line_id] += line.quantity
+    return returned_quantities
+
+
+def _resolve_restock_warehouse_for_line(db: Session, *, tenant_id: str, order_line):
+    if order_line.allocated_warehouse_id:
+        warehouse = commerce_repository.get_warehouse(
+            db,
+            tenant_id=tenant_id,
+            warehouse_id=order_line.allocated_warehouse_id,
+        )
+        if warehouse is not None and warehouse.status == "active":
+            return warehouse
+
+    active_default_warehouse = next(
+        (
+            item
+            for item in commerce_repository.list_warehouses(db, tenant_id=tenant_id)
+            if item.is_default and item.status == "active"
+        ),
+        None,
+    )
+    if active_default_warehouse is not None:
+        return active_default_warehouse
+    raise ConflictError("No active warehouse is available to receive returned stock.")
+
+
+def _restock_return_inventory(
+    db: Session,
+    *,
+    tenant_id: str,
+    return_request,
+    return_lines: list,
+    order_line_lookup: dict[str, Any],
+    actor_user_id: str,
+) -> None:
+    touched_variant_ids: list[str] = []
+    for line in return_lines:
+        if not line.restock_on_receive:
+            continue
+        order_line = order_line_lookup.get(line.order_line_id)
+        if order_line is None:
+            raise ConflictError("Return line references an order line that no longer exists.")
+        warehouse = _resolve_restock_warehouse_for_line(db, tenant_id=tenant_id, order_line=order_line)
+        stock = commerce_repository.get_warehouse_stock(
+            db,
+            tenant_id=tenant_id,
+            warehouse_id=warehouse.id,
+            variant_id=line.variant_id,
+        )
+        if stock is None:
+            stock = commerce_repository.create_warehouse_stock(
+                db,
+                tenant_id=tenant_id,
+                warehouse_id=warehouse.id,
+                variant_id=line.variant_id,
+                on_hand_quantity=0,
+                reserved_quantity=0,
+                low_stock_threshold=0,
+            )
+        stock.on_hand_quantity += line.quantity
+        commerce_repository.create_stock_ledger_entry(
+            db,
+            tenant_id=tenant_id,
+            warehouse_id=warehouse.id,
+            variant_id=line.variant_id,
+            entry_type="restock",
+            quantity_delta=line.quantity,
+            balance_after=stock.on_hand_quantity,
+            reserved_after=stock.reserved_quantity,
+            reference_type="commerce_return",
+            reference_id=return_request.id,
+            notes=f"Restocked inventory from return {return_request.return_number}.",
+            recorded_by_user_id=actor_user_id,
+        )
+        touched_variant_ids.append(line.variant_id)
+    _sync_variant_inventory_from_stocks(db, tenant_id=tenant_id, variant_ids=touched_variant_ids)
 
 
 def create_order(
@@ -2383,6 +2779,386 @@ def record_refund(
     )
     db.commit()
     return get_order_finance_detail(db, tenant_slug=tenant_slug, order_id=order_id)
+
+
+def create_return(
+    db: Session,
+    *,
+    tenant_slug: str,
+    actor_user_id: str,
+    order_id: str,
+    reason_summary: str,
+    notes: str | None,
+    lines: list[dict[str, object]],
+) -> dict[str, object]:
+    tenant = _tenant(db, tenant_slug)
+    order = _order_or_raise(db, tenant_id=tenant.id, order_id=order_id)
+    order_lines = commerce_repository.list_order_lines_for_orders(db, tenant_id=tenant.id, order_ids=[order.id])
+    if not order_lines:
+        raise ConflictError("Returns cannot be created for an order without lines.")
+
+    deduped_line_ids = _dedupe_strings([str(item["order_line_id"]) for item in lines])
+    if len(deduped_line_ids) != len(lines):
+        raise ValidationError("Return lines cannot repeat the same order line.")
+
+    delivered_quantities = _delivered_quantities_by_order_line(db, tenant_id=tenant.id, order_id=order.id)
+    if not delivered_quantities:
+        raise ConflictError("Returns can only be created after at least one fulfillment has been delivered.")
+    active_return_quantities = _active_return_quantities_by_order_line(db, tenant_id=tenant.id, order_id=order.id)
+    order_line_lookup = {line.id: line for line in order_lines}
+    existing_returns = commerce_repository.list_returns(db, tenant_id=tenant.id, order_id=order.id)
+
+    created_return = commerce_repository.create_return(
+        db,
+        tenant_id=tenant.id,
+        order_id=order.id,
+        return_number=_return_number(order, len(existing_returns)),
+        status="requested",
+        reason_summary=reason_summary.strip(),
+        notes=notes,
+        inventory_restocked=False,
+        requested_at=datetime.now(tz=UTC).isoformat(),
+        approved_at=None,
+        received_at=None,
+        closed_at=None,
+        created_by_user_id=actor_user_id,
+        closed_by_user_id=None,
+    )
+
+    created_lines = []
+    for item in lines:
+        order_line = order_line_lookup.get(str(item["order_line_id"]))
+        if order_line is None:
+            raise NotFoundError(f"Order line '{item['order_line_id']}' was not found.")
+        delivered_quantity = delivered_quantities.get(order_line.id, 0)
+        if delivered_quantity <= 0:
+            raise ConflictError("Return requests can only reference delivered order lines.")
+        quantity = int(item["quantity"])
+        available_to_return = delivered_quantity - active_return_quantities.get(order_line.id, 0)
+        if quantity > available_to_return:
+            raise ConflictError("Return quantity exceeds the delivered quantity available for return.")
+
+        resolution_type = str(item["resolution_type"]).strip().lower()
+        if resolution_type not in RETURN_RESOLUTION_TYPES:
+            raise ValidationError(f"Unsupported return resolution type '{resolution_type}'.")
+        replacement_variant_id = str(item["replacement_variant_id"]) if item.get("replacement_variant_id") else None
+        if resolution_type == "exchange":
+            if not replacement_variant_id:
+                raise ValidationError("Exchange return lines require a replacement_variant_id.")
+            replacement_variant = commerce_repository.get_variant(
+                db,
+                tenant_id=tenant.id,
+                variant_id=replacement_variant_id,
+            )
+            if replacement_variant is None:
+                raise NotFoundError(f"Replacement variant '{replacement_variant_id}' was not found.")
+            if replacement_variant.currency != order.currency:
+                raise ValidationError("Replacement variant currency must match the order currency.")
+        elif replacement_variant_id is not None:
+            raise ValidationError("Refund return lines cannot specify a replacement variant.")
+
+        restock_on_receive = bool(item.get("restock_on_receive", True))
+        if restock_on_receive:
+            _resolve_restock_warehouse_for_line(db, tenant_id=tenant.id, order_line=order_line)
+
+        created_lines.append(
+            commerce_repository.create_return_line(
+                db,
+                tenant_id=tenant.id,
+                return_id=created_return.id,
+                order_line_id=order_line.id,
+                variant_id=order_line.variant_id,
+                quantity=quantity,
+                resolution_type=resolution_type,
+                replacement_variant_id=replacement_variant_id,
+                restock_on_receive=restock_on_receive,
+                line_amount_minor=order_line.unit_price_minor * quantity,
+                notes=str(item["notes"]).strip() if item.get("notes") else None,
+            )
+        )
+
+    _audit(
+        db,
+        tenant_id=tenant.id,
+        actor_user_id=actor_user_id,
+        action="commerce.return.created",
+        subject_type="commerce_return",
+        subject_id=created_return.id,
+        metadata={
+            "order_id": order.id,
+            "return_number": created_return.return_number,
+            "line_count": len(created_lines),
+        },
+    )
+    _outbox_return(db, tenant_id=tenant.id, return_request=created_return)
+    db.commit()
+    return get_return_detail(db, tenant_slug=tenant_slug, return_id=created_return.id)
+
+
+def update_return_status(
+    db: Session,
+    *,
+    tenant_slug: str,
+    actor_user_id: str,
+    return_id: str,
+    status: str,
+) -> dict[str, object]:
+    tenant = _tenant(db, tenant_slug)
+    return_request = _return_or_raise(db, tenant_id=tenant.id, return_id=return_id)
+    normalized_status = status.strip().lower()
+    if normalized_status not in RETURN_STATUSES:
+        raise ValidationError(f"Unsupported return status '{status}'.")
+    if normalized_status == return_request.status:
+        return get_return_detail(db, tenant_slug=tenant_slug, return_id=return_id)
+
+    allowed_next = RETURN_STATUS_TRANSITIONS.get(return_request.status, set())
+    if normalized_status not in allowed_next:
+        raise ConflictError(
+            f"Return status cannot move from '{return_request.status}' to '{normalized_status}'."
+        )
+
+    now = datetime.now(tz=UTC).isoformat()
+    return_lines = commerce_repository.list_return_lines(
+        db,
+        tenant_id=tenant.id,
+        return_ids=[return_request.id],
+    )
+    if normalized_status == "approved":
+        return_request.approved_at = return_request.approved_at or now
+    elif normalized_status == "received":
+        order = _order_or_raise(db, tenant_id=tenant.id, order_id=return_request.order_id)
+        order_lines = commerce_repository.list_order_lines_for_orders(db, tenant_id=tenant.id, order_ids=[order.id])
+        _restock_return_inventory(
+            db,
+            tenant_id=tenant.id,
+            return_request=return_request,
+            return_lines=return_lines,
+            order_line_lookup={line.id: line for line in order_lines},
+            actor_user_id=actor_user_id,
+        )
+        return_request.inventory_restocked = True
+        return_request.received_at = return_request.received_at or now
+    elif normalized_status in {"rejected", "completed", "cancelled"}:
+        return_request.closed_at = return_request.closed_at or now
+        return_request.closed_by_user_id = actor_user_id
+
+    return_request.status = normalized_status
+    _audit(
+        db,
+        tenant_id=tenant.id,
+        actor_user_id=actor_user_id,
+        action="commerce.return.updated",
+        subject_type="commerce_return",
+        subject_id=return_request.id,
+        metadata={"status": normalized_status, "return_number": return_request.return_number},
+    )
+    _outbox_return(db, tenant_id=tenant.id, return_request=return_request)
+    db.commit()
+    return get_return_detail(db, tenant_slug=tenant_slug, return_id=return_id)
+
+
+def create_settlement(
+    db: Session,
+    *,
+    tenant_slug: str,
+    actor_user_id: str,
+    provider: str,
+    settlement_reference: str | None,
+    currency: str,
+    status: str,
+    payment_ids: list[str],
+    refund_ids: list[str],
+    fees_minor: int,
+    adjustments_minor: int,
+    notes: str | None,
+) -> dict[str, object]:
+    tenant = _tenant(db, tenant_slug)
+    normalized_status = status.strip().lower()
+    if normalized_status not in {"draft", "reported", "reconciled"}:
+        raise ValidationError(f"Unsupported settlement creation status '{status}'.")
+    normalized_currency = currency.strip().upper()
+    normalized_provider = provider.strip().lower()
+    normalized_payment_ids = _dedupe_strings(payment_ids)
+    normalized_refund_ids = _dedupe_strings(refund_ids)
+    if not normalized_payment_ids and not normalized_refund_ids:
+        raise ValidationError("Settlements require at least one payment or refund reference.")
+
+    payments = [
+        _payment_or_raise(db, tenant_id=tenant.id, payment_id=payment_id)
+        for payment_id in normalized_payment_ids
+    ]
+    refunds = [
+        item
+        for item in commerce_repository.list_refunds(db, tenant_id=tenant.id)
+        if item.id in normalized_refund_ids
+    ]
+    refund_lookup = {item.id: item for item in refunds}
+    missing_refund_ids = [refund_id for refund_id in normalized_refund_ids if refund_id not in refund_lookup]
+    if missing_refund_ids:
+        raise NotFoundError(f"Refund(s) not found: {', '.join(missing_refund_ids)}.")
+
+    for payment in payments:
+        if payment.status not in {"captured", "refunded"}:
+            raise ConflictError("Only captured or refunded payments can be linked to a settlement.")
+        if payment.currency != normalized_currency:
+            raise ValidationError("Settlement currency must match the linked payment currency.")
+    for refund in refunds:
+        if refund.status != "processed":
+            raise ConflictError("Only processed refunds can be linked to a settlement.")
+        if refund.currency != normalized_currency:
+            raise ValidationError("Settlement currency must match the linked refund currency.")
+
+    duplicate_payment_entries = commerce_repository.list_settlement_entries_for_payment_ids(
+        db,
+        tenant_id=tenant.id,
+        payment_ids=normalized_payment_ids,
+    )
+    if duplicate_payment_entries:
+        raise ConflictError("One or more payments are already linked to another settlement.")
+    duplicate_refund_entries = commerce_repository.list_settlement_entries_for_refund_ids(
+        db,
+        tenant_id=tenant.id,
+        refund_ids=normalized_refund_ids,
+    )
+    if duplicate_refund_entries:
+        raise ConflictError("One or more refunds are already linked to another settlement.")
+
+    payments_minor = sum(item.amount_minor for item in payments)
+    refunds_minor = sum(item.amount_minor for item in refunds)
+    net_minor = payments_minor - refunds_minor - fees_minor + adjustments_minor
+    now = datetime.now(tz=UTC).isoformat()
+    existing_settlements = commerce_repository.list_settlements(db, tenant_id=tenant.id)
+    settlement = commerce_repository.create_settlement(
+        db,
+        tenant_id=tenant.id,
+        settlement_number=_settlement_number(len(existing_settlements)),
+        provider=normalized_provider,
+        settlement_reference=settlement_reference.strip() if settlement_reference else None,
+        currency=normalized_currency,
+        status=normalized_status,
+        payments_minor=payments_minor,
+        refunds_minor=refunds_minor,
+        fees_minor=fees_minor,
+        adjustments_minor=adjustments_minor,
+        net_minor=net_minor,
+        reported_at=now,
+        reconciled_at=now if normalized_status == "reconciled" else None,
+        closed_at=None,
+        notes=notes,
+        created_by_user_id=actor_user_id,
+        closed_by_user_id=None,
+    )
+
+    for payment in payments:
+        commerce_repository.create_settlement_entry(
+            db,
+            tenant_id=tenant.id,
+            settlement_id=settlement.id,
+            entry_type="payment",
+            payment_id=payment.id,
+            refund_id=None,
+            amount_minor=payment.amount_minor,
+            label=f"Payment {payment.reference or payment.id}",
+            notes=None,
+        )
+    for refund in refunds:
+        commerce_repository.create_settlement_entry(
+            db,
+            tenant_id=tenant.id,
+            settlement_id=settlement.id,
+            entry_type="refund",
+            payment_id=None,
+            refund_id=refund.id,
+            amount_minor=refund.amount_minor,
+            label=f"Refund {refund.reference or refund.id}",
+            notes=None,
+        )
+    if fees_minor > 0:
+        commerce_repository.create_settlement_entry(
+            db,
+            tenant_id=tenant.id,
+            settlement_id=settlement.id,
+            entry_type="fee",
+            payment_id=None,
+            refund_id=None,
+            amount_minor=fees_minor,
+            label="Gateway fees",
+            notes=None,
+        )
+    if adjustments_minor != 0:
+        commerce_repository.create_settlement_entry(
+            db,
+            tenant_id=tenant.id,
+            settlement_id=settlement.id,
+            entry_type="adjustment",
+            payment_id=None,
+            refund_id=None,
+            amount_minor=adjustments_minor,
+            label="Manual adjustment",
+            notes=None,
+        )
+
+    _audit(
+        db,
+        tenant_id=tenant.id,
+        actor_user_id=actor_user_id,
+        action="commerce.settlement.created",
+        subject_type="commerce_settlement",
+        subject_id=settlement.id,
+        metadata={
+            "settlement_number": settlement.settlement_number,
+            "provider": normalized_provider,
+            "payments_minor": payments_minor,
+            "refunds_minor": refunds_minor,
+            "net_minor": net_minor,
+        },
+    )
+    _outbox_settlement(db, tenant_id=tenant.id, settlement=settlement)
+    db.commit()
+    return get_settlement_detail(db, tenant_slug=tenant_slug, settlement_id=settlement.id)
+
+
+def update_settlement_status(
+    db: Session,
+    *,
+    tenant_slug: str,
+    actor_user_id: str,
+    settlement_id: str,
+    status: str,
+) -> dict[str, object]:
+    tenant = _tenant(db, tenant_slug)
+    settlement = _settlement_or_raise(db, tenant_id=tenant.id, settlement_id=settlement_id)
+    normalized_status = status.strip().lower()
+    if normalized_status not in SETTLEMENT_STATUSES:
+        raise ValidationError(f"Unsupported settlement status '{status}'.")
+    if normalized_status == settlement.status:
+        return get_settlement_detail(db, tenant_slug=tenant_slug, settlement_id=settlement_id)
+    allowed_next = SETTLEMENT_STATUS_TRANSITIONS.get(settlement.status, set())
+    if normalized_status not in allowed_next:
+        raise ConflictError(
+            f"Settlement status cannot move from '{settlement.status}' to '{normalized_status}'."
+        )
+
+    now = datetime.now(tz=UTC).isoformat()
+    settlement.status = normalized_status
+    if normalized_status == "reconciled":
+        settlement.reconciled_at = settlement.reconciled_at or now
+    if normalized_status == "closed":
+        settlement.closed_at = settlement.closed_at or now
+        settlement.closed_by_user_id = actor_user_id
+
+    _audit(
+        db,
+        tenant_id=tenant.id,
+        actor_user_id=actor_user_id,
+        action="commerce.settlement.updated",
+        subject_type="commerce_settlement",
+        subject_id=settlement.id,
+        metadata={"status": normalized_status, "settlement_number": settlement.settlement_number},
+    )
+    _outbox_settlement(db, tenant_id=tenant.id, settlement=settlement)
+    db.commit()
+    return get_settlement_detail(db, tenant_slug=tenant_slug, settlement_id=settlement.id)
 
 
 def issue_order_invoice(

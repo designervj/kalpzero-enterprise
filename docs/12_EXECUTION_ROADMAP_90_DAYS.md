@@ -30,12 +30,14 @@ Status on April 1, 2026: started. Core catalog and order persistence is now
 implemented, plus a concrete legacy-commerce adapter plan. The publishing
 foundation has also moved from a placeholder concept into a blueprint-driven
 runtime backed by Mongo documents and public/admin Next.js previews. Remaining
-work is deeper settlement controls, returns, and commerce-specific public
-storefront blocks.
+work is import execution, richer operator-facing commerce admin flows, and
+deeper finance documents.
 
-Priority on April 2, 2026: commerce is now the next active vertical after hotel
-stabilization. The first backend onboarding pilot should target hotel and
-commerce before travel is promoted further.
+Priority on April 10, 2026: commerce is now the lead active vertical. Hotel
+remains the reference vertical, but current execution should prioritize
+commerce closure first and hotel hardening second. The first backend onboarding
+pilot should still target hotel and commerce before travel is promoted
+further.
 
 Implementation checkpoint on April 2, 2026:
 
@@ -47,8 +49,13 @@ Implementation checkpoint on April 2, 2026:
 - commerce tax profiles, price lists, and coupons are now implemented
 - commerce orders now calculate subtotal, discount, tax, and final totals
 - commerce payments, refunds, and invoice issuance are now implemented
+- commerce settlements and reconciliation records are now implemented
 - commerce warehouses, stock adjustments, and stock ledger are now implemented
 - commerce fulfillments and shipments are now implemented
+- commerce returns and exchanges are now implemented with delivered-line
+  validation and inventory restock on receipt
+- commerce storefront and product detail materialization are now implemented in
+  the public blueprint runtime
 - the attribute taxonomy is positioned as the first reusable pattern for later
   vertical packs
 
@@ -82,9 +89,9 @@ amenity docs, reporting, and hotel import-plan exposure are also now in place.
 Remaining work is migration execution, tax/settlement hardening, and deeper
 enterprise analytics.
 
-Stabilization priority on April 2, 2026: hotel should now move through targeted
-hardening only, so that backend onboarding pilots can rely on it as the first
-reference vertical.
+Stabilization priority on April 10, 2026: hotel should now move through
+targeted hardening only, behind the current commerce-first execution order, so
+that backend onboarding pilots can still rely on it as the reference vertical.
 
 ## Phase 5
 
@@ -96,18 +103,18 @@ reference vertical.
 - Specify real estate, clinic, doctor site, school, and LMS packs
 - Prioritize the next two verticals based on migration readiness and revenue fit
 
-Status on April 2, 2026:
+Status on April 10, 2026:
 
+- commerce closure before pilot onboarding: required
 - hotel hardening before pilot onboarding: required
-- next vertical after hotel stabilization: commerce
-- next vertical after commerce onboarding pilot: travel
+- next vertical after commerce and hotel onboarding pilot: travel
 - pilot-ready onboarding scope now: hotel and commerce only
 - blocked from onboarding readiness: real estate, clinic, doctor site, school,
   LMS, and travel
  
 ## Immediate Pilot Order
 
-1. Close the remaining hotel stabilization backlog.
-2. Complete the extended commerce vertical to hotel-grade readiness.
+1. Complete the extended commerce vertical to hotel-grade readiness.
+2. Close the remaining hotel stabilization backlog.
 3. Test backend business onboarding using hotel and commerce tenants.
 4. Resume travel only after the onboarding pilot proves the pattern.

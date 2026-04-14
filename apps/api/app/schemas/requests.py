@@ -420,6 +420,41 @@ class CreateCommerceRefundRequest(BaseModel):
     reference: str | None = Field(default=None, max_length=120)
 
 
+class CreateCommerceReturnLineRequest(BaseModel):
+    order_line_id: str = Field(min_length=3, max_length=36)
+    quantity: int = Field(ge=1)
+    resolution_type: str = Field(pattern="^(refund|exchange)$")
+    replacement_variant_id: str | None = Field(default=None, min_length=3, max_length=36)
+    restock_on_receive: bool = True
+    notes: str | None = None
+
+
+class CreateCommerceReturnRequest(BaseModel):
+    reason_summary: str = Field(min_length=2, max_length=255)
+    notes: str | None = None
+    lines: list[CreateCommerceReturnLineRequest] = Field(min_length=1)
+
+
+class CommerceReturnStatusRequest(BaseModel):
+    status: str = Field(pattern="^(requested|approved|rejected|received|completed|cancelled)$")
+
+
+class CreateCommerceSettlementRequest(BaseModel):
+    provider: str = Field(min_length=2, max_length=120)
+    settlement_reference: str | None = Field(default=None, max_length=120)
+    currency: str = Field(default="INR", min_length=3, max_length=8)
+    status: str = Field(default="reported", pattern="^(draft|reported|reconciled)$")
+    payment_ids: list[str] = Field(default_factory=list)
+    refund_ids: list[str] = Field(default_factory=list)
+    fees_minor: int = Field(default=0, ge=0)
+    adjustments_minor: int = 0
+    notes: str | None = None
+
+
+class CommerceSettlementStatusRequest(BaseModel):
+    status: str = Field(pattern="^(draft|reported|reconciled|closed|disputed)$")
+
+
 class CommerceAttributeOptionRequest(BaseModel):
     value: str = Field(min_length=1, max_length=120)
     label: str = Field(min_length=1, max_length=255)

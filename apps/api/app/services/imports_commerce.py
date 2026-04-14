@@ -1,0 +1,1464 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from types import SimpleNamespace
+from typing import Any
+
+from sqlalchemy.orm import Session
+
+from app.repositories import commerce as commerce_repository
+from app.services import commerce as commerce_service
+from app.services.errors import ConflictError, NotFoundError, ValidationError
+
+SUPPORTED_COMMERCE_IMPORT_KEYS = (
+    "categories",
+    "brands",
+    "vendors",
+    "collections",
+    "warehouses",
+    "tax_profiles",
+    "attributes",
+    "attribute_sets",
+    "products",
+    "price_lists",
+    "coupons",
+)
+
+
+def run_commerce_import_job(
+    db: Session,
+    *,
+    tenant_id: str,
+    source,
+    actor_user_id: str,
+    job_id: str,
+    mode: str,
+) -> tuple[str, dict[str, object]]:
+    dataset = source.config_json.get("dataset", {})
+    if not isinstance(dataset, dict):
+        raise ValidationError("Commerce import source config requires a dataset object.")
+
+    report = _make_report(source=source, mode=mode, dataset=dataset)
+    plan = _build_commerce_import_plan(db, tenant_id=tenant_id, dataset=dataset, report=report)
+    _finalize_report_counts(report)
+
+    if report["errors"]:
+        report["stage"] = "validation_failed"
+        report["executed"] = False
+        _finalize_report_summary(report)
+        return "failed", report
+
+    if mode == "dry_run":
+        report["stage"] = "dry_run_complete"
+        report["executed"] = False
+        _finalize_report_summary(report)
+        return "completed", report
+
+    try:
+        with db.begin_nested():
+            _execute_commerce_import_plan(
+                db,
+                tenant_id=tenant_id,
+                actor_user_id=actor_user_id,
+                job_id=job_id,
+                plan=plan,
+                report=report,
+            )
+    except Exception as exc:  # pragma: no cover - guarded by validation + tests, but kept as transaction safety
+        _add_global_error(report, f"Execution failed: {exc}")
+        report["stage"] = "execute_failed"
+        report["executed"] = False
+        _finalize_report_counts(report)
+        _finalize_report_summary(report)
+        return "failed", report
+
+    report["stage"] = "execute_complete"
+    report["executed"] = True
+    _finalize_report_counts(report)
+    _finalize_report_summary(report)
+    return "completed", report
+
+
+def _make_report(*, source, mode: str, dataset: dict[str, object]) -> dict[str, object]:
+    adapter_id = str(
+        source.config_json.get("adapter_id")
+        or source.config_json.get("plan_adapter_id")
+        or "legacy-kalpzero-commerce"
+    )
+    entities = {
+        key: {
+            "source_records": _source_record_count(dataset.get(key)),
+            "create_candidates": 0,
+            "created": 0,
+            "skipped_existing": 0,
+            "errors": [],
+        }
+        for key in SUPPORTED_COMMERCE_IMPORT_KEYS
+    }
+    unsupported_entities = [
+        key for key in dataset.keys() if key not in SUPPORTED_COMMERCE_IMPORT_KEYS
+    ]
+    warnings: list[str] = []
+    if unsupported_entities:
+        warnings.append(
+            "Unsupported commerce dataset sections were ignored: "
+            + ", ".join(sorted(str(key) for key in unsupported_entities))
+            + "."
+        )
+    return {
+        "stage": "validation",
+        "summary": "",
+        "supports_dry_run": True,
+        "adapter_id": adapter_id,
+        "vertical_pack": "commerce",
+        "source_type": source.source_type,
+        "source_name": source.name,
+        "mode": mode,
+        "dry_run": mode == "dry_run",
+        "executed": False,
+        "warnings": warnings,
+        "errors": [],
+        "entities": entities,
+        "totals": {
+            "source_records": 0,
+            "create_candidates": 0,
+            "created": 0,
+            "skipped_existing": 0,
+            "errors": 0,
+        },
+    }
+
+
+def _source_record_count(value: object) -> int:
+    return len(value) if isinstance(value, list) else 0
+
+
+def _dataset_list(dataset: dict[str, object], key: str, report: dict[str, object]) -> list[dict[str, Any]]:
+    value = dataset.get(key, [])
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        _add_entity_error(report, key, "Dataset section must be a list.")
+        return []
+    normalized: list[dict[str, Any]] = []
+    for index, item in enumerate(value, start=1):
+        if not isinstance(item, dict):
+            _add_entity_error(report, key, f"Record #{index} must be an object.")
+            continue
+        normalized.append(item)
+    return normalized
+
+
+def _norm_slug(value: object) -> str:
+    return str(value or "").strip().lower()
+
+
+def _norm_code(value: object) -> str:
+    return str(value or "").strip().upper()
+
+
+def _norm_attribute_code(value: object) -> str:
+    return str(value or "").strip().lower()
+
+
+def _opt_str(value: object | None) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _positive_int(value: object, *, field: str) -> int:
+    try:
+        normalized = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError(f"{field} must be an integer.") from exc
+    if normalized < 0:
+        raise ValidationError(f"{field} must be non-negative.")
+    return normalized
+
+
+def _build_commerce_import_plan(
+    db: Session,
+    *,
+    tenant_id: str,
+    dataset: dict[str, object],
+    report: dict[str, object],
+) -> dict[str, list[dict[str, Any]]]:
+    existing_categories_by_slug = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_categories(db, tenant_id=tenant_id)
+    }
+    existing_brands_by_slug = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_brands(db, tenant_id=tenant_id)
+    }
+    existing_vendors_by_slug = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_vendors(db, tenant_id=tenant_id)
+    }
+    existing_collections_by_slug = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_collections(db, tenant_id=tenant_id)
+    }
+    existing_warehouses_by_slug = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_warehouses(db, tenant_id=tenant_id)
+    }
+    existing_tax_profiles_by_code = {
+        _norm_code(item.code): item for item in commerce_repository.list_tax_profiles(db, tenant_id=tenant_id)
+    }
+    existing_attributes = commerce_repository.list_attributes(db, tenant_id=tenant_id)
+    existing_attributes_by_code = {_norm_attribute_code(item.code): item for item in existing_attributes}
+    existing_attributes_by_id = {item.id: item for item in existing_attributes}
+    existing_attribute_sets_by_slug = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_attribute_sets(db, tenant_id=tenant_id)
+    }
+    existing_products_by_slug = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_products(db, tenant_id=tenant_id)
+    }
+    existing_variants = commerce_repository.list_variants_for_products(
+        db,
+        tenant_id=tenant_id,
+        product_ids=[item.id for item in existing_products_by_slug.values()],
+    )
+    existing_variants_by_sku = {_norm_code(item.sku): item for item in existing_variants}
+    existing_price_lists_by_slug = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_price_lists(db, tenant_id=tenant_id)
+    }
+    existing_coupons_by_code = {
+        _norm_code(item.code): item for item in commerce_repository.list_coupons(db, tenant_id=tenant_id)
+    }
+
+    plan: dict[str, list[dict[str, Any]]] = {key: [] for key in SUPPORTED_COMMERCE_IMPORT_KEYS}
+
+    category_records = _dataset_list(dataset, "categories", report)
+    planned_category_slugs: set[str] = set()
+    for index, item in enumerate(category_records, start=1):
+        slug = _norm_slug(item.get("slug"))
+        name = _opt_str(item.get("name"))
+        if not slug or not name:
+            _add_entity_error(report, "categories", f"Record #{index} requires name and slug.")
+            continue
+        if slug in planned_category_slugs:
+            _add_entity_error(report, "categories", f"Duplicate category slug '{slug}' in dataset.")
+            continue
+        planned_category_slugs.add(slug)
+        if slug in existing_categories_by_slug:
+            report["entities"]["categories"]["skipped_existing"] += 1
+            continue
+        plan["categories"].append(
+            {
+                "name": name,
+                "slug": slug,
+                "description": _opt_str(item.get("description")),
+                "parent_slug": _norm_slug(item.get("parent_slug")) or None,
+            }
+        )
+        report["entities"]["categories"]["create_candidates"] += 1
+
+    known_category_slugs = set(existing_categories_by_slug) | {item["slug"] for item in plan["categories"]}
+    for item in plan["categories"]:
+        if item["parent_slug"] and item["parent_slug"] not in known_category_slugs:
+            _add_entity_error(
+                report,
+                "categories",
+                f"Parent category '{item['parent_slug']}' was not found for '{item['slug']}'.",
+            )
+
+    brand_records = _dataset_list(dataset, "brands", report)
+    planned_brand_slugs: set[str] = set()
+    planned_brand_codes: set[str] = set()
+    for index, item in enumerate(brand_records, start=1):
+        slug = _norm_slug(item.get("slug"))
+        code = _norm_code(item.get("code"))
+        name = _opt_str(item.get("name"))
+        if not slug or not code or not name:
+            _add_entity_error(report, "brands", f"Record #{index} requires name, slug, and code.")
+            continue
+        if slug in planned_brand_slugs or code in planned_brand_codes:
+            _add_entity_error(report, "brands", f"Duplicate brand slug/code in record #{index}.")
+            continue
+        planned_brand_slugs.add(slug)
+        planned_brand_codes.add(code)
+        if slug in existing_brands_by_slug:
+            report["entities"]["brands"]["skipped_existing"] += 1
+            continue
+        plan["brands"].append(
+            {
+                "name": name,
+                "slug": slug,
+                "code": code,
+                "description": _opt_str(item.get("description")),
+                "status": _norm_slug(item.get("status") or "active"),
+            }
+        )
+        report["entities"]["brands"]["create_candidates"] += 1
+
+    vendor_records = _dataset_list(dataset, "vendors", report)
+    planned_vendor_slugs: set[str] = set()
+    planned_vendor_codes: set[str] = set()
+    for index, item in enumerate(vendor_records, start=1):
+        slug = _norm_slug(item.get("slug"))
+        code = _norm_code(item.get("code"))
+        name = _opt_str(item.get("name"))
+        if not slug or not code or not name:
+            _add_entity_error(report, "vendors", f"Record #{index} requires name, slug, and code.")
+            continue
+        if slug in planned_vendor_slugs or code in planned_vendor_codes:
+            _add_entity_error(report, "vendors", f"Duplicate vendor slug/code in record #{index}.")
+            continue
+        planned_vendor_slugs.add(slug)
+        planned_vendor_codes.add(code)
+        if slug in existing_vendors_by_slug:
+            report["entities"]["vendors"]["skipped_existing"] += 1
+            continue
+        plan["vendors"].append(
+            {
+                "name": name,
+                "slug": slug,
+                "code": code,
+                "description": _opt_str(item.get("description")),
+                "contact_name": _opt_str(item.get("contact_name")),
+                "contact_email": _opt_str(item.get("contact_email")),
+                "contact_phone": _opt_str(item.get("contact_phone")),
+                "status": _norm_slug(item.get("status") or "active"),
+            }
+        )
+        report["entities"]["vendors"]["create_candidates"] += 1
+
+    collection_records = _dataset_list(dataset, "collections", report)
+    planned_collection_slugs: set[str] = set()
+    for index, item in enumerate(collection_records, start=1):
+        slug = _norm_slug(item.get("slug"))
+        name = _opt_str(item.get("name"))
+        if not slug or not name:
+            _add_entity_error(report, "collections", f"Record #{index} requires name and slug.")
+            continue
+        if slug in planned_collection_slugs:
+            _add_entity_error(report, "collections", f"Duplicate collection slug '{slug}' in dataset.")
+            continue
+        planned_collection_slugs.add(slug)
+        if slug in existing_collections_by_slug:
+            report["entities"]["collections"]["skipped_existing"] += 1
+            continue
+        plan["collections"].append(
+            {
+                "name": name,
+                "slug": slug,
+                "description": _opt_str(item.get("description")),
+                "status": _norm_slug(item.get("status") or "active"),
+                "sort_order": _positive_int(item.get("sort_order", 0), field="collection.sort_order"),
+            }
+        )
+        report["entities"]["collections"]["create_candidates"] += 1
+
+    warehouse_records = _dataset_list(dataset, "warehouses", report)
+    planned_warehouse_slugs: set[str] = set()
+    planned_warehouse_codes: set[str] = set()
+    default_warehouse_count = 0
+    for index, item in enumerate(warehouse_records, start=1):
+        slug = _norm_slug(item.get("slug"))
+        code = _norm_code(item.get("code"))
+        name = _opt_str(item.get("name"))
+        if not slug or not code or not name:
+            _add_entity_error(report, "warehouses", f"Record #{index} requires name, slug, and code.")
+            continue
+        if slug in planned_warehouse_slugs or code in planned_warehouse_codes:
+            _add_entity_error(report, "warehouses", f"Duplicate warehouse slug/code in record #{index}.")
+            continue
+        planned_warehouse_slugs.add(slug)
+        planned_warehouse_codes.add(code)
+        if slug in existing_warehouses_by_slug:
+            report["entities"]["warehouses"]["skipped_existing"] += 1
+            continue
+        is_default = bool(item.get("is_default", False))
+        if is_default:
+            default_warehouse_count += 1
+        plan["warehouses"].append(
+            {
+                "name": name,
+                "slug": slug,
+                "code": code,
+                "city": _opt_str(item.get("city")),
+                "country": _opt_str(item.get("country")),
+                "status": _norm_slug(item.get("status") or "active"),
+                "is_default": is_default,
+            }
+        )
+        report["entities"]["warehouses"]["create_candidates"] += 1
+    if default_warehouse_count > 1:
+        _add_entity_error(report, "warehouses", "Only one imported warehouse can be marked as default.")
+
+    tax_profile_records = _dataset_list(dataset, "tax_profiles", report)
+    planned_tax_codes: set[str] = set()
+    for index, item in enumerate(tax_profile_records, start=1):
+        code = _norm_code(item.get("code"))
+        name = _opt_str(item.get("name"))
+        if not code or not name:
+            _add_entity_error(report, "tax_profiles", f"Record #{index} requires name and code.")
+            continue
+        if code in planned_tax_codes:
+            _add_entity_error(report, "tax_profiles", f"Duplicate tax profile code '{code}' in dataset.")
+            continue
+        planned_tax_codes.add(code)
+        if code in existing_tax_profiles_by_code:
+            report["entities"]["tax_profiles"]["skipped_existing"] += 1
+            continue
+        try:
+            rules = commerce_service._normalize_tax_rules(list(item.get("rules", [])))
+        except (TypeError, ValidationError) as exc:
+            _add_entity_error(report, "tax_profiles", f"Tax profile '{code}': {exc}")
+            continue
+        plan["tax_profiles"].append(
+            {
+                "name": name,
+                "code": code,
+                "description": _opt_str(item.get("description")),
+                "prices_include_tax": bool(item.get("prices_include_tax", False)),
+                "rules": rules,
+                "status": _norm_slug(item.get("status") or "active"),
+            }
+        )
+        report["entities"]["tax_profiles"]["create_candidates"] += 1
+
+    attribute_records = _dataset_list(dataset, "attributes", report)
+    planned_attributes_by_code: dict[str, Any] = {}
+    planned_attribute_slugs: set[str] = set()
+    for index, item in enumerate(attribute_records, start=1):
+        code = _norm_attribute_code(item.get("code"))
+        slug = _norm_slug(item.get("slug"))
+        label = _opt_str(item.get("label"))
+        if not code or not slug or not label:
+            _add_entity_error(report, "attributes", f"Record #{index} requires code, slug, and label.")
+            continue
+        if code in planned_attributes_by_code or slug in planned_attribute_slugs:
+            _add_entity_error(report, "attributes", f"Duplicate attribute code/slug in record #{index}.")
+            continue
+        if code in existing_attributes_by_code:
+            report["entities"]["attributes"]["skipped_existing"] += 1
+            continue
+        planned_attribute_slugs.add(slug)
+        try:
+            options = commerce_service._validate_attribute_definition(
+                value_type=str(item.get("value_type", "")),
+                scope=str(item.get("scope", "product")),
+                options=list(item.get("options", [])),
+                is_variation_axis=bool(item.get("is_variation_axis", False)),
+            )
+        except (TypeError, ValidationError) as exc:
+            _add_entity_error(report, "attributes", f"Attribute '{code}': {exc}")
+            continue
+        payload = {
+            "code": code,
+            "slug": slug,
+            "label": label,
+            "description": _opt_str(item.get("description")),
+            "value_type": str(item.get("value_type", "")),
+            "scope": str(item.get("scope", "product")),
+            "options": options,
+            "unit_label": _opt_str(item.get("unit_label")),
+            "is_required": bool(item.get("is_required", False)),
+            "is_filterable": bool(item.get("is_filterable", False)),
+            "is_variation_axis": bool(item.get("is_variation_axis", False)),
+            "vertical_bindings": commerce_service._dedupe_strings(
+                [str(entry) for entry in item.get("vertical_bindings", ["commerce"])],
+                default=["commerce"],
+            ),
+            "status": _norm_slug(item.get("status") or "active"),
+        }
+        synthetic_id = f"import-attribute:{code}"
+        planned_attributes_by_code[code] = SimpleNamespace(
+            id=synthetic_id,
+            code=code,
+            slug=slug,
+            label=label,
+            description=payload["description"],
+            value_type=payload["value_type"],
+            scope=payload["scope"],
+            options_json=options,
+            unit_label=payload["unit_label"],
+            is_required=payload["is_required"],
+            is_filterable=payload["is_filterable"],
+            is_variation_axis=payload["is_variation_axis"],
+            vertical_bindings=payload["vertical_bindings"],
+            status=payload["status"],
+        )
+        plan["attributes"].append(payload)
+        report["entities"]["attributes"]["create_candidates"] += 1
+
+    known_attributes_by_code = {**existing_attributes_by_code, **planned_attributes_by_code}
+    known_attributes_by_id = {**existing_attributes_by_id}
+    for item in planned_attributes_by_code.values():
+        known_attributes_by_id[item.id] = item
+
+    attribute_set_records = _dataset_list(dataset, "attribute_sets", report)
+    planned_attribute_sets_by_slug: dict[str, Any] = {}
+    for index, item in enumerate(attribute_set_records, start=1):
+        slug = _norm_slug(item.get("slug"))
+        name = _opt_str(item.get("name"))
+        if not slug or not name:
+            _add_entity_error(report, "attribute_sets", f"Record #{index} requires name and slug.")
+            continue
+        if slug in planned_attribute_sets_by_slug:
+            _add_entity_error(report, "attribute_sets", f"Duplicate attribute set slug '{slug}' in dataset.")
+            continue
+        if slug in existing_attribute_sets_by_slug:
+            report["entities"]["attribute_sets"]["skipped_existing"] += 1
+            continue
+        attribute_codes = commerce_service._dedupe_strings(
+            [_norm_attribute_code(entry) for entry in item.get("attribute_codes", [])]
+        )
+        if not attribute_codes:
+            _add_entity_error(report, "attribute_sets", f"Attribute set '{slug}' requires attribute_codes.")
+            continue
+        missing_codes = [code for code in attribute_codes if code not in known_attributes_by_code]
+        if missing_codes:
+            _add_entity_error(
+                report,
+                "attribute_sets",
+                f"Attribute set '{slug}' references unknown attributes: {', '.join(missing_codes)}.",
+            )
+            continue
+        attribute_ids = [known_attributes_by_code[code].id for code in attribute_codes]
+        payload = {
+            "name": name,
+            "slug": slug,
+            "description": _opt_str(item.get("description")),
+            "attribute_codes": attribute_codes,
+            "vertical_bindings": commerce_service._dedupe_strings(
+                [str(entry) for entry in item.get("vertical_bindings", ["commerce"])],
+                default=["commerce"],
+            ),
+            "status": _norm_slug(item.get("status") or "active"),
+        }
+        plan["attribute_sets"].append(payload)
+        planned_attribute_sets_by_slug[slug] = SimpleNamespace(
+            id=f"import-attribute-set:{slug}",
+            slug=slug,
+            attribute_ids=attribute_ids,
+            status=payload["status"],
+        )
+        report["entities"]["attribute_sets"]["create_candidates"] += 1
+
+    known_attribute_sets_by_slug = {**existing_attribute_sets_by_slug, **planned_attribute_sets_by_slug}
+
+    product_records = _dataset_list(dataset, "products", report)
+    planned_product_slugs: set[str] = set()
+    planned_variant_skus: set[str] = set()
+    for index, item in enumerate(product_records, start=1):
+        slug = _norm_slug(item.get("slug"))
+        name = _opt_str(item.get("name"))
+        if not slug or not name:
+            _add_entity_error(report, "products", f"Record #{index} requires name and slug.")
+            continue
+        if slug in planned_product_slugs:
+            _add_entity_error(report, "products", f"Duplicate product slug '{slug}' in dataset.")
+            continue
+        planned_product_slugs.add(slug)
+        if slug in existing_products_by_slug:
+            report["entities"]["products"]["skipped_existing"] += 1
+            continue
+
+        category_slugs = commerce_service._dedupe_strings(
+            [_norm_slug(entry) for entry in item.get("category_slugs", [])]
+        )
+        if not category_slugs:
+            _add_entity_error(report, "products", f"Product '{slug}' requires category_slugs.")
+            continue
+        missing_categories = [entry for entry in category_slugs if entry not in known_category_slugs]
+        if missing_categories:
+            _add_entity_error(
+                report,
+                "products",
+                f"Product '{slug}' references unknown categories: {', '.join(missing_categories)}.",
+            )
+            continue
+
+        brand_slug = _norm_slug(item.get("brand_slug")) or None
+        if brand_slug and brand_slug not in (set(existing_brands_by_slug) | planned_brand_slugs):
+            _add_entity_error(report, "products", f"Product '{slug}' references unknown brand '{brand_slug}'.")
+            continue
+        vendor_slug = _norm_slug(item.get("vendor_slug")) or None
+        if vendor_slug and vendor_slug not in (set(existing_vendors_by_slug) | planned_vendor_slugs):
+            _add_entity_error(report, "products", f"Product '{slug}' references unknown vendor '{vendor_slug}'.")
+            continue
+        collection_slugs = commerce_service._dedupe_strings(
+            [_norm_slug(entry) for entry in item.get("collection_slugs", [])]
+        )
+        missing_collections = [
+            entry for entry in collection_slugs if entry not in (set(existing_collections_by_slug) | planned_collection_slugs)
+        ]
+        if missing_collections:
+            _add_entity_error(
+                report,
+                "products",
+                f"Product '{slug}' references unknown collections: {', '.join(missing_collections)}.",
+            )
+            continue
+        attribute_set_slug = _norm_slug(item.get("attribute_set_slug")) or None
+        if attribute_set_slug and attribute_set_slug not in known_attribute_sets_by_slug:
+            _add_entity_error(
+                report,
+                "products",
+                f"Product '{slug}' references unknown attribute set '{attribute_set_slug}'.",
+            )
+            continue
+
+        raw_product_attributes = item.get("product_attributes", [])
+        if not isinstance(raw_product_attributes, list):
+            _add_entity_error(report, "products", f"Product '{slug}' product_attributes must be a list.")
+            continue
+        product_attribute_values: list[dict[str, object]] = []
+        for attr_index, attr_item in enumerate(raw_product_attributes, start=1):
+            if not isinstance(attr_item, dict):
+                _add_entity_error(
+                    report,
+                    "products",
+                    f"Product '{slug}' product attribute #{attr_index} must be an object.",
+                )
+                continue
+            attribute_code = _norm_attribute_code(attr_item.get("attribute_code"))
+            attribute = known_attributes_by_code.get(attribute_code)
+            if attribute is None:
+                _add_entity_error(
+                    report,
+                    "products",
+                    f"Product '{slug}' references unknown product attribute '{attribute_code}'.",
+                )
+                continue
+            product_attribute_values.append({"attribute_id": attribute.id, "value": attr_item.get("value")})
+
+        raw_variants = item.get("variants", [])
+        if not isinstance(raw_variants, list) or not raw_variants:
+            _add_entity_error(report, "products", f"Product '{slug}' requires variants.")
+            continue
+        normalized_variants: list[dict[str, Any]] = []
+        variant_attribute_payloads: list[list[dict[str, object]]] = []
+        variant_sku_keys: list[str] = []
+        valid_variants = True
+        for variant_index, variant_item in enumerate(raw_variants, start=1):
+            if not isinstance(variant_item, dict):
+                _add_entity_error(report, "products", f"Product '{slug}' variant #{variant_index} must be an object.")
+                valid_variants = False
+                continue
+            sku = _norm_code(variant_item.get("sku"))
+            label = _opt_str(variant_item.get("label"))
+            if not sku or not label:
+                _add_entity_error(report, "products", f"Product '{slug}' variant #{variant_index} requires sku and label.")
+                valid_variants = False
+                continue
+            if sku in planned_variant_skus or sku in variant_sku_keys or sku in existing_variants_by_sku:
+                _add_entity_error(report, "products", f"Variant SKU '{sku}' already exists.")
+                valid_variants = False
+                continue
+            price_minor = _positive_int(variant_item.get("price_minor", 0), field=f"{slug}.{sku}.price_minor")
+            inventory_quantity = _positive_int(
+                variant_item.get("inventory_quantity", 0),
+                field=f"{slug}.{sku}.inventory_quantity",
+            )
+            raw_variant_attributes = variant_item.get("attribute_values", [])
+            if not isinstance(raw_variant_attributes, list):
+                _add_entity_error(report, "products", f"Product '{slug}' variant '{sku}' attribute_values must be a list.")
+                valid_variants = False
+                continue
+            attribute_values: list[dict[str, object]] = []
+            for attr_index, attr_item in enumerate(raw_variant_attributes, start=1):
+                if not isinstance(attr_item, dict):
+                    _add_entity_error(
+                        report,
+                        "products",
+                        f"Product '{slug}' variant '{sku}' attribute #{attr_index} must be an object.",
+                    )
+                    valid_variants = False
+                    continue
+                attribute_code = _norm_attribute_code(attr_item.get("attribute_code"))
+                attribute = known_attributes_by_code.get(attribute_code)
+                if attribute is None:
+                    _add_entity_error(
+                        report,
+                        "products",
+                        f"Product '{slug}' variant '{sku}' references unknown attribute '{attribute_code}'.",
+                    )
+                    valid_variants = False
+                    continue
+                attribute_values.append({"attribute_id": attribute.id, "value": attr_item.get("value")})
+
+            warehouse_stock_payloads: list[dict[str, Any]] = []
+            raw_warehouse_stocks = variant_item.get("warehouse_stock", [])
+            if raw_warehouse_stocks:
+                if not isinstance(raw_warehouse_stocks, list):
+                    _add_entity_error(
+                        report,
+                        "products",
+                        f"Product '{slug}' variant '{sku}' warehouse_stock must be a list.",
+                    )
+                    valid_variants = False
+                    continue
+                total_allocated = 0
+                seen_variant_warehouses: set[str] = set()
+                for stock_index, stock_item in enumerate(raw_warehouse_stocks, start=1):
+                    if not isinstance(stock_item, dict):
+                        _add_entity_error(
+                            report,
+                            "products",
+                            f"Product '{slug}' variant '{sku}' warehouse stock #{stock_index} must be an object.",
+                        )
+                        valid_variants = False
+                        continue
+                    warehouse_slug = _norm_slug(stock_item.get("warehouse_slug"))
+                    if not warehouse_slug:
+                        _add_entity_error(
+                            report,
+                            "products",
+                            f"Product '{slug}' variant '{sku}' warehouse stock #{stock_index} requires warehouse_slug.",
+                        )
+                        valid_variants = False
+                        continue
+                    if warehouse_slug in seen_variant_warehouses:
+                        _add_entity_error(
+                            report,
+                            "products",
+                            f"Product '{slug}' variant '{sku}' repeats warehouse '{warehouse_slug}'.",
+                        )
+                        valid_variants = False
+                        continue
+                    seen_variant_warehouses.add(warehouse_slug)
+                    if warehouse_slug not in (set(existing_warehouses_by_slug) | planned_warehouse_slugs):
+                        _add_entity_error(
+                            report,
+                            "products",
+                            f"Product '{slug}' variant '{sku}' references unknown warehouse '{warehouse_slug}'.",
+                        )
+                        valid_variants = False
+                        continue
+                    on_hand_quantity = _positive_int(
+                        stock_item.get("on_hand_quantity", 0),
+                        field=f"{slug}.{sku}.{warehouse_slug}.on_hand_quantity",
+                    )
+                    low_stock_threshold = _positive_int(
+                        stock_item.get("low_stock_threshold", 0),
+                        field=f"{slug}.{sku}.{warehouse_slug}.low_stock_threshold",
+                    )
+                    total_allocated += on_hand_quantity
+                    warehouse_stock_payloads.append(
+                        {
+                            "warehouse_slug": warehouse_slug,
+                            "on_hand_quantity": on_hand_quantity,
+                            "low_stock_threshold": low_stock_threshold,
+                        }
+                    )
+                if warehouse_stock_payloads and total_allocated != inventory_quantity:
+                    _add_entity_error(
+                        report,
+                        "products",
+                        f"Product '{slug}' variant '{sku}' inventory_quantity must equal warehouse_stock total.",
+                    )
+                    valid_variants = False
+            normalized_variants.append(
+                {
+                    "sku": sku,
+                    "label": label,
+                    "price_minor": price_minor,
+                    "currency": str(variant_item.get("currency", "INR")).strip().upper(),
+                    "inventory_quantity": inventory_quantity,
+                    "attribute_values": attribute_values,
+                    "warehouse_stock": warehouse_stock_payloads,
+                }
+            )
+            variant_attribute_payloads.append(attribute_values)
+            variant_sku_keys.append(sku)
+
+        if not valid_variants:
+            continue
+
+        attribute_lookup_by_id = dict(known_attributes_by_id)
+        try:
+            normalized_product_attributes = commerce_service._validate_attribute_payload(
+                attribute_lookup=attribute_lookup_by_id,
+                values=product_attribute_values,
+                allowed_scopes={"product", "both"},
+                owner=f"product '{slug}'",
+            )
+            normalized_variant_attributes = [
+                commerce_service._validate_attribute_payload(
+                    attribute_lookup=attribute_lookup_by_id,
+                    values=values,
+                    allowed_scopes={"variant", "both"},
+                    owner=f"variant '{variant['sku']}'",
+                )
+                for variant, values in zip(normalized_variants, variant_attribute_payloads, strict=True)
+            ]
+        except (NotFoundError, ValidationError) as exc:
+            _add_entity_error(report, "products", f"Product '{slug}': {exc}")
+            continue
+
+        required_attribute_ids: list[str] = []
+        if attribute_set_slug:
+            attribute_set = known_attribute_sets_by_slug[attribute_set_slug]
+            required_attribute_ids = list(attribute_set.attribute_ids)
+            allowed_attribute_ids = set(attribute_set.attribute_ids)
+            payload_attribute_ids = {entry["attribute_id"] for entry in normalized_product_attributes}
+            payload_attribute_ids.update(
+                entry["attribute_id"] for values in normalized_variant_attributes for entry in values
+            )
+            disallowed_attribute_ids = [
+                attribute_id for attribute_id in payload_attribute_ids if attribute_id not in allowed_attribute_ids
+            ]
+            if disallowed_attribute_ids:
+                _add_entity_error(
+                    report,
+                    "products",
+                    f"Product '{slug}' includes attributes outside the selected attribute set.",
+                )
+                continue
+        else:
+            required_attribute_ids = commerce_service._dedupe_strings(
+                [entry["attribute_id"] for entry in normalized_product_attributes]
+                + [
+                    entry["attribute_id"]
+                    for values in normalized_variant_attributes
+                    for entry in values
+                ]
+            )
+
+        try:
+            commerce_service._validate_required_attributes(
+                attribute_lookup=attribute_lookup_by_id,
+                attribute_ids=required_attribute_ids,
+                normalized_product_attributes=normalized_product_attributes,
+                normalized_variant_attributes=normalized_variant_attributes,
+            )
+            axis_lookup = {attribute_id: attribute_lookup_by_id[attribute_id] for attribute_id in required_attribute_ids}
+            commerce_service._validate_variation_axes(
+                attribute_lookup=axis_lookup,
+                normalized_variant_attributes=normalized_variant_attributes,
+            )
+        except ValidationError as exc:
+            _add_entity_error(report, "products", f"Product '{slug}': {exc}")
+            continue
+
+        plan["products"].append(
+            {
+                "name": name,
+                "slug": slug,
+                "description": _opt_str(item.get("description")),
+                "brand_slug": brand_slug,
+                "vendor_slug": vendor_slug,
+                "collection_slugs": collection_slugs,
+                "attribute_set_slug": attribute_set_slug,
+                "category_slugs": category_slugs,
+                "seo_title": _opt_str(item.get("seo_title")),
+                "seo_description": _opt_str(item.get("seo_description")),
+                "status": _norm_slug(item.get("status") or "active"),
+                "product_attributes": normalized_product_attributes,
+                "variants": normalized_variants,
+            }
+        )
+        planned_variant_skus.update(variant_sku_keys)
+        report["entities"]["products"]["create_candidates"] += 1
+
+    known_variant_skus = set(existing_variants_by_sku) | planned_variant_skus
+
+    price_list_records = _dataset_list(dataset, "price_lists", report)
+    planned_price_list_slugs: set[str] = set()
+    for index, item in enumerate(price_list_records, start=1):
+        error_count_before = len(report["errors"])
+        slug = _norm_slug(item.get("slug"))
+        name = _opt_str(item.get("name"))
+        if not slug or not name:
+            _add_entity_error(report, "price_lists", f"Record #{index} requires name and slug.")
+            continue
+        if slug in planned_price_list_slugs:
+            _add_entity_error(report, "price_lists", f"Duplicate price list slug '{slug}' in dataset.")
+            continue
+        planned_price_list_slugs.add(slug)
+        if slug in existing_price_lists_by_slug:
+            report["entities"]["price_lists"]["skipped_existing"] += 1
+            continue
+        raw_items = item.get("items", [])
+        if not isinstance(raw_items, list) or not raw_items:
+            _add_entity_error(report, "price_lists", f"Price list '{slug}' requires items.")
+            continue
+        normalized_items: list[dict[str, Any]] = []
+        for item_index, price_item in enumerate(raw_items, start=1):
+            if not isinstance(price_item, dict):
+                _add_entity_error(report, "price_lists", f"Price list '{slug}' item #{item_index} must be an object.")
+                continue
+            variant_sku = _norm_code(price_item.get("variant_sku"))
+            if variant_sku not in known_variant_skus:
+                _add_entity_error(
+                    report,
+                    "price_lists",
+                    f"Price list '{slug}' references unknown variant SKU '{variant_sku}'.",
+                )
+                continue
+            normalized_items.append(
+                {
+                    "variant_sku": variant_sku,
+                    "price_minor": _positive_int(
+                        price_item.get("price_minor", 0),
+                        field=f"{slug}.{variant_sku}.price_minor",
+                    ),
+                }
+            )
+        if not normalized_items:
+            continue
+        if len(report["errors"]) != error_count_before:
+            continue
+        plan["price_lists"].append(
+            {
+                "name": name,
+                "slug": slug,
+                "currency": str(item.get("currency", "INR")).strip().upper(),
+                "customer_segment": _opt_str(item.get("customer_segment")),
+                "description": _opt_str(item.get("description")),
+                "status": _norm_slug(item.get("status") or "active"),
+                "items": normalized_items,
+            }
+        )
+        report["entities"]["price_lists"]["create_candidates"] += 1
+
+    coupon_records = _dataset_list(dataset, "coupons", report)
+    planned_coupon_codes: set[str] = set()
+    for index, item in enumerate(coupon_records, start=1):
+        code = _norm_code(item.get("code"))
+        if not code:
+            _add_entity_error(report, "coupons", f"Record #{index} requires code.")
+            continue
+        if code in planned_coupon_codes:
+            _add_entity_error(report, "coupons", f"Duplicate coupon code '{code}' in dataset.")
+            continue
+        planned_coupon_codes.add(code)
+        if code in existing_coupons_by_code:
+            report["entities"]["coupons"]["skipped_existing"] += 1
+            continue
+        discount_type = _norm_slug(item.get("discount_type"))
+        if discount_type not in commerce_service.COUPON_DISCOUNT_TYPES:
+            _add_entity_error(report, "coupons", f"Coupon '{code}' has unsupported discount_type.")
+            continue
+        category_slugs = commerce_service._dedupe_strings(
+            [_norm_slug(entry) for entry in item.get("applicable_category_slugs", [])]
+        )
+        missing_category_refs = [entry for entry in category_slugs if entry not in known_category_slugs]
+        if missing_category_refs:
+            _add_entity_error(
+                report,
+                "coupons",
+                f"Coupon '{code}' references unknown categories: {', '.join(missing_category_refs)}.",
+            )
+            continue
+        variant_skus = commerce_service._dedupe_strings(
+            [_norm_code(entry) for entry in item.get("applicable_variant_skus", [])]
+        )
+        missing_variant_refs = [entry for entry in variant_skus if entry not in known_variant_skus]
+        if missing_variant_refs:
+            _add_entity_error(
+                report,
+                "coupons",
+                f"Coupon '{code}' references unknown variants: {', '.join(missing_variant_refs)}.",
+            )
+            continue
+        plan["coupons"].append(
+            {
+                "code": code,
+                "description": _opt_str(item.get("description")),
+                "discount_type": discount_type,
+                "discount_value": _positive_int(item.get("discount_value", 0), field=f"{code}.discount_value"),
+                "minimum_subtotal_minor": _positive_int(
+                    item.get("minimum_subtotal_minor", 0),
+                    field=f"{code}.minimum_subtotal_minor",
+                ),
+                "maximum_discount_minor": (
+                    _positive_int(item.get("maximum_discount_minor", 0), field=f"{code}.maximum_discount_minor")
+                    if item.get("maximum_discount_minor") is not None
+                    else None
+                ),
+                "applicable_category_slugs": category_slugs,
+                "applicable_variant_skus": variant_skus,
+                "status": _norm_slug(item.get("status") or "active"),
+            }
+        )
+        report["entities"]["coupons"]["create_candidates"] += 1
+
+    return plan
+
+
+def _execute_commerce_import_plan(
+    db: Session,
+    *,
+    tenant_id: str,
+    actor_user_id: str,
+    job_id: str,
+    plan: dict[str, list[dict[str, Any]]],
+    report: dict[str, object],
+) -> None:
+    category_lookup = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_categories(db, tenant_id=tenant_id)
+    }
+    unresolved_categories = list(plan["categories"])
+    while unresolved_categories:
+        remaining: list[dict[str, Any]] = []
+        progressed = False
+        for item in unresolved_categories:
+            parent = category_lookup.get(item["parent_slug"]) if item["parent_slug"] else None
+            if item["parent_slug"] and parent is None:
+                remaining.append(item)
+                continue
+            created = commerce_repository.create_category(
+                db,
+                tenant_id=tenant_id,
+                name=item["name"],
+                slug=item["slug"],
+                description=item["description"],
+                parent_category_id=parent.id if parent is not None else None,
+            )
+            category_lookup[item["slug"]] = created
+            report["entities"]["categories"]["created"] += 1
+            progressed = True
+        if not progressed:
+            raise ValidationError("Category hierarchy could not be resolved during execution.")
+        unresolved_categories = remaining
+
+    brand_lookup = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_brands(db, tenant_id=tenant_id)
+    }
+    for item in plan["brands"]:
+        created = commerce_repository.create_brand(
+            db,
+            tenant_id=tenant_id,
+            name=item["name"],
+            slug=item["slug"],
+            code=item["code"],
+            description=item["description"],
+            status=item["status"],
+        )
+        brand_lookup[item["slug"]] = created
+        report["entities"]["brands"]["created"] += 1
+
+    vendor_lookup = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_vendors(db, tenant_id=tenant_id)
+    }
+    for item in plan["vendors"]:
+        created = commerce_repository.create_vendor(
+            db,
+            tenant_id=tenant_id,
+            name=item["name"],
+            slug=item["slug"],
+            code=item["code"],
+            description=item["description"],
+            contact_name=item["contact_name"],
+            contact_email=item["contact_email"],
+            contact_phone=item["contact_phone"],
+            status=item["status"],
+        )
+        vendor_lookup[item["slug"]] = created
+        report["entities"]["vendors"]["created"] += 1
+
+    collection_lookup = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_collections(db, tenant_id=tenant_id)
+    }
+    for item in plan["collections"]:
+        created = commerce_repository.create_collection(
+            db,
+            tenant_id=tenant_id,
+            name=item["name"],
+            slug=item["slug"],
+            description=item["description"],
+            status=item["status"],
+            sort_order=item["sort_order"],
+        )
+        collection_lookup[item["slug"]] = created
+        report["entities"]["collections"]["created"] += 1
+
+    warehouse_lookup = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_warehouses(db, tenant_id=tenant_id)
+    }
+    for item in plan["warehouses"]:
+        created = commerce_repository.create_warehouse(
+            db,
+            tenant_id=tenant_id,
+            name=item["name"],
+            slug=item["slug"],
+            code=item["code"],
+            city=item["city"],
+            country=item["country"],
+            status=item["status"],
+            is_default=item["is_default"],
+        )
+        warehouse_lookup[item["slug"]] = created
+        report["entities"]["warehouses"]["created"] += 1
+
+    tax_profile_lookup = {
+        _norm_code(item.code): item for item in commerce_repository.list_tax_profiles(db, tenant_id=tenant_id)
+    }
+    for item in plan["tax_profiles"]:
+        created = commerce_repository.create_tax_profile(
+            db,
+            tenant_id=tenant_id,
+            name=item["name"],
+            code=item["code"],
+            description=item["description"],
+            prices_include_tax=item["prices_include_tax"],
+            rules_json=item["rules"],
+            status=item["status"],
+        )
+        tax_profile_lookup[item["code"]] = created
+        report["entities"]["tax_profiles"]["created"] += 1
+
+    attribute_lookup_by_code = {
+        _norm_attribute_code(item.code): item for item in commerce_repository.list_attributes(db, tenant_id=tenant_id)
+    }
+    attribute_lookup_by_id = {item.id: item for item in attribute_lookup_by_code.values()}
+    for item in plan["attributes"]:
+        created = commerce_repository.create_attribute(
+            db,
+            tenant_id=tenant_id,
+            code=item["code"],
+            slug=item["slug"],
+            label=item["label"],
+            description=item["description"],
+            value_type=item["value_type"],
+            scope=item["scope"],
+            options_json=item["options"],
+            unit_label=item["unit_label"],
+            is_required=item["is_required"],
+            is_filterable=item["is_filterable"],
+            is_variation_axis=item["is_variation_axis"],
+            vertical_bindings=item["vertical_bindings"],
+            status=item["status"],
+        )
+        attribute_lookup_by_code[item["code"]] = created
+        attribute_lookup_by_id[created.id] = created
+        report["entities"]["attributes"]["created"] += 1
+
+    attribute_set_lookup = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_attribute_sets(db, tenant_id=tenant_id)
+    }
+    for item in plan["attribute_sets"]:
+        attribute_ids = [attribute_lookup_by_code[code].id for code in item["attribute_codes"]]
+        created = commerce_repository.create_attribute_set(
+            db,
+            tenant_id=tenant_id,
+            name=item["name"],
+            slug=item["slug"],
+            description=item["description"],
+            attribute_ids=attribute_ids,
+            vertical_bindings=item["vertical_bindings"],
+            status=item["status"],
+        )
+        attribute_set_lookup[item["slug"]] = created
+        report["entities"]["attribute_sets"]["created"] += 1
+
+    product_lookup = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_products(db, tenant_id=tenant_id)
+    }
+    variant_lookup_by_sku = {
+        _norm_code(item.sku): item
+        for item in commerce_repository.list_variants_for_products(
+            db,
+            tenant_id=tenant_id,
+            product_ids=[item.id for item in product_lookup.values()],
+        )
+    }
+    for item in plan["products"]:
+        created_product, created_variants = _create_product_from_import(
+            db,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            job_id=job_id,
+            payload=item,
+            category_lookup=category_lookup,
+            brand_lookup=brand_lookup,
+            vendor_lookup=vendor_lookup,
+            collection_lookup=collection_lookup,
+            attribute_set_lookup=attribute_set_lookup,
+            attribute_lookup_by_code=attribute_lookup_by_code,
+            attribute_lookup_by_id=attribute_lookup_by_id,
+            warehouse_lookup=warehouse_lookup,
+        )
+        product_lookup[item["slug"]] = created_product
+        for variant in created_variants:
+            variant_lookup_by_sku[_norm_code(variant.sku)] = variant
+        report["entities"]["products"]["created"] += 1
+
+    price_list_lookup = {
+        _norm_slug(item.slug): item for item in commerce_repository.list_price_lists(db, tenant_id=tenant_id)
+    }
+    for item in plan["price_lists"]:
+        created = commerce_repository.create_price_list(
+            db,
+            tenant_id=tenant_id,
+            name=item["name"],
+            slug=item["slug"],
+            currency=item["currency"],
+            customer_segment=item["customer_segment"],
+            description=item["description"],
+            status=item["status"],
+        )
+        for price_item in item["items"]:
+            variant = variant_lookup_by_sku[price_item["variant_sku"]]
+            commerce_repository.create_price_list_item(
+                db,
+                tenant_id=tenant_id,
+                price_list_id=created.id,
+                variant_id=variant.id,
+                price_minor=price_item["price_minor"],
+            )
+        price_list_lookup[item["slug"]] = created
+        report["entities"]["price_lists"]["created"] += 1
+
+    for item in plan["coupons"]:
+        category_ids = [category_lookup[slug].id for slug in item["applicable_category_slugs"]]
+        variant_ids = [variant_lookup_by_sku[sku].id for sku in item["applicable_variant_skus"]]
+        commerce_repository.create_coupon(
+            db,
+            tenant_id=tenant_id,
+            code=item["code"],
+            description=item["description"],
+            discount_type=item["discount_type"],
+            discount_value=item["discount_value"],
+            minimum_subtotal_minor=item["minimum_subtotal_minor"],
+            maximum_discount_minor=item["maximum_discount_minor"],
+            applicable_category_ids=category_ids,
+            applicable_variant_ids=variant_ids,
+            status=item["status"],
+        )
+        report["entities"]["coupons"]["created"] += 1
+
+
+def _create_product_from_import(
+    db: Session,
+    *,
+    tenant_id: str,
+    actor_user_id: str,
+    job_id: str,
+    payload: dict[str, Any],
+    category_lookup: dict[str, Any],
+    brand_lookup: dict[str, Any],
+    vendor_lookup: dict[str, Any],
+    collection_lookup: dict[str, Any],
+    attribute_set_lookup: dict[str, Any],
+    attribute_lookup_by_code: dict[str, Any],
+    attribute_lookup_by_id: dict[str, Any],
+    warehouse_lookup: dict[str, Any],
+):
+    actual_product_attributes = _remap_import_attribute_ids(
+        payload["product_attributes"],
+        attribute_lookup_by_code=attribute_lookup_by_code,
+    )
+    actual_variant_attributes = [
+        _remap_import_attribute_ids(
+            variant["attribute_values"],
+            attribute_lookup_by_code=attribute_lookup_by_code,
+        )
+        for variant in payload["variants"]
+    ]
+    attribute_set = attribute_set_lookup.get(payload["attribute_set_slug"]) if payload["attribute_set_slug"] else None
+    normalized_product_attributes = commerce_service._validate_attribute_payload(
+        attribute_lookup=attribute_lookup_by_id,
+        values=actual_product_attributes,
+        allowed_scopes={"product", "both"},
+        owner=f"product '{payload['slug']}'",
+    )
+    normalized_variant_attributes = [
+        commerce_service._validate_attribute_payload(
+            attribute_lookup=attribute_lookup_by_id,
+            values=values,
+            allowed_scopes={"variant", "both"},
+            owner=f"variant '{variant['sku']}'",
+        )
+        for variant, values in zip(payload["variants"], actual_variant_attributes, strict=True)
+    ]
+    required_attribute_ids = list(attribute_set.attribute_ids) if attribute_set is not None else commerce_service._dedupe_strings(
+        [entry["attribute_id"] for entry in normalized_product_attributes]
+        + [
+            entry["attribute_id"]
+            for values in normalized_variant_attributes
+            for entry in values
+        ]
+    )
+    commerce_service._validate_required_attributes(
+        attribute_lookup=attribute_lookup_by_id,
+        attribute_ids=required_attribute_ids,
+        normalized_product_attributes=normalized_product_attributes,
+        normalized_variant_attributes=normalized_variant_attributes,
+    )
+    axis_lookup = {attribute_id: attribute_lookup_by_id[attribute_id] for attribute_id in required_attribute_ids}
+    commerce_service._validate_variation_axes(
+        attribute_lookup=axis_lookup,
+        normalized_variant_attributes=normalized_variant_attributes,
+    )
+
+    product = commerce_repository.create_product(
+        db,
+        tenant_id=tenant_id,
+        name=payload["name"],
+        slug=payload["slug"],
+        description=payload["description"],
+        brand_id=brand_lookup[payload["brand_slug"]].id if payload["brand_slug"] else None,
+        vendor_id=vendor_lookup[payload["vendor_slug"]].id if payload["vendor_slug"] else None,
+        collection_ids=[collection_lookup[slug].id for slug in payload["collection_slugs"]],
+        attribute_set_id=attribute_set.id if attribute_set is not None else None,
+        category_ids=[category_lookup[slug].id for slug in payload["category_slugs"]],
+        seo_title=payload["seo_title"],
+        seo_description=payload["seo_description"],
+        status=payload["status"],
+    )
+    for value in normalized_product_attributes:
+        commerce_repository.create_product_attribute_value(
+            db,
+            tenant_id=tenant_id,
+            product_id=product.id,
+            attribute_id=value["attribute_id"],
+            value_json=value["value"],
+        )
+
+    created_variants = []
+    for variant_payload, normalized_variant_values in zip(
+        payload["variants"],
+        normalized_variant_attributes,
+        strict=True,
+    ):
+        variant = commerce_repository.create_variant(
+            db,
+            tenant_id=tenant_id,
+            product_id=product.id,
+            sku=variant_payload["sku"],
+            label=variant_payload["label"],
+            price_minor=variant_payload["price_minor"],
+            currency=variant_payload["currency"],
+            inventory_quantity=variant_payload["inventory_quantity"],
+        )
+        created_variants.append(variant)
+        for value in normalized_variant_values:
+            commerce_repository.create_variant_attribute_value(
+                db,
+                tenant_id=tenant_id,
+                variant_id=variant.id,
+                attribute_id=value["attribute_id"],
+                value_json=value["value"],
+            )
+        _seed_variant_warehouse_stock(
+            db,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            job_id=job_id,
+            variant=variant,
+            warehouse_stock_payloads=variant_payload["warehouse_stock"],
+            warehouse_lookup=warehouse_lookup,
+        )
+    return product, created_variants
+
+
+def _seed_variant_warehouse_stock(
+    db: Session,
+    *,
+    tenant_id: str,
+    actor_user_id: str,
+    job_id: str,
+    variant,
+    warehouse_stock_payloads: list[dict[str, Any]],
+    warehouse_lookup: dict[str, Any],
+) -> None:
+    payloads = list(warehouse_stock_payloads)
+    if not payloads and variant.inventory_quantity > 0:
+        default_warehouse = next(
+            (item for item in warehouse_lookup.values() if item.is_default and item.status == "active"),
+            None,
+        )
+        if default_warehouse is not None:
+            payloads = [
+                {
+                    "warehouse_slug": _norm_slug(default_warehouse.slug),
+                    "on_hand_quantity": variant.inventory_quantity,
+                    "low_stock_threshold": 0,
+                }
+            ]
+    if not payloads:
+        return
+    for item in payloads:
+        warehouse = warehouse_lookup[item["warehouse_slug"]]
+        stock = commerce_repository.create_warehouse_stock(
+            db,
+            tenant_id=tenant_id,
+            warehouse_id=warehouse.id,
+            variant_id=variant.id,
+            on_hand_quantity=item["on_hand_quantity"],
+            reserved_quantity=0,
+            low_stock_threshold=item["low_stock_threshold"],
+        )
+        commerce_repository.create_stock_ledger_entry(
+            db,
+            tenant_id=tenant_id,
+            warehouse_id=warehouse.id,
+            variant_id=variant.id,
+            entry_type="adjustment",
+            quantity_delta=item["on_hand_quantity"],
+            balance_after=stock.on_hand_quantity,
+            reserved_after=stock.reserved_quantity,
+            reference_type="import_job",
+            reference_id=job_id,
+            notes="Imported opening inventory.",
+            recorded_by_user_id=actor_user_id,
+        )
+    commerce_service._sync_variant_inventory_from_stocks(db, tenant_id=tenant_id, variant_ids=[variant.id])
+
+
+def _add_entity_error(report: dict[str, object], entity_key: str, message: str) -> None:
+    entity_bucket = report["entities"][entity_key]
+    entity_bucket["errors"].append(message)
+    report["errors"].append(f"{entity_key}: {message}")
+
+
+def _add_global_error(report: dict[str, object], message: str) -> None:
+    report["errors"].append(message)
+
+
+def _remap_import_attribute_ids(
+    values: list[dict[str, object]],
+    *,
+    attribute_lookup_by_code: dict[str, Any],
+) -> list[dict[str, object]]:
+    remapped: list[dict[str, object]] = []
+    for item in values:
+        attribute_id = str(item["attribute_id"])
+        if attribute_id.startswith("import-attribute:"):
+            attribute_code = attribute_id.split(":", 1)[1]
+            attribute = attribute_lookup_by_code.get(attribute_code)
+            if attribute is None:
+                raise NotFoundError(f"Attribute '{attribute_id}' was not found.")
+            remapped.append({"attribute_id": attribute.id, "value": item.get("value")})
+            continue
+        remapped.append({"attribute_id": attribute_id, "value": item.get("value")})
+    return remapped
+
+
+def _finalize_report_counts(report: dict[str, object]) -> None:
+    totals = report["totals"]
+    totals["source_records"] = sum(
+        int(entity_report["source_records"]) for entity_report in report["entities"].values()
+    )
+    totals["create_candidates"] = sum(
+        int(entity_report["create_candidates"]) for entity_report in report["entities"].values()
+    )
+    totals["created"] = sum(int(entity_report["created"]) for entity_report in report["entities"].values())
+    totals["skipped_existing"] = sum(
+        int(entity_report["skipped_existing"]) for entity_report in report["entities"].values()
+    )
+    totals["errors"] = len(report["errors"])
+
+
+def _finalize_report_summary(report: dict[str, object]) -> None:
+    totals = report["totals"]
+    if report["errors"]:
+        report["summary"] = (
+            f"Commerce import {report['mode']} finished with {totals['errors']} error(s), "
+            f"{totals['create_candidates']} create candidate(s), and {totals['skipped_existing']} existing record(s)."
+        )
+        return
+    if report["mode"] == "dry_run":
+        report["summary"] = (
+            f"Commerce import dry run validated {totals['source_records']} source record(s) with "
+            f"{totals['create_candidates']} create candidate(s) and {totals['skipped_existing']} existing record(s)."
+        )
+        return
+    report["summary"] = (
+        f"Commerce import executed successfully: {totals['created']} record(s) created and "
+        f"{totals['skipped_existing']} existing record(s) skipped."
+    )

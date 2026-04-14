@@ -123,6 +123,80 @@ def test_platform_admin_can_create_agency_and_tenant(client: TestClient) -> None
     assert tenants[0]["runtime_documents"]["database"] == "kalpzero_runtime_test__tenant__enterprise_tenant"
 
 
+def test_platform_admin_can_filter_audit_and_outbox_by_tenant_scope(client: TestClient) -> None:
+    platform_token = login(client, email="founder@kalpzero.com")
+    agency_response = client.post(
+        "/platform/agencies",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "slug": "ops-agency",
+            "name": "Ops Agency",
+            "region": "in",
+            "owner_user_id": "founder@kalpzero.com",
+        },
+    )
+    assert agency_response.status_code == 201
+
+    tenant_response = client.post(
+        "/platform/tenants",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "agency_slug": "ops-agency",
+            "slug": "ops-tenant",
+            "display_name": "Ops Tenant",
+            "infra_mode": "shared",
+            "vertical_packs": ["commerce", "hotel"],
+            "feature_flags": ["seo-suite"],
+        },
+    )
+    assert tenant_response.status_code == 201
+
+    platform_audit_response = client.get(
+        "/platform/audit",
+        headers={"Authorization": f"Bearer {platform_token}"},
+    )
+    tenant_audit_response = client.get(
+        "/platform/audit",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        params={"tenant_slug": "ops-tenant"},
+    )
+    tenant_outbox_response = client.get(
+        "/platform/outbox",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        params={"tenant_slug": "ops-tenant"},
+    )
+
+    assert platform_audit_response.status_code == 200
+    assert tenant_audit_response.status_code == 200
+    assert tenant_outbox_response.status_code == 200
+    assert platform_audit_response.json()["tenant_id"] == "platform_control"
+    assert any(event["action"] == "platform.agency.created" for event in platform_audit_response.json()["events"])
+    assert tenant_audit_response.json()["tenant_id"] == "ops-tenant"
+    assert any(event["action"] == "platform.tenant.created" for event in tenant_audit_response.json()["events"])
+    assert any(event["event_name"] == "tenant.provisioned" for event in tenant_outbox_response.json()["events"])
+
+
+def test_tenant_admin_cannot_query_another_tenant_scope(client: TestClient) -> None:
+    provision_tenant(client, tenant_slug="tenant_one", vertical_packs=["commerce"])
+    provision_tenant(client, tenant_slug="tenant_two", vertical_packs=["hotel"])
+    tenant_token = login(client, email="ops@tenant.com", tenant_slug="tenant_one")
+
+    audit_response = client.get(
+        "/platform/audit",
+        headers={"Authorization": f"Bearer {tenant_token}"},
+        params={"tenant_slug": "tenant_two"},
+    )
+    outbox_response = client.get(
+        "/platform/outbox",
+        headers={"Authorization": f"Bearer {tenant_token}"},
+        params={"tenant_slug": "tenant_two"},
+    )
+
+    assert audit_response.status_code == 403
+    assert outbox_response.status_code == 403
+    assert audit_response.json()["detail"] == "Permission denied for requested tenant scope."
+
+
 def test_platform_admin_cannot_onboard_planned_verticals(client: TestClient) -> None:
     platform_token = login(client, email="founder@kalpzero.com")
     agency_response = client.post(
@@ -267,8 +341,10 @@ def test_import_source_and_job_creation_record_audit_and_outbox(client: TestClie
         json={"source_id": source_id, "mode": "dry_run"},
     )
     assert job_response.status_code == 201
-    assert job_response.json()["job"]["status"] == "queued"
+    assert job_response.json()["job"]["status"] == "completed"
+    assert job_response.json()["job"]["report"]["stage"] == "dry_run_complete"
     assert job_response.json()["outbox_event"]["event_name"] == "import.job.queued"
+    assert job_response.json()["result_outbox_event"]["event_name"] == "import.job.completed"
 
     audit_response = client.get(
         "/platform/audit",
@@ -287,8 +363,10 @@ def test_import_source_and_job_creation_record_audit_and_outbox(client: TestClie
     assert outbox_response.status_code == 200
     assert jobs_response.status_code == 200
     assert any(event["action"] == "imports.job.created" for event in audit_response.json()["events"])
+    assert any(event["action"] == "imports.job.completed" for event in audit_response.json()["events"])
     assert any(event["event_name"] == "tenant.provisioned" for event in outbox_response.json()["events"])
     assert any(event["event_name"] == "import.job.queued" for event in outbox_response.json()["events"])
+    assert any(event["event_name"] == "import.job.completed" for event in outbox_response.json()["events"])
     assert len(jobs_response.json()["jobs"]) == 1
 
 

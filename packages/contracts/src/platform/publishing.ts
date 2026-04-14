@@ -108,6 +108,7 @@ export interface PageBlockItemDto {
   title: string;
   description?: string;
   value?: string;
+  href?: string;
 }
 
 export interface PageBlockDto {

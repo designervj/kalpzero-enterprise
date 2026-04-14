@@ -438,12 +438,10 @@ def get_current_tenant_summary(db: Session, settings: Settings, *, tenant_slug: 
 
 
 def list_audit_events_for_scope(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
-    tenant = platform_repository.get_tenant_by_slug(db, tenant_slug)
-    tenant_id = tenant.id if tenant else None
+    tenant_id = None if tenant_slug == "platform_control" else get_tenant_or_raise(db, tenant_slug=tenant_slug).id
     return [serialize_audit_event(item) for item in platform_repository.list_audit_events(db, tenant_id=tenant_id)]
 
 
 def list_outbox_events_for_scope(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
-    tenant = platform_repository.get_tenant_by_slug(db, tenant_slug)
-    tenant_id = tenant.id if tenant else None
+    tenant_id = None if tenant_slug == "platform_control" else get_tenant_or_raise(db, tenant_slug=tenant_slug).id
     return [serialize_outbox_event(item) for item in platform_repository.list_outbox_events(db, tenant_id=tenant_id)]

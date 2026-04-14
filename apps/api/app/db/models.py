@@ -850,3 +850,89 @@ class CommerceInvoiceModel(TimestampMixin, Base):
     total_minor: Mapped[int] = mapped_column(Integer, default=0)
     issued_at: Mapped[str] = mapped_column(String(64))
     issued_by_user_id: Mapped[str] = mapped_column(String(255))
+
+
+class CommerceReturnModel(TimestampMixin, Base):
+    __tablename__ = "commerce_returns"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    order_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_orders.id"), index=True)
+    return_number: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="requested")
+    reason_summary: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    inventory_restocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    requested_at: Mapped[str] = mapped_column(String(64))
+    approved_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    received_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    closed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_by_user_id: Mapped[str] = mapped_column(String(255))
+    closed_by_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class CommerceReturnLineModel(TimestampMixin, Base):
+    __tablename__ = "commerce_return_lines"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    return_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_returns.id"), index=True)
+    order_line_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_order_lines.id"), index=True)
+    variant_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_variants.id"), index=True)
+    quantity: Mapped[int] = mapped_column(Integer)
+    resolution_type: Mapped[str] = mapped_column(String(32))
+    replacement_variant_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("commerce_variants.id"),
+        nullable=True,
+    )
+    restock_on_receive: Mapped[bool] = mapped_column(Boolean, default=True)
+    line_amount_minor: Mapped[int] = mapped_column(Integer, default=0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class CommerceSettlementModel(TimestampMixin, Base):
+    __tablename__ = "commerce_settlements"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    settlement_number: Mapped[str] = mapped_column(String(64), index=True)
+    provider: Mapped[str] = mapped_column(String(120))
+    settlement_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    currency: Mapped[str] = mapped_column(String(8), default="INR")
+    status: Mapped[str] = mapped_column(String(32), default="reported")
+    payments_minor: Mapped[int] = mapped_column(Integer, default=0)
+    refunds_minor: Mapped[int] = mapped_column(Integer, default=0)
+    fees_minor: Mapped[int] = mapped_column(Integer, default=0)
+    adjustments_minor: Mapped[int] = mapped_column(Integer, default=0)
+    net_minor: Mapped[int] = mapped_column(Integer, default=0)
+    reported_at: Mapped[str] = mapped_column(String(64))
+    reconciled_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    closed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[str] = mapped_column(String(255))
+    closed_by_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class CommerceSettlementEntryModel(TimestampMixin, Base):
+    __tablename__ = "commerce_settlement_entries"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    settlement_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_settlements.id"), index=True)
+    entry_type: Mapped[str] = mapped_column(String(32))
+    payment_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("commerce_payments.id"),
+        nullable=True,
+        index=True,
+    )
+    refund_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("commerce_refunds.id"),
+        nullable=True,
+        index=True,
+    )
+    amount_minor: Mapped[int] = mapped_column(Integer)
+    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -80,6 +80,15 @@ MongoDB for flexible business documents and staged imports.
 - `adapters/external-sources`: mappings for external project databases
 - `docs`: architecture, vertical specs, runbooks, and roadmap
 
+## Start Here After A Gap
+
+Before resuming development, read:
+
+- `EXECUTION_TRACKER.md`
+- `docs/15_HOTEL_VERTICAL_STATUS.md`
+- `docs/17_EXTENDED_ECOMMERCE_VERTICAL_PLAN.md`
+- `docs/12_EXECUTION_ROADMAP_90_DAYS.md`
+
 ## Current Implemented Surfaces
 
 - SQL-backed platform control plane, tenancy, audit, and import job framework
@@ -104,6 +113,7 @@ MongoDB for flexible business documents and staged imports.
 - Super Admin and tenant admin shells now live in
   `apps/web/app/platform/page.tsx`,
   `apps/web/app/platform/onboarding/page.tsx`,
+  `apps/web/app/platform/operations/page.tsx`,
   `apps/web/app/tenant/page.tsx`, and
   `apps/web/app/login/page.tsx`
 

@@ -97,6 +97,27 @@ export interface RegistrySnapshotDto {
   generated_at: string;
 }
 
+export interface AuditEventDto {
+  id: string;
+  tenant_id: string | null;
+  actor_user_id: string;
+  action: string;
+  subject_type: string;
+  subject_id: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface OutboxEventDto {
+  id: string;
+  tenant_id: string | null;
+  aggregate_id: string;
+  event_name: string;
+  payload: Record<string, unknown>;
+  status: string;
+  created_at: string;
+}
+
 export interface BlueprintDto {
   tenant_id: string;
   tenant_slug: string;
@@ -125,6 +146,16 @@ export interface PublishingPagesResponseDto {
     seo_description: string;
     layout: string;
   }>;
+}
+
+export interface AuditEventsResponseDto {
+  tenant_id: string;
+  events: AuditEventDto[];
+}
+
+export interface OutboxEventsResponseDto {
+  tenant_id: string;
+  events: OutboxEventDto[];
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_KALPZERO_API_URL ?? "http://127.0.0.1:8000";
@@ -248,6 +279,16 @@ export async function getTenantSummary(token: string) {
 
 export async function getRegistry(token: string) {
   return request<RegistrySnapshotDto>("/platform/registry", undefined, token);
+}
+
+export async function getAuditEvents(token: string, tenantSlug?: string) {
+  const query = tenantSlug ? `?tenant_slug=${encodeURIComponent(tenantSlug)}` : "";
+  return request<AuditEventsResponseDto>(`/platform/audit${query}`, undefined, token);
+}
+
+export async function getOutboxEvents(token: string, tenantSlug?: string) {
+  const query = tenantSlug ? `?tenant_slug=${encodeURIComponent(tenantSlug)}` : "";
+  return request<OutboxEventsResponseDto>(`/platform/outbox${query}`, undefined, token);
 }
 
 export async function getBlueprint(token: string) {

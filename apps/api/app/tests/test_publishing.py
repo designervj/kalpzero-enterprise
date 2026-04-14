@@ -189,3 +189,74 @@ def test_publishing_materializes_live_travel_packages(client: TestClient) -> Non
     feature_grid = next(block for block in payload["page"]["blocks"] if block["id"] == "travel-live-packages")
     assert any(item["title"] == "Kerala Luxe" for item in feature_grid["items"])
     assert any(card["title"] == "Kerala Luxe" for card in payload["discovery"]["cards"])
+
+
+def test_publishing_materializes_live_commerce_catalog_and_product_detail(client: TestClient) -> None:
+    provision_tenant(client, tenant_slug="shoppable", vertical_packs=["commerce"])
+    tenant_token = login(client, email="ops@tenant.com", tenant_slug="shoppable")
+    headers = {"Authorization": f"Bearer {tenant_token}"}
+
+    category_response = client.post(
+        "/commerce/categories",
+        headers=headers,
+        json={
+            "name": "Desk Setup",
+            "slug": "desk-setup",
+            "description": "Workspace products and accessories.",
+        },
+    )
+    assert category_response.status_code == 201
+    category_id = category_response.json()["id"]
+
+    product_response = client.post(
+        "/commerce/products",
+        headers=headers,
+        json={
+            "name": "KalpZero Monitor Stand",
+            "slug": "kalpzero-monitor-stand",
+            "description": "A catalog-driven product detail page.",
+            "category_ids": [category_id],
+            "seo_title": "KalpZero Monitor Stand",
+            "seo_description": "Live commerce product page from the runtime.",
+            "status": "active",
+            "variants": [
+                {
+                    "sku": "MON-STD",
+                    "label": "Standard",
+                    "price_minor": 459900,
+                    "currency": "INR",
+                    "inventory_quantity": 6,
+                },
+                {
+                    "sku": "MON-PRO",
+                    "label": "Pro",
+                    "price_minor": 559900,
+                    "currency": "INR",
+                    "inventory_quantity": 4,
+                },
+            ],
+        },
+    )
+    assert product_response.status_code == 201
+
+    catalog_response = client.get("/publishing/public/shoppable/site?page_slug=catalog")
+    assert catalog_response.status_code == 200
+    catalog_payload = catalog_response.json()
+
+    category_block = next(block for block in catalog_payload["page"]["blocks"] if block["id"] == "commerce-live-categories")
+    product_block = next(block for block in catalog_payload["page"]["blocks"] if block["id"] == "commerce-live-products")
+    assert any(item["title"] == "Desk Setup" for item in category_block["items"])
+    assert any(item["title"] == "KalpZero Monitor Stand" for item in product_block["items"])
+    assert any(item["href"] == "/catalog/kalpzero-monitor-stand" for item in product_block["items"])
+    assert any(card["title"] == "KalpZero Monitor Stand" for card in catalog_payload["discovery"]["cards"])
+
+    detail_response = client.get("/publishing/public/shoppable/site?page_slug=catalog/kalpzero-monitor-stand")
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    assert detail_payload["page"]["title"] == "KalpZero Monitor Stand"
+    assert detail_payload["page"]["seo_title"] == "KalpZero Monitor Stand"
+    hero_block = next(block for block in detail_payload["page"]["blocks"] if block["id"] == "commerce-product-hero")
+    variant_block = next(block for block in detail_payload["page"]["blocks"] if block["id"] == "commerce-product-variants")
+    assert hero_block["headline"] == "KalpZero Monitor Stand"
+    assert any(item["title"] == "Standard" for item in variant_block["items"])
+    assert any(item["title"] == "Pro" for item in variant_block["items"])

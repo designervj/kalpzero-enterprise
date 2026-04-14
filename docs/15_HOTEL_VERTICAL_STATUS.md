@@ -40,6 +40,10 @@ These are now the hotel-specific gaps that remain:
 Hotel should now be treated as the reference vertical with a limited hardening
 queue, not as an actively expanding product shape.
 
+As of April 10, 2026, hotel remains the reference vertical but is no longer
+the lead execution stream. Current product priority is ecommerce first, then
+hotel hardening, then onboarding pilot validation.
+
 Before backend onboarding pilots broaden beyond hotel, the next hotel work
 should focus on:
 

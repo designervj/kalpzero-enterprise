@@ -18,7 +18,8 @@ interface ConsoleNavItem {
 
 const platformItems: ConsoleNavItem[] = [
   { label: "Overview", href: "/platform", description: "Control plane visibility" },
-  { label: "Onboarding", href: "/platform/onboarding", description: "Create agencies and tenants" }
+  { label: "Onboarding", href: "/platform/onboarding", description: "Create agencies and tenants" },
+  { label: "Operations", href: "/platform/operations", description: "Audit and outbox visibility" }
 ];
 
 const tenantItems: ConsoleNavItem[] = [{ label: "Workspace", href: "/tenant", description: "Tenant dashboard" }];

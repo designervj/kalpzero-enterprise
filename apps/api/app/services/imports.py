@@ -1,8 +1,11 @@
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
 from app.repositories import imports as import_repository
 from app.repositories import platform as platform_repository
 from app.services.errors import NotFoundError
+from app.services.imports_commerce import run_commerce_import_job
 from app.services.platform import serialize_audit_event, serialize_outbox_event
 
 
@@ -96,7 +99,7 @@ def create_import_job(
 
     report_json = {
         "stage": "queued",
-        "summary": "Job accepted for canonical validation and worker processing.",
+        "summary": "Job accepted for canonical validation and processing.",
         "supports_dry_run": True,
     }
     job = import_repository.create_import_job(
@@ -105,7 +108,7 @@ def create_import_job(
         source_id=source.id,
         requested_by_user_id=actor_user_id,
         mode=mode,
-        status="queued",
+        status="processing",
         report_json=report_json,
     )
     audit_event = platform_repository.create_audit_event(
@@ -129,12 +132,86 @@ def create_import_job(
             "source_type": source.source_type,
         },
     )
+    result_audit_event = None
+    result_outbox_event = None
+
+    if source.vertical_pack == "commerce":
+        try:
+            result_status, result_report = run_commerce_import_job(
+                db,
+                tenant_id=tenant.id,
+                source=source,
+                actor_user_id=actor_user_id,
+                job_id=job.id,
+                mode=mode,
+            )
+        except Exception as exc:
+            result_status = "failed"
+            result_report = {
+                "stage": "validation_failed",
+                "summary": f"Commerce import failed before execution: {exc}",
+                "supports_dry_run": True,
+                "vertical_pack": "commerce",
+                "mode": mode,
+                "dry_run": mode == "dry_run",
+                "executed": False,
+                "warnings": [],
+                "errors": [str(exc)],
+                "entities": {},
+                "totals": {
+                    "source_records": 0,
+                    "create_candidates": 0,
+                    "created": 0,
+                    "skipped_existing": 0,
+                    "errors": 1,
+                },
+            }
+        job.status = result_status
+        job.report_json = result_report
+        job.finished_at = datetime.now(tz=UTC).isoformat()
+        result_audit_event = platform_repository.create_audit_event(
+            db,
+            tenant_id=tenant.id,
+            actor_user_id=actor_user_id,
+            action=f"imports.job.{result_status}",
+            subject_type="import_job",
+            subject_id=job.id,
+            metadata_json={
+                "source_id": source.id,
+                "mode": mode,
+                "vertical_pack": source.vertical_pack,
+                "error_count": result_report["totals"]["errors"],
+                "created_count": result_report["totals"]["created"],
+            },
+        )
+        result_outbox_event = platform_repository.enqueue_outbox_event(
+            db,
+            tenant_id=tenant.id,
+            aggregate_id=job.id,
+            event_name=f"import.job.{result_status}",
+            payload_json={
+                "tenant_slug": tenant.slug,
+                "source_id": source.id,
+                "job_id": job.id,
+                "mode": mode,
+                "vertical_pack": source.vertical_pack,
+                "summary": result_report["summary"],
+            },
+        )
+    else:
+        job.status = "queued"
+
     db.commit()
-    return {
+    response = {
         "job": serialize_import_job(job),
         "audit_event": serialize_audit_event(audit_event),
         "outbox_event": serialize_outbox_event(outbox_event),
     }
+    if result_audit_event is not None:
+        response["result_audit_event"] = serialize_audit_event(result_audit_event)
+    if result_outbox_event is not None:
+        response["result_outbox_event"] = serialize_outbox_event(result_outbox_event)
+    return response
 
 
 def list_import_jobs(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:

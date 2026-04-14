@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.db.mongo import RuntimeDocumentStore
+from app.repositories import commerce as commerce_repository
 from app.repositories import platform as platform_repository
 from app.repositories import travel as travel_repository
 from app.services.errors import NotFoundError
@@ -14,6 +15,14 @@ DISCOVERY_COLLECTION = "discovery_profiles"
 HOTEL_PROFILE_COLLECTION = "hotel_property_profiles"
 HOTEL_AMENITY_COLLECTION = "hotel_amenity_catalogs"
 HOTEL_NEARBY_COLLECTION = "hotel_nearby_places"
+
+
+def _format_minor_currency(amount_minor: int, currency: str) -> str:
+    normalized_currency = currency.upper()
+    major_value = amount_minor / 100
+    if normalized_currency == "INR":
+        return f"INR {major_value:,.2f}"
+    return f"{normalized_currency} {major_value:,.2f}"
 
 
 def _theme_for_vertical(vertical_pack: str, *, admin: bool) -> dict[str, object]:
@@ -498,6 +507,219 @@ def _travel_package_items(db: Session, *, tenant_id: str) -> list[dict[str, obje
     return items
 
 
+def _commerce_catalog_snapshot(db: Session, *, tenant_id: str) -> tuple[list, dict[str, object], list]:
+    products = [
+        item for item in commerce_repository.list_products(db, tenant_id=tenant_id) if item.status == "active"
+    ]
+    categories = commerce_repository.list_categories(db, tenant_id=tenant_id)
+    category_lookup = {item.id: item for item in categories}
+    variants = commerce_repository.list_variants_for_products(
+        db,
+        tenant_id=tenant_id,
+        product_ids=[item.id for item in products],
+    )
+    return products, category_lookup, variants
+
+
+def _commerce_category_items(products: list, category_lookup: dict[str, object]) -> list[dict[str, object]]:
+    counts_by_category: dict[str, int] = {}
+    for product in products:
+        for category_id in product.category_ids:
+            counts_by_category[category_id] = counts_by_category.get(category_id, 0) + 1
+
+    items: list[dict[str, object]] = []
+    for category_id, count in sorted(counts_by_category.items(), key=lambda item: (-item[1], item[0]))[:6]:
+        category = category_lookup.get(category_id)
+        if category is None:
+            continue
+        items.append(
+            {
+                "title": category.name,
+                "description": category.description or "Commerce catalog category",
+                "value": f"{count} active products",
+                "href": "/catalog",
+            }
+        )
+    return items
+
+
+def _commerce_product_items(products: list, variants: list, category_lookup: dict[str, object]) -> list[dict[str, object]]:
+    variants_by_product: dict[str, list] = {}
+    for variant in variants:
+        variants_by_product.setdefault(variant.product_id, []).append(variant)
+
+    items: list[dict[str, object]] = []
+    for product in products[:8]:
+        product_variants = variants_by_product.get(product.id, [])
+        if product_variants:
+            min_price = min(variant.price_minor for variant in product_variants)
+            max_price = max(variant.price_minor for variant in product_variants)
+            currency = product_variants[0].currency
+            if min_price == max_price:
+                price_label = _format_minor_currency(min_price, currency)
+            else:
+                price_label = f"{_format_minor_currency(min_price, currency)} to {_format_minor_currency(max_price, currency)}"
+        else:
+            price_label = "Price on request"
+
+        category_names = [
+            category_lookup[category_id].name
+            for category_id in product.category_ids
+            if category_id in category_lookup
+        ]
+        items.append(
+            {
+                "title": product.name,
+                "description": (
+                    product.description
+                    or ", ".join(category_names)
+                    or "Live product synchronized from the commerce catalog."
+                ),
+                "value": price_label,
+                "href": f"/catalog/{product.slug}",
+            }
+        )
+    return items
+
+
+def _commerce_dynamic_page(
+    db: Session,
+    *,
+    tenant,
+    blueprint: dict[str, object],
+    page_slug: str,
+    base_page: dict[str, object],
+) -> dict[str, object] | None:
+    products, category_lookup, variants = _commerce_catalog_snapshot(db, tenant_id=tenant.id)
+
+    if page_slug == "catalog":
+        category_items = _commerce_category_items(products, category_lookup)
+        product_items = _commerce_product_items(products, variants, category_lookup)
+        dynamic_blocks: list[dict[str, object]] = []
+        if category_items:
+            dynamic_blocks.append(
+                {
+                    "id": "commerce-live-categories",
+                    "kind": "feature_grid",
+                    "eyebrow": "Catalog taxonomy",
+                    "headline": "Shop by category",
+                    "body": "These category summaries are materialized from the canonical commerce catalog.",
+                    "items": category_items,
+                }
+            )
+        if product_items:
+            dynamic_blocks.append(
+                {
+                    "id": "commerce-live-products",
+                    "kind": "feature_grid",
+                    "eyebrow": "Live catalog",
+                    "headline": "Products from the commerce runtime",
+                    "body": "The storefront is fed from the shared commerce pack, not hardcoded page content.",
+                    "items": product_items,
+                }
+            )
+        if not dynamic_blocks:
+            return None
+        return {**base_page, "blocks": [*base_page["blocks"], *dynamic_blocks]}
+
+    if not page_slug.startswith("catalog/"):
+        return None
+
+    product_slug = page_slug.split("/", 1)[1].strip().lower()
+    if not product_slug:
+        return None
+    product = commerce_repository.find_product_by_slug(db, tenant_id=tenant.id, slug=product_slug)
+    if product is None or product.status != "active":
+        return None
+    product_variants = [item for item in variants if item.product_id == product.id]
+    category_names = [
+        category_lookup[category_id].name
+        for category_id in product.category_ids
+        if category_id in category_lookup
+    ]
+    primary_currency = product_variants[0].currency if product_variants else "INR"
+    if product_variants:
+        min_price = min(item.price_minor for item in product_variants)
+        max_price = max(item.price_minor for item in product_variants)
+        if min_price == max_price:
+            price_label = _format_minor_currency(min_price, primary_currency)
+        else:
+            price_label = f"{_format_minor_currency(min_price, primary_currency)} to {_format_minor_currency(max_price, primary_currency)}"
+    else:
+        price_label = "Price on request"
+
+    variant_items = [
+        {
+            "title": variant.label,
+            "description": f"SKU {variant.sku}",
+            "value": _format_minor_currency(variant.price_minor, variant.currency),
+        }
+        for variant in product_variants[:6]
+    ]
+    detail_page = {
+        "id": f"{tenant.slug}:{page_slug}",
+        "tenant_slug": tenant.slug,
+        "page_slug": page_slug,
+        "route_path": f"/{page_slug}",
+        "title": product.name,
+        "status": "live",
+        "seo_title": product.seo_title or product.name,
+        "seo_description": product.seo_description or product.description or f"{product.name} on {tenant.display_name}",
+        "layout": "catalog",
+        "blocks": [
+            {
+                "id": "commerce-product-hero",
+                "kind": "hero",
+                "eyebrow": category_names[0] if category_names else blueprint["business_label"],
+                "headline": product.name,
+                "body": product.description or "Product detail materialized from the commerce runtime.",
+                "cta_label": "Back to Catalog",
+                "cta_href": "/catalog",
+                "items": [],
+            },
+            {
+                "id": "commerce-product-stats",
+                "kind": "stat_strip",
+                "headline": "Product Snapshot",
+                "items": [
+                    {"title": "Price", "value": price_label},
+                    {"title": "Variants", "value": str(len(product_variants) or 1)},
+                    {"title": "Categories", "value": str(len(category_names) or 1)},
+                ],
+            },
+            {
+                "id": "commerce-product-variants",
+                "kind": "feature_grid",
+                "headline": "Available variants",
+                "body": "Variant pricing and SKU structure are served from the commerce pack.",
+                "items": variant_items
+                or [
+                    {
+                        "title": "Catalog item",
+                        "description": "This product does not currently expose multiple variants.",
+                        "value": price_label,
+                    }
+                ],
+            },
+        ],
+    }
+    return detail_page
+
+
+def _commerce_discovery_cards(db: Session, *, tenant_id: str) -> list[dict[str, object]]:
+    products, category_lookup, variants = _commerce_catalog_snapshot(db, tenant_id=tenant_id)
+    product_items = _commerce_product_items(products, variants, category_lookup)
+    return [
+        {
+            "title": item["title"],
+            "summary": f"{item.get('value', '')} · {item.get('description', '')}".strip(" ·"),
+            "href": str(item["href"]),
+            "tags": ["commerce", "catalog"],
+        }
+        for item in product_items[:6]
+    ]
+
+
 def _travel_dynamic_blocks(db: Session, *, tenant_id: str, page_slug: str) -> list[dict[str, object]]:
     if page_slug != "packages":
         return []
@@ -696,12 +918,13 @@ def get_page(
     document = store.get_document(collection=PAGE_COLLECTION, tenant_slug=tenant.slug, document_key=page_slug)
     if document is None:
         page = _default_page(tenant, blueprint, page_slug)
-        store.upsert_document(
-            collection=PAGE_COLLECTION,
-            tenant_slug=tenant.slug,
-            document_key=page_slug,
-            payload=page,
-        )
+        if "/" not in page_slug:
+            store.upsert_document(
+                collection=PAGE_COLLECTION,
+                tenant_slug=tenant.slug,
+                document_key=page_slug,
+                payload=page,
+            )
         return page
     return document["payload"]
 
@@ -825,6 +1048,21 @@ def get_public_site_payload(
         dynamic_cards = _travel_discovery_cards(db, tenant_id=tenant.id)
         if dynamic_cards:
             resolved_discovery = {**discovery, "cards": [*discovery["cards"], *dynamic_cards]}
+
+    if "commerce" in tenant.vertical_packs:
+        commerce_page = _commerce_dynamic_page(
+            db,
+            tenant=tenant,
+            blueprint=blueprint,
+            page_slug=page_slug,
+            base_page=resolved_page,
+        )
+        if commerce_page is not None:
+            resolved_page = commerce_page
+
+        commerce_cards = _commerce_discovery_cards(db, tenant_id=tenant.id)
+        if commerce_cards:
+            resolved_discovery = {**resolved_discovery, "cards": [*resolved_discovery["cards"], *commerce_cards]}
 
     if "hotel" in tenant.vertical_packs:
         hotel_blocks = _hotel_dynamic_blocks(store, tenant_slug=tenant_slug, page_slug=page_slug)

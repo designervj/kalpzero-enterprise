@@ -2,8 +2,8 @@
 
 ## Purpose
 
-This document defines the enterprise ecommerce target for KalpZero after hotel
-stabilization.
+This document defines the enterprise ecommerce target for KalpZero as the
+current lead execution priority.
 
 The goal is not a basic store. The goal is a reusable commerce operating
 vertical that supports multiple business styles and becomes the first backend
@@ -23,7 +23,8 @@ It can support:
 - productized service businesses
 - future mixed businesses that need both booking and selling
 
-That makes commerce the best next platform investment after hotel.
+That makes commerce the best current platform investment before broader pilot
+onboarding.
 
 ## Current Canonical Capability
 
@@ -43,6 +44,7 @@ The current repo already has:
 - coupons
 - payments
 - refunds
+- settlements
 - invoices
 - orders
 - order lines
@@ -59,8 +61,8 @@ The current repo already has:
 - a legacy import-plan endpoint
 
 This is now a strong operating base and is close to onboarding-ready ecommerce,
-but it still needs closure on returns, settlements, storefront depth, and
-import execution.
+but it still needs closure on import execution, richer operator surfaces, and
+deeper finance documents.
 
 The important architectural point is that the attribute system is no longer
 just product-local metadata. It is now the first reusable catalog-taxonomy
@@ -129,6 +131,7 @@ Implementation checkpoint:
 - coupon masters with category and variant scoping now exist
 - order creation now calculates subtotal, discount, tax, and total explicitly
 - order finance now includes payment capture, refunds, and invoice issuance
+- settlement and reconciliation records now exist
 
 ### Inventory Layer
 
@@ -161,6 +164,8 @@ Implementation checkpoint:
 - order lines now track allocated warehouse and fulfilled quantity
 - fulfillment creation now exists
 - shipment creation and delivery confirmation now exist
+- returns and exchanges now exist with delivered-line validation, status flow,
+  and inventory restock on receipt
 
 ### Operations Layer
 
@@ -185,6 +190,13 @@ Implementation checkpoint:
 - credit notes
 - reconciliation hooks for payment gateways
 
+Implementation checkpoint:
+
+- settlement records now exist
+- settlement entry linkage for payments, refunds, fees, and adjustments now exists
+- duplicate payment and refund settlement linkage is now blocked
+- commerce overview now exposes settlement status and unreconciled finance counts
+
 ### Public Experience
 
 - category storefront pages
@@ -194,6 +206,12 @@ Implementation checkpoint:
 - merchandising blocks
 - search and filter materialization
 - SEO and structured data
+
+Implementation checkpoint:
+
+- live catalog blocks now materialize into the blueprint runtime
+- product detail pages now resolve from the canonical commerce catalog
+- commerce discovery cards now expose live products through the public site payload
 
 ### Migration And Imports
 
@@ -211,8 +229,8 @@ Implementation checkpoint:
 
 ## Backend Onboarding Pilot
 
-After hotel hardening and ecommerce completion, the first backend onboarding
-pilot should use:
+After ecommerce closure and hotel hardening, the first backend onboarding pilot
+should use:
 
 - hotel tenants
 - commerce tenants
@@ -228,14 +246,14 @@ The pilot should prove:
 
 ## Delivery Order
 
-1. Close hotel stabilization backlog needed for pilot confidence.
+1. Close the remaining ecommerce readiness gaps first.
 2. Extend the new attribute system into richer catalog governance:
    advanced option rules, inherited defaults, and merchandising rules.
 3. Harden the pricing layer into broader promotions and approval controls.
-4. Add gateway reconciliation, settlement controls, and richer finance documents.
-5. Add returns, exchanges, and credit-note controls.
-6. Add storefront runtime depth and discovery materialization.
-7. Execute legacy commerce import dry-runs.
+4. Add operator-facing reconciliation surfaces and richer finance documents.
+5. Add credit-note controls and deeper settlement workflows.
+6. Execute legacy commerce import dry-runs.
+7. Close the remaining hotel hardening queue needed for pilot confidence.
 8. Run backend business onboarding pilot on hotel and commerce.
 9. Resume travel after the pilot proves the onboarding pattern.
 

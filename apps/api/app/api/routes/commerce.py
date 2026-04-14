@@ -16,10 +16,14 @@ from app.schemas.requests import (
     CreateCommercePaymentRequest,
     CreateCommercePriceListRequest,
     CreateCommerceRefundRequest,
+    CreateCommerceReturnRequest,
+    CreateCommerceSettlementRequest,
     CreateCommerceTaxProfileRequest,
     CreateCommerceWarehouseRequest,
     CommerceFulfillmentStatusRequest,
     CommerceOrderStatusRequest,
+    CommerceReturnStatusRequest,
+    CommerceSettlementStatusRequest,
     CommerceShipmentStatusRequest,
     CreateCommerceCategoryRequest,
     CreateCommerceOrderRequest,
@@ -36,12 +40,18 @@ from app.services.commerce import (
     create_collection,
     create_fulfillment,
     create_order,
+    create_return,
+    create_settlement,
     get_order_finance_detail,
+    get_return_detail,
+    get_settlement_detail,
     issue_order_invoice,
     create_shipment,
     list_invoices,
     list_payments,
     list_refunds,
+    list_returns,
+    list_settlements,
     list_shipments,
     create_price_list,
     create_product,
@@ -68,6 +78,8 @@ from app.services.commerce import (
     list_warehouses,
     update_fulfillment_status,
     update_order_status,
+    update_return_status,
+    update_settlement_status,
     update_shipment_status,
 )
 from app.services.errors import ConflictError, NotFoundError, ValidationError
@@ -608,6 +620,30 @@ def commerce_refunds(
         _raise_http_error(exc)
 
 
+@router.get("/returns")
+def commerce_returns(
+    order_id: str | None = None,
+    session: SessionContext = Depends(require_permission("commerce.orders.read")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return {"tenant_id": session.tenant_id, "returns": list_returns(db, tenant_slug=session.tenant_id, order_id=order_id)}
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.get("/returns/{return_id}")
+def commerce_return_detail(
+    return_id: str,
+    session: SessionContext = Depends(require_permission("commerce.orders.read")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return get_return_detail(db, tenant_slug=session.tenant_id, return_id=return_id)
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
 @router.get("/invoices")
 def commerce_invoices(
     order_id: str | None = None,
@@ -616,6 +652,29 @@ def commerce_invoices(
 ):
     try:
         return {"tenant_id": session.tenant_id, "invoices": list_invoices(db, tenant_slug=session.tenant_id, order_id=order_id)}
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.get("/settlements")
+def commerce_settlements(
+    session: SessionContext = Depends(require_permission("commerce.finance.read")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return {"tenant_id": session.tenant_id, "settlements": list_settlements(db, tenant_slug=session.tenant_id)}
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.get("/settlements/{settlement_id}")
+def commerce_settlement_detail(
+    settlement_id: str,
+    session: SessionContext = Depends(require_permission("commerce.finance.read")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return get_settlement_detail(db, tenant_slug=session.tenant_id, settlement_id=settlement_id)
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -637,6 +696,52 @@ def commerce_orders_create(
             coupon_code=payload.coupon_code,
             status=payload.status,
             currency=payload.currency,
+            lines=[line.model_dump() for line in payload.lines],
+        )
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.post("/settlements", status_code=status.HTTP_201_CREATED)
+def commerce_settlements_create(
+    payload: CreateCommerceSettlementRequest,
+    session: SessionContext = Depends(require_permission("commerce.finance.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return create_settlement(
+            db,
+            tenant_slug=session.tenant_id,
+            actor_user_id=session.user_id,
+            provider=payload.provider,
+            settlement_reference=payload.settlement_reference,
+            currency=payload.currency,
+            status=payload.status,
+            payment_ids=payload.payment_ids,
+            refund_ids=payload.refund_ids,
+            fees_minor=payload.fees_minor,
+            adjustments_minor=payload.adjustments_minor,
+            notes=payload.notes,
+        )
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.post("/orders/{order_id}/returns", status_code=status.HTTP_201_CREATED)
+def commerce_order_return_create(
+    order_id: str,
+    payload: CreateCommerceReturnRequest,
+    session: SessionContext = Depends(require_permission("commerce.orders.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return create_return(
+            db,
+            tenant_slug=session.tenant_id,
+            actor_user_id=session.user_id,
+            order_id=order_id,
+            reason_summary=payload.reason_summary,
+            notes=payload.notes,
             lines=[line.model_dump() for line in payload.lines],
         )
     except Exception as exc:
@@ -713,6 +818,44 @@ def commerce_order_issue_invoice(
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
             order_id=order_id,
+        )
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.patch("/returns/{return_id}/status")
+def commerce_return_update_status(
+    return_id: str,
+    payload: CommerceReturnStatusRequest,
+    session: SessionContext = Depends(require_permission("commerce.orders.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return update_return_status(
+            db,
+            tenant_slug=session.tenant_id,
+            actor_user_id=session.user_id,
+            return_id=return_id,
+            status=payload.status,
+        )
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.patch("/settlements/{settlement_id}/status")
+def commerce_settlement_update_status(
+    settlement_id: str,
+    payload: CommerceSettlementStatusRequest,
+    session: SessionContext = Depends(require_permission("commerce.finance.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return update_settlement_status(
+            db,
+            tenant_slug=session.tenant_id,
+            actor_user_id=session.user_id,
+            settlement_id=settlement_id,
+            status=payload.status,
         )
     except Exception as exc:
         _raise_http_error(exc)

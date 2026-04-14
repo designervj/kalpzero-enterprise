@@ -23,6 +23,16 @@ from app.services.platform import (
 router = APIRouter()
 
 
+def _resolve_scope_tenant_slug(session: SessionContext, requested_tenant_slug: str | None) -> str:
+    if requested_tenant_slug is None or requested_tenant_slug == session.tenant_id:
+        return session.tenant_id
+
+    if "platform_admin" in session.roles:
+        return requested_tenant_slug
+
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied for requested tenant scope.")
+
+
 @router.get("/registry")
 def registry(
     session: SessionContext = Depends(require_permission("platform.registry.read")),
@@ -112,18 +122,28 @@ def tenants_create(
 
 @router.get("/audit")
 def audit_log(
+    tenant_slug: str | None = None,
     session: SessionContext = Depends(require_permission("platform.audit.read")),
     db: Session = Depends(get_db_session),
 ):
-    return {"tenant_id": session.tenant_id, "events": list_audit_events_for_scope(db, tenant_slug=session.tenant_id)}
+    scope_tenant_slug = _resolve_scope_tenant_slug(session, tenant_slug)
+    try:
+        return {"tenant_id": scope_tenant_slug, "events": list_audit_events_for_scope(db, tenant_slug=scope_tenant_slug)}
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/outbox")
 def outbox(
+    tenant_slug: str | None = None,
     session: SessionContext = Depends(require_permission("platform.outbox.read")),
     db: Session = Depends(get_db_session),
 ):
-    return {"tenant_id": session.tenant_id, "events": list_outbox_events_for_scope(db, tenant_slug=session.tenant_id)}
+    scope_tenant_slug = _resolve_scope_tenant_slug(session, tenant_slug)
+    try:
+        return {"tenant_id": scope_tenant_slug, "events": list_outbox_events_for_scope(db, tenant_slug=scope_tenant_slug)}
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/storage-topology")

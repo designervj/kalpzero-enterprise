@@ -138,9 +138,14 @@ export function PlatformDashboard() {
                 <CardTitle>Tenant visibility</CardTitle>
                 <CardDescription>Open tenant admin directly after onboarding or inspect its runtime database bootstrap.</CardDescription>
               </div>
-              <Button asChild>
-                <Link href="/platform/onboarding">Create tenant</Link>
-              </Button>
+              <div className="flex gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/platform/operations">View operations</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/platform/onboarding">Create tenant</Link>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {data.tenants.length === 0 ? (
