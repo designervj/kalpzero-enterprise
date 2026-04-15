@@ -239,7 +239,7 @@ export async function getStorageTopology(token: string) {
 
 export async function createAgency(
   token: string,
-  payload: { slug: string; name: string; region: string; owner_user_id: string }
+  payload: { slug: string; name: string; region: string; owner_user_id: string; username?: string; password?: string }
 ) {
   return request<AgencyDto>(
     "/platform/agencies",
@@ -258,9 +258,12 @@ export async function createTenant(
     slug: string;
     display_name: string;
     infra_mode: string;
-    vertical_packs: string[];
+    vertical_pack: string;
     feature_flags: string[];
     dedicated_profile_id?: string;
+    username?: string;
+    password?: string;
+    tenant_name?: string;
   }
 ) {
   return request<TenantDto>(

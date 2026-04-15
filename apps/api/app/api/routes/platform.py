@@ -61,6 +61,8 @@ def agencies(
     _: SessionContext = Depends(require_permission("platform.agencies.manage")),
     db: Session = Depends(get_db_session),
 ):
+    print("db",db)
+    print("agencies",list_all_agencies(db))
     return {"agencies": list_all_agencies(db)}
 
 
@@ -108,7 +110,7 @@ def tenants_create(
             slug=payload.slug,
             display_name=payload.display_name,
             infra_mode=payload.infra_mode,
-            vertical_packs=payload.vertical_packs,
+            vertical_pack=payload.vertical_pack,
             feature_flags=payload.feature_flags,
             dedicated_profile_id=payload.dedicated_profile_id,
         )

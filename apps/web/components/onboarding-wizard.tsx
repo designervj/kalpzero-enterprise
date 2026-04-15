@@ -13,22 +13,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { createAgency, createTenant, type AgencyDto, type TenantDto } from "@/lib/api";
+import { CreateAgencyForm } from "@/components/agency/create-agency-form";
+import { CreateTenantForm } from "@/components/tenant/create-tenant-form";
+import { AgencyFormType } from "./agency/AgencyType";
 
 export function OnboardingWizard() {
   const router = useRouter();
   const { session, status, token } = useAuth();
-  const [agencyForm, setAgencyForm] = useState({
+  const [agencyForm, setAgencyForm] = useState<AgencyFormType>({
     slug: "demo-agency",
     name: "Demo Agency",
     region: "in",
-    owner_user_id: "founder@kalpzero.com"
+    owner_user_id: "founder@kalpzero.com",
+    username: "",
+    password: ""
   });
   const [tenantForm, setTenantForm] = useState({
     agency_slug: "demo-agency",
     slug: "demo-tenant",
     display_name: "Demo Tenant",
-    feature_flags: "seo-suite,custom-domain"
+    businessType: "commerce",
+    vertical_pack: "",
+    dedicated_profile_id: "dedicated-infra-demo",
+    feature_flags: "seo-suite,custom-domain",
+    username: "",
+    password: "",
+    tenant_name: ""
   });
   const [createdAgency, setCreatedAgency] = useState<AgencyDto | null>(null);
   const [createdTenant, setCreatedTenant] = useState<TenantDto | null>(null);
@@ -56,7 +68,14 @@ export function OnboardingWizard() {
     setError(null);
 
     try {
-      const agency = await createAgency(token, agencyForm);
+      const agency = await createAgency(token, {
+        slug: agencyForm.slug??"",
+        name: agencyForm.name??"",
+        region: agencyForm.region??"",
+        owner_user_id: agencyForm.owner_user_id??"",
+        username: agencyForm.username || undefined,
+        password: agencyForm.password || undefined
+      });
       setCreatedAgency(agency);
       setTenantForm((current) => ({ ...current, agency_slug: agency.slug }));
     } catch (submissionError) {
@@ -80,12 +99,15 @@ export function OnboardingWizard() {
         agency_slug: tenantForm.agency_slug,
         slug: tenantForm.slug,
         display_name: tenantForm.display_name,
-        infra_mode: "shared",
-        vertical_packs: ["commerce", "hotel"],
+        infra_mode: "dedicated",
+        vertical_pack: tenantForm.vertical_pack,
+        dedicated_profile_id: tenantForm.dedicated_profile_id,
         feature_flags: tenantForm.feature_flags
           .split(",")
           .map((item) => item.trim())
-          .filter(Boolean)
+          .filter(Boolean),
+        username: tenantForm.username || undefined,
+        password: tenantForm.password || undefined,
       });
       setCreatedTenant(tenant);
     } catch (submissionError) {
@@ -103,101 +125,20 @@ export function OnboardingWizard() {
     >
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-5">
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 1. Create the agency</CardTitle>
-              <CardDescription>The agency is the top-level owner for one or more businesses under Kalp.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="grid gap-4 md:grid-cols-2" onSubmit={onCreateAgency}>
-                <Field label="Agency name">
-                  <Input
-                    value={agencyForm.name}
-                    onChange={(event) => setAgencyForm((current) => ({ ...current, name: event.target.value }))}
-                  />
-                </Field>
-                <Field label="Agency slug">
-                  <Input
-                    value={agencyForm.slug}
-                    onChange={(event) => {
-                      const slug = event.target.value;
-                      setAgencyForm((current) => ({ ...current, slug }));
-                      setTenantForm((current) => ({ ...current, agency_slug: slug }));
-                    }}
-                  />
-                </Field>
-                <Field label="Region">
-                  <Input
-                    value={agencyForm.region}
-                    onChange={(event) => setAgencyForm((current) => ({ ...current, region: event.target.value }))}
-                  />
-                </Field>
-                <Field label="Owner user id">
-                  <Input
-                    value={agencyForm.owner_user_id}
-                    onChange={(event) =>
-                      setAgencyForm((current) => ({ ...current, owner_user_id: event.target.value }))
-                    }
-                  />
-                </Field>
-                <div className="md:col-span-2">
-                  <Button type="submit" size="lg" disabled={isSubmittingAgency}>
-                    {isSubmittingAgency ? "Creating agency..." : "Create agency"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <CreateAgencyForm
+            agencyForm={agencyForm}
+            setAgencyForm={setAgencyForm}
+            setTenantForm={setTenantForm as any}
+            onCreateAgency={onCreateAgency}
+            isSubmittingAgency={isSubmittingAgency}
+          />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 2. Create the tenant</CardTitle>
-              <CardDescription>For the pilot scope, commerce and hotel are provisioned together for the reference business setup.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="grid gap-4 md:grid-cols-2" onSubmit={onCreateTenant}>
-                <Field label="Agency slug">
-                  <Input
-                    value={tenantForm.agency_slug}
-                    onChange={(event) => setTenantForm((current) => ({ ...current, agency_slug: event.target.value }))}
-                  />
-                </Field>
-                <Field label="Tenant slug">
-                  <Input
-                    value={tenantForm.slug}
-                    onChange={(event) => setTenantForm((current) => ({ ...current, slug: event.target.value }))}
-                  />
-                </Field>
-                <Field label="Display name">
-                  <Input
-                    value={tenantForm.display_name}
-                    onChange={(event) =>
-                      setTenantForm((current) => ({ ...current, display_name: event.target.value }))
-                    }
-                  />
-                </Field>
-                <Field label="Feature flags">
-                  <Textarea
-                    className="min-h-11"
-                    value={tenantForm.feature_flags}
-                    onChange={(event) =>
-                      setTenantForm((current) => ({ ...current, feature_flags: event.target.value }))
-                    }
-                  />
-                </Field>
-                <div className="md:col-span-2 flex flex-wrap gap-2">
-                  <Badge>hotel</Badge>
-                  <Badge>commerce</Badge>
-                  <Badge variant="outline">shared infra</Badge>
-                </div>
-                <div className="md:col-span-2">
-                  <Button type="submit" size="lg" disabled={isSubmittingTenant}>
-                    {isSubmittingTenant ? "Provisioning tenant..." : "Create tenant"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <CreateTenantForm
+            tenantForm={tenantForm as any}
+            setTenantForm={setTenantForm as any}
+            onCreateTenant={onCreateTenant}
+            isSubmittingTenant={isSubmittingTenant}
+          />
 
           {error ? (
             <Card className="border-destructive/40">
@@ -213,7 +154,11 @@ export function OnboardingWizard() {
               <CardDescription>Kalp provisions the technical pieces so the operator sees business language instead of infrastructure tasks.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <QuickStep icon={Rocket} title="Tenant record created" description="The control plane stores the tenant, infra mode, packs, and feature flags." />
+              <QuickStep
+                icon={Rocket}
+                title="Tenant record created"
+                description="The control plane stores the tenant, infra mode, selected pack, and feature flags."
+              />
               <QuickStep icon={Database} title="Runtime DB provisioned" description="A tenant-scoped Mongo database is created from the canonical naming strategy." />
               <QuickStep icon={Layers3} title="Publishing seeded" description="Blueprint, site pages, and discovery documents are inserted so the public runtime is usable immediately." />
             </CardContent>
@@ -247,6 +192,8 @@ export function OnboardingWizard() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <InfoRow label="Tenant" value={`${createdTenant.display_name} (${createdTenant.slug})`} />
+                <InfoRow label="Vertical pack" value={createdTenant.vertical_packs[0] ?? "n/a"} />
+                <InfoRow label="Dedicated profile" value={createdTenant.dedicated_profile_id ?? "n/a"} />
                 <InfoRow label="Runtime DB" value={createdTenant.runtime_documents?.database ?? "n/a"} />
                 <InfoRow
                   label="Seeded docs"

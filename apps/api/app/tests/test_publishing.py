@@ -4,7 +4,7 @@ from app.tests.support import login, provision_tenant
 
 
 def test_publishing_blueprint_and_public_site_payload_flow(client: TestClient) -> None:
-    provision_tenant(client, tenant_slug="designable", vertical_packs=["commerce", "hotel"])
+    provision_tenant(client, tenant_slug="designable", vertical_packs=["hotel"])
     tenant_token = login(client, email="ops@tenant.com", tenant_slug="designable")
     headers = {"Authorization": f"Bearer {tenant_token}"}
 

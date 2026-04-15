@@ -104,12 +104,13 @@ def test_platform_admin_can_create_agency_and_tenant(client: TestClient) -> None
             "slug": "enterprise-tenant",
             "display_name": "Enterprise Tenant",
             "infra_mode": "shared",
-            "vertical_packs": ["commerce", "hotel"],
+            "vertical_pack": "commerce",
             "feature_flags": ["seo-suite"],
         },
     )
     assert tenant_response.status_code == 201
     tenant_payload = tenant_response.json()
+    assert tenant_payload["vertical_packs"] == ["commerce"]
     assert tenant_payload["runtime_documents"]["database"] == "kalpzero_runtime_test__tenant__enterprise_tenant"
     assert tenant_payload["runtime_documents"]["bootstrap"]["seeded_document_count"] >= 5
 
@@ -145,7 +146,7 @@ def test_platform_admin_can_filter_audit_and_outbox_by_tenant_scope(client: Test
             "slug": "ops-tenant",
             "display_name": "Ops Tenant",
             "infra_mode": "shared",
-            "vertical_packs": ["commerce", "hotel"],
+            "vertical_pack": "commerce",
             "feature_flags": ["seo-suite"],
         },
     )
@@ -219,7 +220,7 @@ def test_platform_admin_cannot_onboard_planned_verticals(client: TestClient) -> 
             "slug": "future-tenant",
             "display_name": "Future Tenant",
             "infra_mode": "shared",
-            "vertical_packs": ["real_estate"],
+            "vertical_pack": "real_estate",
             "feature_flags": ["seo-suite"],
         },
     )
@@ -250,7 +251,7 @@ def test_platform_admin_cannot_create_dedicated_tenant_without_profile(client: T
             "slug": "broken-dedicated",
             "display_name": "Broken Dedicated",
             "infra_mode": "dedicated",
-            "vertical_packs": ["commerce"],
+            "vertical_pack": "commerce",
             "feature_flags": [],
         },
     )
@@ -259,8 +260,38 @@ def test_platform_admin_cannot_create_dedicated_tenant_without_profile(client: T
     assert "dedicated_profile_id" in tenant_response.json()["detail"]
 
 
+def test_platform_admin_rejects_legacy_multi_pack_tenant_payload(client: TestClient) -> None:
+    platform_token = login(client, email="founder@kalpzero.com")
+    agency_response = client.post(
+        "/platform/agencies",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "slug": "legacy-agency",
+            "name": "Legacy Agency",
+            "region": "in",
+            "owner_user_id": "founder@kalpzero.com",
+        },
+    )
+    assert agency_response.status_code == 201
+
+    tenant_response = client.post(
+        "/platform/tenants",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "agency_slug": "legacy-agency",
+            "slug": "legacy-tenant",
+            "display_name": "Legacy Tenant",
+            "infra_mode": "shared",
+            "vertical_packs": ["commerce", "hotel"],
+            "feature_flags": [],
+        },
+    )
+
+    assert tenant_response.status_code == 422
+
+
 def test_registry_returns_pack_driven_payload_with_valid_token(client: TestClient) -> None:
-    provision_tenant(client, tenant_slug="tenant_demo", vertical_packs=["commerce", "hotel"])
+    provision_tenant(client, tenant_slug="tenant_demo", vertical_packs=["commerce"])
     tenant_token = login(client, email="ops@tenant.com", tenant_slug="tenant_demo")
 
     response = client.get("/platform/registry", headers={"Authorization": f"Bearer {tenant_token}"})
@@ -272,7 +303,7 @@ def test_registry_returns_pack_driven_payload_with_valid_token(client: TestClien
     assert "commerce.inventory" in payload["modules"]
     assert "commerce.finance" in payload["modules"]
     assert "commerce.fulfillment" in payload["modules"]
-    assert "hotel.reservations" in payload["modules"]
+    assert "hotel.reservations" not in payload["modules"]
     assert "travel.packages" not in payload["modules"]
     assert "dedicated-infra-profile" in payload["features"]
 
@@ -299,7 +330,7 @@ def test_tenant_onboarding_seeds_runtime_blueprint_and_pages(client: TestClient)
             "slug": "seeded-tenant",
             "display_name": "Seeded Tenant",
             "infra_mode": "shared",
-            "vertical_packs": ["commerce", "hotel"],
+            "vertical_pack": "hotel",
             "feature_flags": ["seo-suite"],
         },
     )
@@ -314,7 +345,9 @@ def test_tenant_onboarding_seeds_runtime_blueprint_and_pages(client: TestClient)
     assert blueprint_response.status_code == 200
     assert pages_response.status_code == 200
     assert blueprint_response.json()["business_label"] == "Seeded Tenant"
-    assert {page["page_slug"] for page in pages_response.json()["pages"]} >= {"home", "about", "contact", "catalog", "stay"}
+    page_slugs = {page["page_slug"] for page in pages_response.json()["pages"]}
+    assert page_slugs >= {"home", "about", "contact", "stay"}
+    assert "catalog" not in page_slugs
 
 
 def test_import_source_and_job_creation_record_audit_and_outbox(client: TestClient) -> None:

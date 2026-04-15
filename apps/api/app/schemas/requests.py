@@ -21,7 +21,7 @@ class CreateTenantRequest(BaseModel):
     slug: str = Field(min_length=3, max_length=120)
     display_name: str = Field(min_length=2, max_length=255)
     infra_mode: str = Field(pattern="^(shared|dedicated)$")
-    vertical_packs: list[str] = Field(min_length=1)
+    vertical_pack: str = Field(min_length=2, max_length=32)
     feature_flags: list[str] = Field(default_factory=list)
     dedicated_profile_id: str | None = None
 

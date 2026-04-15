@@ -41,16 +41,18 @@ def create_tenant(
     slug: str,
     display_name: str,
     infra_mode: str,
-    vertical_packs: list[str],
+    vertical_pack: str,
     feature_flags: list[str],
     dedicated_profile_id: str | None,
 ) -> TenantModel:
+    # Keep the stored value list-shaped so existing publishing/bootstrap helpers
+    # can continue to read tenant.vertical_packs without a broader refactor.
     tenant = TenantModel(
         agency_id=agency_id,
         slug=slug,
         display_name=display_name,
         infra_mode=infra_mode,
-        vertical_packs=vertical_packs,
+        vertical_packs=[vertical_pack],
         feature_flags=feature_flags,
         dedicated_profile_id=dedicated_profile_id,
     )

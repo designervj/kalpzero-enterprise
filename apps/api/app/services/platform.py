@@ -247,13 +247,13 @@ def get_onboarding_readiness(
 def assert_onboarding_ready(
     settings: Settings,
     *,
-    vertical_packs: list[str],
+    vertical_pack: str,
     infra_mode: str,
     dedicated_profile_id: str | None,
 ) -> None:
     readiness = get_onboarding_readiness(
         settings,
-        requested_vertical_packs=vertical_packs,
+        requested_vertical_packs=[vertical_pack],
         infra_mode=infra_mode,
         dedicated_profile_id=dedicated_profile_id,
     )
@@ -306,7 +306,7 @@ def create_tenant(
     slug: str,
     display_name: str,
     infra_mode: str,
-    vertical_packs: list[str],
+    vertical_pack: str,
     feature_flags: list[str],
     dedicated_profile_id: str | None,
 ) -> dict[str, object]:
@@ -319,7 +319,7 @@ def create_tenant(
 
     assert_onboarding_ready(
         settings,
-        vertical_packs=vertical_packs,
+        vertical_pack=vertical_pack,
         infra_mode=infra_mode,
         dedicated_profile_id=dedicated_profile_id,
     )
@@ -330,7 +330,7 @@ def create_tenant(
         slug=slug,
         display_name=display_name,
         infra_mode=infra_mode,
-        vertical_packs=vertical_packs,
+        vertical_pack=vertical_pack,
         feature_flags=feature_flags,
         dedicated_profile_id=dedicated_profile_id,
     )

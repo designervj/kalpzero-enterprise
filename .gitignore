@@ -1,20 +1,37 @@
 .DS_Store
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .venv
-.pytest_cache
-.ruff_cache
-.run
-.next
-.turbo
-dist
-build
-coverage
-node_modules
-__pycache__
-*.pyc
+
+# Testing and Linting
+.pytest_cache/
+.ruff_cache/
+coverage/
+.eslintcache
+
+# Build and IDE
+.run/
+.next/
+.turbo/
+dist/
+build/
 *.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info
+
+# Logs and databases
 *.log
 *.pid
 *.db
-*.egg-info

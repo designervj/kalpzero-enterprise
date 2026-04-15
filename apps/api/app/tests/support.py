@@ -23,6 +23,10 @@ def provision_tenant(
     agency_slug: str = "kalpzero-agency",
     bypass_onboarding_gate: bool = False,
 ) -> None:
+    if len(vertical_packs) != 1:
+        raise AssertionError("Tenant onboarding now expects exactly one vertical pack.")
+    vertical_pack = vertical_packs[0]
+
     if bypass_onboarding_gate:
         from app.core.config import get_settings
         from app.db.mongo import get_runtime_document_store, provision_runtime_document_store_for_tenant
@@ -52,7 +56,7 @@ def provision_tenant(
                     slug=tenant_slug,
                     display_name="Tenant Demo",
                     infra_mode=infra_mode,
-                    vertical_packs=vertical_packs,
+                    vertical_pack=vertical_pack,
                     feature_flags=feature_flags or ["custom-domain"],
                     dedicated_profile_id="dedicated-infra-demo" if infra_mode == "dedicated" else None,
                 )
@@ -85,7 +89,7 @@ def provision_tenant(
             "slug": tenant_slug,
             "display_name": "Tenant Demo",
             "infra_mode": infra_mode,
-            "vertical_packs": vertical_packs,
+            "vertical_pack": vertical_pack,
             "feature_flags": feature_flags or ["custom-domain"],
             "dedicated_profile_id": "dedicated-infra-demo" if infra_mode == "dedicated" else None,
         },
