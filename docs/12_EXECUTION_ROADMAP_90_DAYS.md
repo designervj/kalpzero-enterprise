@@ -30,7 +30,7 @@ Status on April 1, 2026: started. Core catalog and order persistence is now
 implemented, plus a concrete legacy-commerce adapter plan. The publishing
 foundation has also moved from a placeholder concept into a blueprint-driven
 runtime backed by Mongo documents and public/admin Next.js previews. Remaining
-work is richer operator-facing commerce admin flows and
+work is import execution, richer operator-facing commerce admin flows, and
 deeper finance documents.
 
 Priority on April 10, 2026: commerce is now the lead active vertical. Hotel
@@ -56,8 +56,6 @@ Implementation checkpoint on April 2, 2026:
   validation and inventory restock on receipt
 - commerce storefront and product detail materialization are now implemented in
   the public blueprint runtime
-- commerce import jobs now support dry-run validation, canonical execution, and
-  idempotent replay for the current inline legacy-commerce dataset flow
 - the attribute taxonomy is positioned as the first reusable pattern for later
   vertical packs
 

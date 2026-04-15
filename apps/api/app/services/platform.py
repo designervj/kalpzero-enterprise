@@ -105,6 +105,7 @@ def serialize_tenant(tenant, *, settings: Settings | None = None, bootstrap: dic
         "display_name": tenant.display_name,
         "infra_mode": tenant.infra_mode,
         "vertical_packs": tenant.vertical_packs,
+        "business_type": tenant.business_type,
         "feature_flags": tenant.feature_flags,
         "dedicated_profile_id": tenant.dedicated_profile_id,
         "created_at": tenant.created_at.isoformat(),
@@ -307,6 +308,8 @@ def create_tenant(
     display_name: str,
     infra_mode: str,
     vertical_pack: str,
+    business_type: str | None,
+    admin_email: str | None,
     feature_flags: list[str],
     dedicated_profile_id: str | None,
 ) -> dict[str, object]:
@@ -331,18 +334,30 @@ def create_tenant(
         display_name=display_name,
         infra_mode=infra_mode,
         vertical_pack=vertical_pack,
+        business_type=business_type,
         feature_flags=feature_flags,
         dedicated_profile_id=dedicated_profile_id,
     )
+    
     runtime_provisioning = provision_runtime_document_store_for_tenant(
         settings,
         tenant_slug=tenant.slug,
+        vertical_packs=tenant.vertical_packs,
     )
-    from app.services import publishing as publishing_service
 
+    from app.services import publishing as publishing_service
+ 
+    extra_metadata = {
+        "admin_email": admin_email,
+        "agency_slug": agency_slug,
+        "business_type": business_type,
+        "infra_mode": infra_mode,
+    }
+ 
     runtime_bootstrap = publishing_service.bootstrap_tenant_runtime_documents(
-        get_runtime_document_store(settings),
+        runtime_provisioning["store"],
         tenant,
+        extra_metadata=extra_metadata,
     )
     platform_repository.create_audit_event(
         db,

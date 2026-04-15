@@ -43,6 +43,7 @@ export interface TenantDto {
   display_name: string;
   infra_mode: string;
   vertical_packs: string[];
+  business_type: string | null;
   feature_flags: string[];
   dedicated_profile_id: string | null;
   created_at: string;
@@ -206,8 +207,28 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  tenant_slug?: string;
+  role?: string[];
+}
+
+export interface RegisterResponseDto {
+  access_token: string;
+  expires_at: string;
+  session: SessionDto;
+}
+
 export async function login(payload: LoginPayload) {
   return request<LoginResponseDto>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function register(payload: RegisterPayload) {
+  return request<RegisterResponseDto>("/auth/register", {
     method: "POST",
     body: JSON.stringify(payload)
   });
@@ -259,6 +280,8 @@ export async function createTenant(
     display_name: string;
     infra_mode: string;
     vertical_pack: string;
+    business_type?: string;
+    admin_email?: string;
     feature_flags: string[];
     dedicated_profile_id?: string;
     username?: string;

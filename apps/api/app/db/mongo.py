@@ -24,6 +24,68 @@ RUNTIME_COLLECTIONS = {
     "hotel_nearby_places": "hotel_nearby_places",
 }
 
+VERTICAL_COLLECTIONS: dict[str, list[str]] = {
+    "commerce": [
+        "commerce_categories",
+        "commerce_brands",
+        "commerce_vendors",
+        "commerce_collections",
+        "commerce_attributes",
+        "commerce_attribute_sets",
+        "commerce_products",
+        "commerce_variants",
+        "commerce_warehouses",
+        "commerce_warehouse_stocks",
+        "commerce_stock_ledger_entries",
+        "commerce_product_attribute_values",
+        "commerce_variant_attribute_values",
+        "commerce_tax_profiles",
+        "commerce_price_lists",
+        "commerce_price_list_items",
+        "commerce_coupons",
+        "commerce_orders",
+        "commerce_order_lines",
+        "commerce_fulfillments",
+        "commerce_fulfillment_lines",
+        "commerce_shipments",
+        "commerce_payments",
+        "commerce_refunds",
+        "commerce_invoices",
+        "commerce_returns",
+        "commerce_return_lines",
+        "commerce_settlements",
+        "commerce_settlement_entries",
+    ],
+    "hotel": [
+        "hotel_properties",
+        "hotel_room_types",
+        "hotel_rooms",
+        "hotel_meal_plans",
+        "hotel_guest_profiles",
+        "hotel_rate_plans",
+        "hotel_availability_rules",
+        "hotel_reservations",
+        "hotel_stays",
+        "hotel_room_moves",
+        "hotel_guest_documents",
+        "hotel_folios",
+        "hotel_folio_charges",
+        "hotel_payments",
+        "hotel_refunds",
+        "hotel_staff_members",
+        "hotel_shifts",
+        "hotel_night_audits",
+        "hotel_housekeeping_tasks",
+        "hotel_maintenance_tickets",
+    ],
+    "travel": [
+        "travel_packages",
+        "travel_itinerary_days",
+        "travel_departures",
+        "travel_leads",
+    ],
+}
+
 
 @lru_cache
 def get_mongo_client(mongo_url: str) -> MongoClient:
@@ -106,7 +168,10 @@ class MongoRuntimeDocumentStore:
         self.settings = settings
 
     def _collection_name(self, collection: str) -> str:
-        return RUNTIME_COLLECTIONS[collection]
+        if collection in RUNTIME_COLLECTIONS:
+            return RUNTIME_COLLECTIONS[collection]
+        # Allow passing the direct collection name for vertical-specific collections
+        return collection
 
     def _database(self, tenant_slug: str) -> Database:
         return get_runtime_mongo_database(self.settings, tenant_slug=tenant_slug)
@@ -165,14 +230,21 @@ def provision_runtime_document_store_for_tenant(
     settings: Settings,
     *,
     tenant_slug: str,
+    vertical_packs: list[str] | None = None,
 ) -> dict[str, object]:
+    packs = vertical_packs or []
+    target_collections = list(RUNTIME_COLLECTIONS.values())
+    for pack in packs:
+        if pack in VERTICAL_COLLECTIONS:
+            target_collections.extend(VERTICAL_COLLECTIONS[pack])
+
     database_name = build_runtime_database_name(settings, tenant_slug=tenant_slug)
     if settings.runtime_doc_store_mode == "memory":
         return {
             "kind": "memory",
             "database": database_name,
-            "collections": list(RUNTIME_COLLECTIONS.values()),
-            "collections_created": list(RUNTIME_COLLECTIONS.values()),
+            "collections": target_collections,
+            "collections_created": target_collections,
             "index_strategy": "in_memory",
         }
 
@@ -180,7 +252,7 @@ def provision_runtime_document_store_for_tenant(
     existing_collections = set(database.list_collection_names())
     created_collections: list[str] = []
 
-    for collection_name in RUNTIME_COLLECTIONS.values():
+    for collection_name in target_collections:
         if collection_name not in existing_collections:
             database.create_collection(collection_name)
             created_collections.append(collection_name)
@@ -194,7 +266,7 @@ def provision_runtime_document_store_for_tenant(
     return {
         "kind": "mongo",
         "database": database.name,
-        "collections": list(RUNTIME_COLLECTIONS.values()),
+        "collections": target_collections,
         "collections_created": created_collections,
         "index_strategy": "tenant_slug_document_key_unique",
     }

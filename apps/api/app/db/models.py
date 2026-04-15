@@ -9,6 +9,16 @@ from sqlalchemy.types import JSON
 from app.db.base import Base, TimestampMixin, generate_uuid
 
 
+class UserModel(TimestampMixin, Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    tenant_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("tenants.id"), nullable=True)
+    roles: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+
 class AgencyModel(TimestampMixin, Base):
     __tablename__ = "agencies"
 
@@ -28,6 +38,7 @@ class TenantModel(TimestampMixin, Base):
     display_name: Mapped[str] = mapped_column(String(255))
     infra_mode: Mapped[str] = mapped_column(String(32))
     vertical_packs: Mapped[list[str]] = mapped_column(JSON, default=list)
+    business_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     feature_flags: Mapped[list[str]] = mapped_column(JSON, default=list)
     dedicated_profile_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
 

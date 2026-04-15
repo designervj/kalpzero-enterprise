@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, status
 
 from app.core.security import SessionContext, get_current_session
 
+
 PERMISSION_REGISTRY: dict[str, str] = {
     "platform.agencies.manage": "Create and inspect agencies in the control plane.",
     "platform.tenants.manage": "Create and inspect tenants in the control plane.",
