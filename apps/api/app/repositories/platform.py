@@ -42,6 +42,7 @@ def create_tenant(
     display_name: str,
     infra_mode: str,
     vertical_pack: str,
+    business_type: str | None,
     feature_flags: list[str],
     dedicated_profile_id: str | None,
 ) -> TenantModel:
@@ -53,6 +54,7 @@ def create_tenant(
         display_name=display_name,
         infra_mode=infra_mode,
         vertical_packs=[vertical_pack],
+        business_type=business_type,
         feature_flags=feature_flags,
         dedicated_profile_id=dedicated_profile_id,
     )

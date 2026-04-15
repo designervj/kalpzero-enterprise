@@ -55,7 +55,7 @@ export function CreateAgencyForm({
               }}
             />
           </Field>
-             <Field label="User name">
+             <Field label="Email">
             <Input
               value={agencyForm.username}
               onChange={(event) =>

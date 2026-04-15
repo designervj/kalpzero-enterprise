@@ -111,6 +111,8 @@ def tenants_create(
             display_name=payload.display_name,
             infra_mode=payload.infra_mode,
             vertical_pack=payload.vertical_pack,
+            business_type=payload.business_type,
+            admin_email=payload.admin_email,
             feature_flags=payload.feature_flags,
             dedicated_profile_id=payload.dedicated_profile_id,
         )

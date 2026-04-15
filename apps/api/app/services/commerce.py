@@ -2,7 +2,7 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
+import bcrypt
 import yaml
 from sqlalchemy.orm import Session
 
@@ -53,6 +53,8 @@ SETTLEMENT_STATUS_TRANSITIONS: dict[str, set[str]] = {
 
 def _tenant(db: Session, tenant_slug: str):
     return get_tenant_or_raise(db, tenant_slug=tenant_slug)
+
+
 
 
 def _dedupe_strings(values: list[str], *, default: list[str] | None = None) -> list[str]:

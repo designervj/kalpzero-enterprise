@@ -1,6 +1,6 @@
 # KalpZero Enterprise Execution Tracker
 
-Last updated: April 14, 2026
+Last updated: April 10, 2026
 
 ## Purpose
 
@@ -60,7 +60,7 @@ Use this before starting a new development session.
 | P1 | Tenant admin information architecture | next | move tenant admin from summary shell to a workflow-first operator console | module-driven navigation, better dashboard blocks, clearer commerce and hotel entry points | tenant users can navigate by business job, not by platform concept |
 | P1 | Blueprint-driven admin experience | next | use blueprint and registry signals to control navigation, widgets, and vocabulary more deeply | connect blueprint to admin menu structure and dashboard composition | tenant admin becomes configurable without fragmenting the product |
 | P1 | Backend onboarding pilot | next | prove onboarding end to end for hotel + commerce businesses | create pilot tenants, validate registry, login, runtime provisioning, and core lifecycle flows | onboarding can be trusted as a repeatable business process |
-| P1 | Import execution and reconciliation | next | move from import-plan exposure to real cross-vertical migration runs | implement hotel import execution and deepen reconciliation reporting beyond the current commerce runner | external source migration becomes auditable and usable |
+| P1 | Import execution and reconciliation | next | move from import-plan exposure to actual dry-run and canonical write execution | implement real hotel and commerce dry-run import flow with reconciliation output | external source migration becomes auditable and usable |
 | P2 | Audit and operational observability | next | expose the system state more clearly to operators | surface audit trails, outbox activity, and key operational health in the admin | platform state can be inspected without checking code or database directly |
 | P3 | Travel completion | blocked | resume travel only after hotel + commerce onboarding pattern is proven | return to traveler records, booking conversion, seat decrement, and supplier workflows | hotel + commerce onboarding pilot is stable |
 | P3 | Future vertical expansion | blocked | avoid opening new vertical work before the pilot model is proven | keep future specs documented, but do not build new verticals yet | pilot confidence is established and execution capacity is available |

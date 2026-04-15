@@ -2,6 +2,12 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
+class RegisterRequest(BaseModel):
+    email: str
+    password: str = Field(min_length=10)
+    tenant_slug:str | None = None
+    role: list[str] = Field(default_factory=list)
+
 
 class LoginRequest(BaseModel):
     email: str
@@ -22,6 +28,8 @@ class CreateTenantRequest(BaseModel):
     display_name: str = Field(min_length=2, max_length=255)
     infra_mode: str = Field(pattern="^(shared|dedicated)$")
     vertical_pack: str = Field(min_length=2, max_length=32)
+    business_type: str | None = None
+    admin_email: str | None = None
     feature_flags: list[str] = Field(default_factory=list)
     dedicated_profile_id: str | None = None
 

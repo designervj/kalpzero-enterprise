@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from sqlalchemy_utils import create_database, database_exists
 
 from app.core.config import Settings, get_settings
 from app.db.base import Base
@@ -22,13 +23,14 @@ def _normalize_database_url(database_url: str) -> str:
 def _build_engine(database_url: str) -> Engine:
     database_url = _normalize_database_url(database_url)
     engine_kwargs: dict[str, object] = {"future": True}
-
     if database_url.startswith("sqlite"):
         engine_kwargs["connect_args"] = {"check_same_thread": False}
         if database_url.endswith(":memory:"):
             engine_kwargs["poolclass"] = StaticPool
 
-    return create_engine(database_url, **engine_kwargs)
+    engine = create_engine(database_url, **engine_kwargs)
+   
+    return engine
 
 
 @lru_cache
@@ -42,7 +44,15 @@ def get_session_factory(database_url: str) -> sessionmaker[Session]:
 
 
 def init_db(settings: Settings) -> None:
-    Base.metadata.create_all(bind=get_engine(settings.database_url))
+ 
+    database_url = _normalize_database_url(settings.database_url)
+    engine = get_engine(database_url)
+    
+    # Create database if it doesn't exist (handled by sqlalchemy-utils)
+    if not database_exists(engine.url):
+        create_database(engine.url)
+        
+    Base.metadata.create_all(bind=engine)
 
 
 def clear_db_caches() -> None:
@@ -53,6 +63,7 @@ def clear_db_caches() -> None:
 def get_db_session(settings: Settings = Depends(get_settings)) -> Generator[Session, None, None]:
     session_factory = get_session_factory(settings.database_url)
     session = session_factory()
+
     try:
         yield session
     finally:

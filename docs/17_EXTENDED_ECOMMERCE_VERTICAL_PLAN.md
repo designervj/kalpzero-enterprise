@@ -59,10 +59,9 @@ The current repo already has:
 - warehouse-aware reservation and shipment release
 - audit and outbox coverage
 - a legacy import-plan endpoint
-- dry-run and execute import jobs for the current commerce catalog fixture flow
 
 This is now a strong operating base and is close to onboarding-ready ecommerce,
-but it still needs closure on richer operator surfaces and
+but it still needs closure on import execution, richer operator surfaces, and
 deeper finance documents.
 
 The important architectural point is that the attribute system is no longer
@@ -222,14 +221,6 @@ Implementation checkpoint:
 - inventory reconciliation
 - external source adapters for larger catalogs
 
-Implementation checkpoint:
-
-- commerce import sources can now run dry-run validation and canonical execute
-  jobs through the standard import job API
-- repeated execute runs are now idempotent for the current catalog fixture path
-- import reports now return entity counts, skipped-existing counts, error
-  counts, and operator-readable summaries
-
 ## What Must Not Happen
 
 - commerce must not become the hidden schema for real estate
@@ -261,8 +252,7 @@ The pilot should prove:
 3. Harden the pricing layer into broader promotions and approval controls.
 4. Add operator-facing reconciliation surfaces and richer finance documents.
 5. Add credit-note controls and deeper settlement workflows.
-6. Expand the current commerce import runner from the catalog fixture path into
-   broader legacy and external source coverage.
+6. Execute legacy commerce import dry-runs.
 7. Close the remaining hotel hardening queue needed for pilot confidence.
 8. Run backend business onboarding pilot on hotel and commerce.
 9. Resume travel after the pilot proves the onboarding pattern.
@@ -279,6 +269,4 @@ Commerce is onboarding-ready only when all of the following are true:
 - audit and outbox coverage exists
 - public blueprint exists
 - import adapter and dry-run exist
-- canonical execute and replay-safe reconciliation exist for the current
-  commerce runner
 - tests cover the main lifecycle

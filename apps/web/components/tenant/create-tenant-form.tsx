@@ -72,11 +72,11 @@ export function CreateTenantForm({
               onChange={(event) => {
                 const name = event.target.value;
                 const slug = name.toLowerCase().replace(/\s+/g, '-');
-                setTenantForm((current) => ({ ...current, display_name: name, slug, tenant_name: name }));
+                setTenantForm((current) => ({ ...current, display_name: name, slug }));
               }}
             />
           </Field>
-          <Field label="Tenant name">
+          <Field label="Email">
             <Input
               value={tenantForm.tenant_name}
               onChange={(event) => setTenantForm((current) => ({ ...current, tenant_name: event.target.value }))}
@@ -100,7 +100,7 @@ export function CreateTenantForm({
             </div>
           </Field>
           <div className="md:col-span-2 space-y-2">
-            <Label>Business Type</Label>
+            <Label>Vertical Pack</Label>
             <div className="grid gap-3 sm:grid-cols-3">
               {VERTICAL_PACK_OPTIONS.map((option) => {
                 const selected = tenantForm.businessType === option.value;
@@ -134,7 +134,7 @@ export function CreateTenantForm({
           </div>
           {tenantForm.businessType === "commerce" && (
             <div className="md:col-span-2">
-              <Field label="Vertical">
+              <Field label="Business Type">
                 <select
                   value={tenantForm.vertical_pack || ""}
                   onChange={(event) => setTenantForm((current) => ({ ...current, vertical_pack: event.target.value }))}

@@ -8,6 +8,7 @@ from app.repositories import platform as platform_repository
 from app.repositories import travel as travel_repository
 from app.services.errors import NotFoundError
 from app.services.platform import get_tenant_or_raise
+from typing import Any
 
 BLUEPRINT_COLLECTION = "business_blueprints"
 PAGE_COLLECTION = "site_pages"
@@ -187,7 +188,7 @@ def _default_dashboard_widgets(vertical_packs: list[str]) -> list[dict[str, obje
     return widgets
 
 
-def _default_blueprint(tenant) -> dict[str, object]:
+def _default_blueprint(tenant, extra_metadata: dict[str, Any] | None = None) -> dict[str, object]:
     primary_vertical = tenant.vertical_packs[0] if tenant.vertical_packs else "commerce"
     public_theme = {"brand_name": tenant.display_name, **_theme_for_vertical(primary_vertical, admin=False)}
     admin_theme = {
@@ -244,6 +245,7 @@ def _default_blueprint(tenant) -> dict[str, object]:
         "dashboard_widgets": _default_dashboard_widgets(tenant.vertical_packs),
         "vocabulary": _default_vocabulary(tenant.vertical_packs),
         "mobile_capabilities": ["push_notifications", "saved_searches", "booking_status"],
+        **(extra_metadata or {}),
     }
 
 
@@ -377,13 +379,19 @@ def _store_default_documents(store: RuntimeDocumentStore, tenant, blueprint: dic
     )
 
 
-def bootstrap_tenant_runtime_documents(store: RuntimeDocumentStore, tenant) -> dict[str, object]:
+def bootstrap_tenant_runtime_documents(
+    store: RuntimeDocumentStore, tenant, extra_metadata: dict[str, Any] | None = None
+) -> dict[str, object]:
     blueprint_document = store.get_document(
         collection=BLUEPRINT_COLLECTION,
         tenant_slug=tenant.slug,
         document_key="blueprint",
     )
-    blueprint = blueprint_document["payload"] if blueprint_document is not None else _default_blueprint(tenant)
+    blueprint = (
+        blueprint_document["payload"]
+        if blueprint_document is not None
+        else _default_blueprint(tenant, extra_metadata=extra_metadata)
+    )
     seeded_documents: list[dict[str, str]] = []
 
     if blueprint_document is None:
