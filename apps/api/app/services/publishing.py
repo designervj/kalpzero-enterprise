@@ -356,11 +356,13 @@ def _default_discovery(tenant, blueprint: dict[str, object]) -> dict[str, object
 
 
 def _store_default_documents(store: RuntimeDocumentStore, tenant, blueprint: dict[str, object]) -> None:
+    db_name = tenant.mongo_db_name
     store.upsert_document(
         collection=BLUEPRINT_COLLECTION,
         tenant_slug=tenant.slug,
         document_key="blueprint",
         payload=blueprint,
+        database_name=db_name
     )
     for route in blueprint["routes"]:
         page_slug = route["page_slug"]
@@ -370,22 +372,26 @@ def _store_default_documents(store: RuntimeDocumentStore, tenant, blueprint: dic
             tenant_slug=tenant.slug,
             document_key=page_slug,
             payload=page,
+            database_name=db_name
         )
     store.upsert_document(
         collection=DISCOVERY_COLLECTION,
         tenant_slug=tenant.slug,
         document_key="discovery",
         payload=_default_discovery(tenant, blueprint),
+        database_name=db_name
     )
 
 
 def bootstrap_tenant_runtime_documents(
     store: RuntimeDocumentStore, tenant, extra_metadata: dict[str, Any] | None = None
 ) -> dict[str, object]:
+    db_name = tenant.mongo_db_name
     blueprint_document = store.get_document(
         collection=BLUEPRINT_COLLECTION,
         tenant_slug=tenant.slug,
         document_key="blueprint",
+        database_name=db_name
     )
     blueprint = (
         blueprint_document["payload"]
@@ -400,6 +406,7 @@ def bootstrap_tenant_runtime_documents(
             tenant_slug=tenant.slug,
             document_key="blueprint",
             payload=blueprint,
+            database_name=db_name
         )
         seeded_documents.append({"collection": BLUEPRINT_COLLECTION, "document_key": "blueprint"})
 
@@ -409,6 +416,7 @@ def bootstrap_tenant_runtime_documents(
             collection=PAGE_COLLECTION,
             tenant_slug=tenant.slug,
             document_key=page_slug,
+            database_name=db_name
         )
         if existing_page is None:
             store.upsert_document(
@@ -416,6 +424,7 @@ def bootstrap_tenant_runtime_documents(
                 tenant_slug=tenant.slug,
                 document_key=page_slug,
                 payload=_default_page(tenant, blueprint, page_slug),
+                database_name=db_name
             )
             seeded_documents.append({"collection": PAGE_COLLECTION, "document_key": page_slug})
 
@@ -423,6 +432,7 @@ def bootstrap_tenant_runtime_documents(
         collection=DISCOVERY_COLLECTION,
         tenant_slug=tenant.slug,
         document_key="discovery",
+        database_name=db_name
     )
     if existing_discovery is None:
         store.upsert_document(
@@ -430,6 +440,7 @@ def bootstrap_tenant_runtime_documents(
             tenant_slug=tenant.slug,
             document_key="discovery",
             payload=_default_discovery(tenant, blueprint),
+            database_name=db_name
         )
         seeded_documents.append({"collection": DISCOVERY_COLLECTION, "document_key": "discovery"})
 
@@ -440,19 +451,20 @@ def bootstrap_tenant_runtime_documents(
     }
 
 
-def summarize_tenant_runtime_documents(store: RuntimeDocumentStore, *, tenant_slug: str) -> dict[str, object]:
+def summarize_tenant_runtime_documents(store: RuntimeDocumentStore, *, tenant_slug: str, database_name: str | None = None) -> dict[str, object]:
     seeded_documents: list[dict[str, str]] = []
 
     blueprint_document = store.get_document(
         collection=BLUEPRINT_COLLECTION,
         tenant_slug=tenant_slug,
         document_key="blueprint",
+        database_name=database_name
     )
     if blueprint_document is not None:
         seeded_documents.append({"collection": BLUEPRINT_COLLECTION, "document_key": "blueprint"})
 
     page_documents = sorted(
-        store.list_documents(collection=PAGE_COLLECTION, tenant_slug=tenant_slug),
+        store.list_documents(collection=PAGE_COLLECTION, tenant_slug=tenant_slug, database_name=database_name),
         key=lambda item: str(item["document_key"]),
     )
     for document in page_documents:
@@ -462,6 +474,7 @@ def summarize_tenant_runtime_documents(store: RuntimeDocumentStore, *, tenant_sl
         collection=DISCOVERY_COLLECTION,
         tenant_slug=tenant_slug,
         document_key="discovery",
+        database_name=database_name
     )
     if discovery_document is not None:
         seeded_documents.append({"collection": DISCOVERY_COLLECTION, "document_key": "discovery"})
@@ -475,10 +488,12 @@ def summarize_tenant_runtime_documents(store: RuntimeDocumentStore, *, tenant_sl
 
 def _ensure_seeded(db: Session, store: RuntimeDocumentStore, tenant_slug: str):
     tenant = get_tenant_or_raise(db, tenant_slug=tenant_slug)
+    db_name = tenant.mongo_db_name
     blueprint_doc = store.get_document(
         collection=BLUEPRINT_COLLECTION,
         tenant_slug=tenant.slug,
         document_key="blueprint",
+        database_name=db_name
     )
     if blueprint_doc is None:
         blueprint = _default_blueprint(tenant)
@@ -487,6 +502,7 @@ def _ensure_seeded(db: Session, store: RuntimeDocumentStore, tenant_slug: str):
             collection=BLUEPRINT_COLLECTION,
             tenant_slug=tenant.slug,
             document_key="blueprint",
+            database_name=db_name
         )
     if blueprint_doc is None:
         raise RuntimeError("Runtime publishing documents were not initialized.")
@@ -772,18 +788,19 @@ def _hotel_dynamic_blocks(
     *,
     tenant_slug: str,
     page_slug: str,
+    database_name: str | None = None,
 ) -> list[dict[str, object]]:
     if page_slug != "stay":
         return []
 
-    profiles = [item["payload"] for item in store.list_documents(collection=HOTEL_PROFILE_COLLECTION, tenant_slug=tenant_slug)]
+    profiles = [item["payload"] for item in store.list_documents(collection=HOTEL_PROFILE_COLLECTION, tenant_slug=tenant_slug, database_name=database_name)]
     amenity_catalogs = {
         item["payload"]["property_id"]: item["payload"]
-        for item in store.list_documents(collection=HOTEL_AMENITY_COLLECTION, tenant_slug=tenant_slug)
+        for item in store.list_documents(collection=HOTEL_AMENITY_COLLECTION, tenant_slug=tenant_slug, database_name=database_name)
     }
     nearby_catalogs = {
         item["payload"]["property_id"]: item["payload"]
-        for item in store.list_documents(collection=HOTEL_NEARBY_COLLECTION, tenant_slug=tenant_slug)
+        for item in store.list_documents(collection=HOTEL_NEARBY_COLLECTION, tenant_slug=tenant_slug, database_name=database_name)
     }
     if not profiles:
         return []
@@ -845,11 +862,12 @@ def _hotel_discovery_cards(
     store: RuntimeDocumentStore,
     *,
     tenant_slug: str,
+    database_name: str | None = None,
 ) -> list[dict[str, object]]:
-    profiles = [item["payload"] for item in store.list_documents(collection=HOTEL_PROFILE_COLLECTION, tenant_slug=tenant_slug)]
+    profiles = [item["payload"] for item in store.list_documents(collection=HOTEL_PROFILE_COLLECTION, tenant_slug=tenant_slug, database_name=database_name)]
     nearby_catalogs = {
         item["payload"]["property_id"]: item["payload"]
-        for item in store.list_documents(collection=HOTEL_NEARBY_COLLECTION, tenant_slug=tenant_slug)
+        for item in store.list_documents(collection=HOTEL_NEARBY_COLLECTION, tenant_slug=tenant_slug, database_name=database_name)
     }
     cards: list[dict[str, object]] = []
     for profile in profiles[:6]:
@@ -869,7 +887,8 @@ def _hotel_discovery_cards(
 
 
 def get_blueprint(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str) -> dict[str, object]:
-    _, blueprint = _ensure_seeded(db, store, tenant_slug)
+    tenant, blueprint = _ensure_seeded(db, store, tenant_slug)
+    db_name = tenant.mongo_db_name
     return blueprint
 
 
@@ -882,6 +901,7 @@ def update_blueprint(
     payload: dict[str, object],
 ) -> dict[str, object]:
     tenant, blueprint = _ensure_seeded(db, store, tenant_slug)
+    db_name = tenant.mongo_db_name
     next_payload = {
         **blueprint,
         **payload,
@@ -895,6 +915,7 @@ def update_blueprint(
         tenant_slug=tenant.slug,
         document_key="blueprint",
         payload=next_payload,
+        database_name=db_name
     )
     platform_repository.create_audit_event(
         db,
@@ -911,7 +932,8 @@ def update_blueprint(
 
 def list_pages(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str) -> list[dict[str, object]]:
     tenant, _ = _ensure_seeded(db, store, tenant_slug)
-    documents = store.list_documents(collection=PAGE_COLLECTION, tenant_slug=tenant.slug)
+    db_name = tenant.mongo_db_name
+    documents = store.list_documents(collection=PAGE_COLLECTION, tenant_slug=tenant.slug, database_name=db_name)
     return [document["payload"] for document in sorted(documents, key=lambda item: str(item["document_key"]))]
 
 
@@ -923,7 +945,8 @@ def get_page(
     page_slug: str,
 ) -> dict[str, object]:
     tenant, blueprint = _ensure_seeded(db, store, tenant_slug)
-    document = store.get_document(collection=PAGE_COLLECTION, tenant_slug=tenant.slug, document_key=page_slug)
+    db_name = tenant.mongo_db_name
+    document = store.get_document(collection=PAGE_COLLECTION, tenant_slug=tenant.slug, document_key=page_slug, database_name=db_name)
     if document is None:
         page = _default_page(tenant, blueprint, page_slug)
         if "/" not in page_slug:
@@ -932,6 +955,7 @@ def get_page(
                 tenant_slug=tenant.slug,
                 document_key=page_slug,
                 payload=page,
+                database_name=db_name
             )
         return page
     return document["payload"]
@@ -947,6 +971,7 @@ def upsert_page(
     payload: dict[str, object],
 ) -> dict[str, object]:
     tenant, _ = _ensure_seeded(db, store, tenant_slug)
+    db_name = tenant.mongo_db_name
     page_payload = {
         "tenant_slug": tenant.slug,
         "page_slug": page_slug,
@@ -959,6 +984,7 @@ def upsert_page(
         tenant_slug=tenant.slug,
         document_key=page_slug,
         payload=page_payload,
+        database_name=db_name
     )
     platform_repository.create_audit_event(
         db,
@@ -983,10 +1009,12 @@ def upsert_page(
 
 def get_discovery(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str) -> dict[str, object]:
     tenant, blueprint = _ensure_seeded(db, store, tenant_slug)
+    db_name = tenant.mongo_db_name
     document = store.get_document(
         collection=DISCOVERY_COLLECTION,
         tenant_slug=tenant.slug,
         document_key="discovery",
+        database_name=db_name
     )
     if document is None:
         payload = _default_discovery(tenant, blueprint)
@@ -995,6 +1023,7 @@ def get_discovery(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str)
             tenant_slug=tenant.slug,
             document_key="discovery",
             payload=payload,
+            database_name=db_name
         )
         return payload
     return document["payload"]
@@ -1009,6 +1038,7 @@ def upsert_discovery(
     payload: dict[str, object],
 ) -> dict[str, object]:
     tenant, _ = _ensure_seeded(db, store, tenant_slug)
+    db_name = tenant.mongo_db_name
     discovery_payload = {
         "tenant_slug": tenant.slug,
         **payload,
@@ -1019,6 +1049,7 @@ def upsert_discovery(
         tenant_slug=tenant.slug,
         document_key="discovery",
         payload=discovery_payload,
+        database_name=db_name
     )
     platform_repository.create_audit_event(
         db,
@@ -1073,11 +1104,11 @@ def get_public_site_payload(
             resolved_discovery = {**resolved_discovery, "cards": [*resolved_discovery["cards"], *commerce_cards]}
 
     if "hotel" in tenant.vertical_packs:
-        hotel_blocks = _hotel_dynamic_blocks(store, tenant_slug=tenant_slug, page_slug=page_slug)
+        hotel_blocks = _hotel_dynamic_blocks(store, tenant_slug=tenant_slug, page_slug=page_slug, database_name=tenant.mongo_db_name)
         if hotel_blocks:
             resolved_page = {**resolved_page, "blocks": [*resolved_page["blocks"], *hotel_blocks]}
 
-        hotel_cards = _hotel_discovery_cards(store, tenant_slug=tenant_slug)
+        hotel_cards = _hotel_discovery_cards(store, tenant_slug=tenant_slug, database_name=tenant.mongo_db_name)
         if hotel_cards:
             resolved_discovery = {**resolved_discovery, "cards": [*resolved_discovery["cards"], *hotel_cards]}
 

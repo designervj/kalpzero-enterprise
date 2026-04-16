@@ -17,7 +17,9 @@ dependencies = [
   "redis>=6.4.0,<7.0.0",
   "psycopg[binary]>=3.2.6,<4.0.0",
   "sqlalchemy>=2.0.39,<3.0.0",
-  "uvicorn[standard]>=0.34.0,<1.0.0"
+  "uvicorn[standard]>=0.34.0,<1.0.0",
+  "beanie>=1.21.0,<2.0.0",
+  "motor>=3.3.0,<4.0.0"
 ]
 
 [project.optional-dependencies]

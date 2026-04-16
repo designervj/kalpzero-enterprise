@@ -1,113 +1,142 @@
+from datetime import UTC, datetime
+from typing import Any
+from uuid import uuid4
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from beanie.operators import In
 
-from app.db.models import (
-    CommerceAttributeModel,
-    CommerceAttributeSetModel,
-    CommerceBrandModel,
-    CommerceCategoryModel,
-    CommerceCollectionModel,
-    CommerceCouponModel,
-    CommerceFulfillmentLineModel,
-    CommerceFulfillmentModel,
-    CommerceInvoiceModel,
-    CommerceOrderLineModel,
-    CommerceOrderModel,
-    CommercePaymentModel,
-    CommercePriceListItemModel,
-    CommercePriceListModel,
-    CommerceProductAttributeValueModel,
-    CommerceProductModel,
-    CommerceRefundModel,
-    CommerceReturnLineModel,
-    CommerceReturnModel,
-    CommerceSettlementEntryModel,
-    CommerceSettlementModel,
-    CommerceShipmentModel,
-    CommerceStockLedgerEntryModel,
-    CommerceTaxProfileModel,
-    CommerceVariantModel,
-    CommerceVariantAttributeValueModel,
-    CommerceVendorModel,
-    CommerceWarehouseModel,
-    CommerceWarehouseStockModel,
+from app.core.config import get_settings
+from app.db.mongo import get_runtime_motor_database
+from app.models.commerce import (
+    CommerceCategory,
+    CommerceBrand,
+    CommerceVendor,
+    CommerceCollection,
+    CommerceAttribute,
+    CommerceAttributeSet,
+    CommerceProduct,
+    CommerceVariant,
+    CommerceWarehouse,
+    CommerceWarehouseStock,
+    CommerceProductAttributeValue,
+    CommerceVariantAttributeValue,
+    CommerceStockLedgerEntry,
+    CommerceTaxProfile,
+    CommercePriceList,
+    CommercePriceListItem,
+    CommerceCoupon,
+    CommerceOrder,
+    CommerceOrderLine,
+    CommerceFulfillment,
+    CommerceFulfillmentLine,
+    CommerceShipment,
+    CommercePayment,
+    CommerceRefund,
+    CommerceInvoice,
+    CommerceReturn,
+    CommerceReturnLine,
+    CommerceSettlement,
+    CommerceSettlementEntry,
 )
 
+def _get_tenant_database_id(db: Session, tenant_id: str) -> str:
+    """
+    Resolves the MongoDB database identifier (slug or custom name) from PostgreSQL.
+    """
+    from app.db.models import TenantModel
+    query = select(TenantModel.slug, TenantModel.mongo_db_name).where(TenantModel.id == tenant_id)
+    result = db.execute(query).first()
+    if not result:
+        raise ValueError(f"Tenant with ID {tenant_id} not found")
+    
+    slug, mongo_db_name = result
+    return mongo_db_name or slug
 
-def list_categories(db: Session, *, tenant_id: str) -> list[CommerceCategoryModel]:
-    query = select(CommerceCategoryModel).where(CommerceCategoryModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceCategoryModel.created_at.desc())
-    return list(db.scalars(query))
+def _now_iso() -> str:
+    return datetime.now(tz=UTC).isoformat()
 
+async def list_categories(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def get_category(db: Session, *, tenant_id: str, category_id: str) -> CommerceCategoryModel | None:
-    query = select(CommerceCategoryModel).where(
-        CommerceCategoryModel.tenant_id == tenant_id,
-        CommerceCategoryModel.id == category_id,
+    slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=slug)
+    categories = await CommerceCategory.find(CommerceCategory.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [c.model_dump() for c in categories]
+
+async def get_category(db_name: str, category_id: str) -> dict[str, Any] | None:
+
+    mongo_db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    category = await CommerceCategory.find_one(
+        CommerceCategory.id == category_id
     )
-    return db.scalar(query)
+    return category.model_dump() if category else None
 
+async def find_category_by_slug(db_name: str, slug: str) -> dict[str, Any] | None:
 
-def find_category_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommerceCategoryModel | None:
-    query = select(CommerceCategoryModel).where(
-        CommerceCategoryModel.tenant_id == tenant_id,
-        CommerceCategoryModel.slug == slug,
+    mongo_db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    category = await CommerceCategory.find_one(
+        CommerceCategory.slug == slug
     )
-    return db.scalar(query)
+    return category.model_dump() if category else None
 
-
-def create_category(
-    db: Session,
-    *,
+async def create_category(
     tenant_id: str,
     name: str,
     slug: str,
     description: str | None,
     parent_category_id: str | None,
-) -> CommerceCategoryModel:
-    model = CommerceCategoryModel(
+    db_name: str,
+) -> dict[str, Any]:
+
+    mongo_db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    category = CommerceCategory(
         tenant_id=tenant_id,
         name=name,
         slug=slug,
         description=description,
         parent_category_id=parent_category_id,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await category.insert(link_rule=None, session=None)
+    return category.model_dump()
 
+async def list_brands(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_brands(db: Session, *, tenant_id: str) -> list[CommerceBrandModel]:
-    query = select(CommerceBrandModel).where(CommerceBrandModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceBrandModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    brands = await CommerceBrand.find(CommerceBrand.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [b.model_dump() for b in brands]
 
+async def get_brand(db: Session, *, tenant_id: str, brand_id: str) -> dict[str, Any] | None:
 
-def get_brand(db: Session, *, tenant_id: str, brand_id: str) -> CommerceBrandModel | None:
-    query = select(CommerceBrandModel).where(
-        CommerceBrandModel.tenant_id == tenant_id,
-        CommerceBrandModel.id == brand_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    brand = await CommerceBrand.find_one(
+        CommerceBrand.tenant_id == tenant_id, 
+        CommerceBrand.id == brand_id
+    ).set_database(mongo_db)
+    return brand.model_dump() if brand else None
 
+async def find_brand_by_slug(db: Session, *, tenant_id: str, slug: str) -> dict[str, Any] | None:
 
-def find_brand_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommerceBrandModel | None:
-    query = select(CommerceBrandModel).where(
-        CommerceBrandModel.tenant_id == tenant_id,
-        CommerceBrandModel.slug == slug,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    brand = await CommerceBrand.find_one(
+        CommerceBrand.tenant_id == tenant_id, 
+        CommerceBrand.slug == slug
+    ).set_database(mongo_db)
+    return brand.model_dump() if brand else None
 
+async def find_brand_by_code(db: Session, *, tenant_id: str, code: str) -> dict[str, Any] | None:
 
-def find_brand_by_code(db: Session, *, tenant_id: str, code: str) -> CommerceBrandModel | None:
-    query = select(CommerceBrandModel).where(
-        CommerceBrandModel.tenant_id == tenant_id,
-        CommerceBrandModel.code == code,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    brand = await CommerceBrand.find_one(
+        CommerceBrand.tenant_id == tenant_id, 
+        CommerceBrand.code == code
+    ).set_database(mongo_db)
+    return brand.model_dump() if brand else None
 
-
-def create_brand(
+async def create_brand(
     db: Session,
     *,
     tenant_id: str,
@@ -116,8 +145,12 @@ def create_brand(
     code: str,
     description: str | None,
     status: str,
-) -> CommerceBrandModel:
-    model = CommerceBrandModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    brand = CommerceBrand(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         slug=slug,
@@ -125,42 +158,47 @@ def create_brand(
         description=description,
         status=status,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await brand.insert().set_database(mongo_db)
+    return brand.model_dump()
 
+async def list_vendors(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_vendors(db: Session, *, tenant_id: str) -> list[CommerceVendorModel]:
-    query = select(CommerceVendorModel).where(CommerceVendorModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceVendorModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    vendors = await CommerceVendor.find(CommerceVendor.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [v.model_dump() for v in vendors]
 
+async def get_vendor(db: Session, *, tenant_id: str, vendor_id: str) -> dict[str, Any] | None:
 
-def get_vendor(db: Session, *, tenant_id: str, vendor_id: str) -> CommerceVendorModel | None:
-    query = select(CommerceVendorModel).where(
-        CommerceVendorModel.tenant_id == tenant_id,
-        CommerceVendorModel.id == vendor_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    vendor = await CommerceVendor.find_one(
+        CommerceVendor.tenant_id == tenant_id, 
+        CommerceVendor.id == vendor_id
+    ).set_database(mongo_db)
+    return vendor.model_dump() if vendor else None
 
+async def find_vendor_by_slug(db: Session, *, tenant_id: str, slug: str) -> dict[str, Any] | None:
 
-def find_vendor_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommerceVendorModel | None:
-    query = select(CommerceVendorModel).where(
-        CommerceVendorModel.tenant_id == tenant_id,
-        CommerceVendorModel.slug == slug,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    vendor = await CommerceVendor.find_one(
+        CommerceVendor.tenant_id == tenant_id, 
+        CommerceVendor.slug == slug
+    ).set_database(mongo_db)
+    return vendor.model_dump() if vendor else None
 
+async def find_vendor_by_code(db: Session, *, tenant_id: str, code: str) -> dict[str, Any] | None:
 
-def find_vendor_by_code(db: Session, *, tenant_id: str, code: str) -> CommerceVendorModel | None:
-    query = select(CommerceVendorModel).where(
-        CommerceVendorModel.tenant_id == tenant_id,
-        CommerceVendorModel.code == code,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    vendor = await CommerceVendor.find_one(
+        CommerceVendor.tenant_id == tenant_id, 
+        CommerceVendor.code == code
+    ).set_database(mongo_db)
+    return vendor.model_dump() if vendor else None
 
-
-def create_vendor(
+async def create_vendor(
     db: Session,
     *,
     tenant_id: str,
@@ -172,8 +210,12 @@ def create_vendor(
     contact_email: str | None,
     contact_phone: str | None,
     status: str,
-) -> CommerceVendorModel:
-    model = CommerceVendorModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    vendor = CommerceVendor(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         slug=slug,
@@ -184,44 +226,46 @@ def create_vendor(
         contact_phone=contact_phone,
         status=status,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await vendor.insert().set_database(mongo_db)
+    return vendor.model_dump()
 
+async def list_collections(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    collections = await CommerceCollection.find(CommerceCollection.tenant_id == tenant_id).sort("sort_order", "-created_at").set_database(mongo_db).to_list()
+    return [c.model_dump() for c in collections]
 
-def list_collections(db: Session, *, tenant_id: str) -> list[CommerceCollectionModel]:
-    query = select(CommerceCollectionModel).where(CommerceCollectionModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceCollectionModel.sort_order.asc(), CommerceCollectionModel.created_at.desc())
-    return list(db.scalars(query))
-
-
-def list_collections_by_ids(db: Session, *, tenant_id: str, collection_ids: list[str]) -> list[CommerceCollectionModel]:
+async def list_collections_by_ids(db: Session, *, tenant_id: str, collection_ids: list[str]) -> list[dict[str, Any]]:
     if not collection_ids:
         return []
-    query = select(CommerceCollectionModel).where(
-        CommerceCollectionModel.tenant_id == tenant_id,
-        CommerceCollectionModel.id.in_(collection_ids),
-    )
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    collections = await CommerceCollection.find(
+        CommerceCollection.tenant_id == tenant_id,
+        In(CommerceCollection.id, collection_ids)
+    ).set_database(mongo_db).to_list()
+    return [c.model_dump() for c in collections]
 
-def get_collection(db: Session, *, tenant_id: str, collection_id: str) -> CommerceCollectionModel | None:
-    query = select(CommerceCollectionModel).where(
-        CommerceCollectionModel.tenant_id == tenant_id,
-        CommerceCollectionModel.id == collection_id,
-    )
-    return db.scalar(query)
+async def get_collection(db: Session, *, tenant_id: str, collection_id: str) -> dict[str, Any] | None:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    collection = await CommerceCollection.find_one(
+        CommerceCollection.tenant_id == tenant_id, 
+        CommerceCollection.id == collection_id
+    ).set_database(mongo_db)
+    return collection.model_dump() if collection else None
 
+async def find_collection_by_slug(db: Session, *, tenant_id: str, slug: str) -> dict[str, Any] | None:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    collection = await CommerceCollection.find_one(
+        CommerceCollection.tenant_id == tenant_id, 
+        CommerceCollection.slug == slug
+    ).set_database(mongo_db)
+    return collection.model_dump() if collection else None
 
-def find_collection_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommerceCollectionModel | None:
-    query = select(CommerceCollectionModel).where(
-        CommerceCollectionModel.tenant_id == tenant_id,
-        CommerceCollectionModel.slug == slug,
-    )
-    return db.scalar(query)
-
-
-def create_collection(
+async def create_collection(
     db: Session,
     *,
     tenant_id: str,
@@ -230,8 +274,11 @@ def create_collection(
     description: str | None,
     status: str,
     sort_order: int,
-) -> CommerceCollectionModel:
-    model = CommerceCollectionModel(
+) -> dict[str, Any]:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    collection = CommerceCollection(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         slug=slug,
@@ -239,34 +286,34 @@ def create_collection(
         status=status,
         sort_order=sort_order,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await collection.insert().set_database(mongo_db)
+    return collection.model_dump()
 
+async def list_tax_profiles(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    profiles = await CommerceTaxProfile.find(CommerceTaxProfile.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [p.model_dump() for p in profiles]
 
-def list_tax_profiles(db: Session, *, tenant_id: str) -> list[CommerceTaxProfileModel]:
-    query = select(CommerceTaxProfileModel).where(CommerceTaxProfileModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceTaxProfileModel.created_at.desc())
-    return list(db.scalars(query))
+async def get_tax_profile(db: Session, *, tenant_id: str, tax_profile_id: str) -> dict[str, Any] | None:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    profile = await CommerceTaxProfile.find_one(
+        CommerceTaxProfile.tenant_id == tenant_id, 
+        CommerceTaxProfile.id == tax_profile_id
+    ).set_database(mongo_db)
+    return profile.model_dump() if profile else None
 
+async def find_tax_profile_by_code(db: Session, *, tenant_id: str, code: str) -> dict[str, Any] | None:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    profile = await CommerceTaxProfile.find_one(
+        CommerceTaxProfile.tenant_id == tenant_id, 
+        CommerceTaxProfile.code == code
+    ).set_database(mongo_db)
+    return profile.model_dump() if profile else None
 
-def get_tax_profile(db: Session, *, tenant_id: str, tax_profile_id: str) -> CommerceTaxProfileModel | None:
-    query = select(CommerceTaxProfileModel).where(
-        CommerceTaxProfileModel.tenant_id == tenant_id,
-        CommerceTaxProfileModel.id == tax_profile_id,
-    )
-    return db.scalar(query)
-
-
-def find_tax_profile_by_code(db: Session, *, tenant_id: str, code: str) -> CommerceTaxProfileModel | None:
-    query = select(CommerceTaxProfileModel).where(
-        CommerceTaxProfileModel.tenant_id == tenant_id,
-        CommerceTaxProfileModel.code == code,
-    )
-    return db.scalar(query)
-
-
-def create_tax_profile(
+async def create_tax_profile(
     db: Session,
     *,
     tenant_id: str,
@@ -276,44 +323,50 @@ def create_tax_profile(
     prices_include_tax: bool,
     rules_json: list[dict[str, object]],
     status: str,
-) -> CommerceTaxProfileModel:
-    model = CommerceTaxProfileModel(
+) -> dict[str, Any]:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    profile = CommerceTaxProfile(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         code=code,
         description=description,
         prices_include_tax=prices_include_tax,
-        rules_json=rules_json,
+        rules=rules_json,
         status=status,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await profile.insert().set_database(mongo_db)
+    return profile.model_dump()
 
+async def list_price_lists(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_price_lists(db: Session, *, tenant_id: str) -> list[CommercePriceListModel]:
-    query = select(CommercePriceListModel).where(CommercePriceListModel.tenant_id == tenant_id)
-    query = query.order_by(CommercePriceListModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    price_lists = await CommercePriceList.find(CommercePriceList.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [p.model_dump() for p in price_lists]
 
+async def get_price_list(db: Session, *, tenant_id: str, price_list_id: str) -> dict[str, Any] | None:
 
-def get_price_list(db: Session, *, tenant_id: str, price_list_id: str) -> CommercePriceListModel | None:
-    query = select(CommercePriceListModel).where(
-        CommercePriceListModel.tenant_id == tenant_id,
-        CommercePriceListModel.id == price_list_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    price_list = await CommercePriceList.find_one(
+        CommercePriceList.tenant_id == tenant_id, 
+        CommercePriceList.id == price_list_id
+    ).set_database(mongo_db)
+    return price_list.model_dump() if price_list else None
 
+async def find_price_list_by_slug(db: Session, *, tenant_id: str, slug: str) -> dict[str, Any] | None:
 
-def find_price_list_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommercePriceListModel | None:
-    query = select(CommercePriceListModel).where(
-        CommercePriceListModel.tenant_id == tenant_id,
-        CommercePriceListModel.slug == slug,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    price_list = await CommercePriceList.find_one(
+        CommercePriceList.tenant_id == tenant_id, 
+        CommercePriceList.slug == slug
+    ).set_database(mongo_db)
+    return price_list.model_dump() if price_list else None
 
-
-def create_price_list(
+async def create_price_list(
     db: Session,
     *,
     tenant_id: str,
@@ -323,8 +376,12 @@ def create_price_list(
     customer_segment: str | None,
     description: str | None,
     status: str,
-) -> CommercePriceListModel:
-    model = CommercePriceListModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    price_list = CommercePriceList(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         slug=slug,
@@ -333,71 +390,77 @@ def create_price_list(
         description=description,
         status=status,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await price_list.insert().set_database(mongo_db)
+    return price_list.model_dump()
 
+async def list_price_list_items(db: Session, *, tenant_id: str, price_list_id: str) -> list[dict[str, Any]]:
 
-def list_price_list_items(db: Session, *, tenant_id: str, price_list_id: str) -> list[CommercePriceListItemModel]:
-    query = select(CommercePriceListItemModel).where(
-        CommercePriceListItemModel.tenant_id == tenant_id,
-        CommercePriceListItemModel.price_list_id == price_list_id,
-    )
-    query = query.order_by(CommercePriceListItemModel.created_at.asc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    items = await CommercePriceListItem.find(
+        CommercePriceListItem.tenant_id == tenant_id, 
+        CommercePriceListItem.price_list_id == price_list_id
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [i.model_dump() for i in items]
 
-
-def list_price_list_items_for_variants(
+async def list_price_list_items_for_variants(
     db: Session,
     *,
     tenant_id: str,
     price_list_id: str,
     variant_ids: list[str],
-) -> list[CommercePriceListItemModel]:
+) -> list[dict[str, Any]]:
     if not variant_ids:
         return []
-    query = select(CommercePriceListItemModel).where(
-        CommercePriceListItemModel.tenant_id == tenant_id,
-        CommercePriceListItemModel.price_list_id == price_list_id,
-        CommercePriceListItemModel.variant_id.in_(variant_ids),
-    )
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    items = await CommercePriceListItem.find(
+        CommercePriceListItem.tenant_id == tenant_id,
+        CommercePriceListItem.price_list_id == price_list_id,
+        In(CommercePriceListItem.variant_id, variant_ids)
+    ).set_database(mongo_db).to_list()
+    return [i.model_dump() for i in items]
 
-def create_price_list_item(
+async def create_price_list_item(
     db: Session,
     *,
     tenant_id: str,
     price_list_id: str,
     variant_id: str,
     price_minor: int,
-) -> CommercePriceListItemModel:
-    model = CommercePriceListItemModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    item = CommercePriceListItem(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         price_list_id=price_list_id,
         variant_id=variant_id,
         price_minor=price_minor,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await item.insert().set_database(mongo_db)
+    return item.model_dump()
 
+async def list_coupons(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_coupons(db: Session, *, tenant_id: str) -> list[CommerceCouponModel]:
-    query = select(CommerceCouponModel).where(CommerceCouponModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceCouponModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    coupons = await CommerceCoupon.find(CommerceCoupon.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [c.model_dump() for c in coupons]
 
+async def find_coupon_by_code(db: Session, *, tenant_id: str, code: str) -> dict[str, Any] | None:
 
-def find_coupon_by_code(db: Session, *, tenant_id: str, code: str) -> CommerceCouponModel | None:
-    query = select(CommerceCouponModel).where(
-        CommerceCouponModel.tenant_id == tenant_id,
-        CommerceCouponModel.code == code,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    coupon = await CommerceCoupon.find_one(
+        CommerceCoupon.tenant_id == tenant_id, 
+        CommerceCoupon.code == code
+    ).set_database(mongo_db)
+    return coupon.model_dump() if coupon else None
 
-
-def create_coupon(
+async def create_coupon(
     db: Session,
     *,
     tenant_id: str,
@@ -410,8 +473,12 @@ def create_coupon(
     applicable_category_ids: list[str],
     applicable_variant_ids: list[str],
     status: str,
-) -> CommerceCouponModel:
-    model = CommerceCouponModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    coupon = CommerceCoupon(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         code=code,
         description=description,
@@ -423,52 +490,73 @@ def create_coupon(
         applicable_variant_ids=applicable_variant_ids,
         status=status,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await coupon.insert().set_database(mongo_db)
+    return coupon.model_dump()
+    #     tenant_id=tenant_id,
+    #     code=code,
+    #     description=description,
+    #     discount_type=discount_type,
+    #     discount_value=discount_value,
+    #     minimum_subtotal_minor=minimum_subtotal_minor,
+    #     maximum_discount_minor=maximum_discount_minor,
+    #     applicable_category_ids=applicable_category_ids,
+    #     applicable_variant_ids=applicable_variant_ids,
+    #     status=status,
+    # )
+    # db.add(model)
+    # db.flush()
+    # return model
 
+async def list_attributes(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_attributes(db: Session, *, tenant_id: str) -> list[CommerceAttributeModel]:
-    query = select(CommerceAttributeModel).where(CommerceAttributeModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceAttributeModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attributes = await CommerceAttribute.find(CommerceAttribute.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [a.model_dump() for a in attributes]
 
-
-def list_attributes_by_ids(db: Session, *, tenant_id: str, attribute_ids: list[str]) -> list[CommerceAttributeModel]:
+async def list_attributes_by_ids(db: Session, *, tenant_id: str, attribute_ids: list[str]) -> list[dict[str, Any]]:
     if not attribute_ids:
         return []
-    query = select(CommerceAttributeModel).where(
-        CommerceAttributeModel.tenant_id == tenant_id,
-        CommerceAttributeModel.id.in_(attribute_ids),
-    )
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attributes = await CommerceAttribute.find(
+        CommerceAttribute.tenant_id == tenant_id, 
+        In(CommerceAttribute.id, attribute_ids)
+    ).set_database(mongo_db).to_list()
+    return [a.model_dump() for a in attributes]
 
-def get_attribute(db: Session, *, tenant_id: str, attribute_id: str) -> CommerceAttributeModel | None:
-    query = select(CommerceAttributeModel).where(
-        CommerceAttributeModel.tenant_id == tenant_id,
-        CommerceAttributeModel.id == attribute_id,
-    )
-    return db.scalar(query)
+async def get_attribute(db: Session, *, tenant_id: str, attribute_id: str) -> dict[str, Any] | None:
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attribute = await CommerceAttribute.find_one(
+        CommerceAttribute.tenant_id == tenant_id, 
+        CommerceAttribute.id == attribute_id
+    ).set_database(mongo_db)
+    return attribute.model_dump() if attribute else None
 
-def find_attribute_by_code(db: Session, *, tenant_id: str, code: str) -> CommerceAttributeModel | None:
-    query = select(CommerceAttributeModel).where(
-        CommerceAttributeModel.tenant_id == tenant_id,
-        CommerceAttributeModel.code == code,
-    )
-    return db.scalar(query)
+async def find_attribute_by_code(db: Session, *, tenant_id: str, code: str) -> dict[str, Any] | None:
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attribute = await CommerceAttribute.find_one(
+        CommerceAttribute.tenant_id == tenant_id, 
+        CommerceAttribute.code == code
+    ).set_database(mongo_db)
+    return attribute.model_dump() if attribute else None
 
-def find_attribute_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommerceAttributeModel | None:
-    query = select(CommerceAttributeModel).where(
-        CommerceAttributeModel.tenant_id == tenant_id,
-        CommerceAttributeModel.slug == slug,
-    )
-    return db.scalar(query)
+async def find_attribute_by_slug(db: Session, *, tenant_id: str, slug: str) -> dict[str, Any] | None:
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attribute = await CommerceAttribute.find_one(
+        CommerceAttribute.tenant_id == tenant_id, 
+        CommerceAttribute.slug == slug
+    ).set_database(mongo_db)
+    return attribute.model_dump() if attribute else None
 
-def create_attribute(
+async def create_attribute(
     db: Session,
     *,
     tenant_id: str,
@@ -485,8 +573,12 @@ def create_attribute(
     is_variation_axis: bool,
     vertical_bindings: list[str],
     status: str,
-) -> CommerceAttributeModel:
-    model = CommerceAttributeModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attribute = CommerceAttribute(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         code=code,
         slug=slug,
@@ -494,7 +586,7 @@ def create_attribute(
         description=description,
         value_type=value_type,
         scope=scope,
-        options_json=options_json,
+        options=options_json,
         unit_label=unit_label,
         is_required=is_required,
         is_filterable=is_filterable,
@@ -502,34 +594,37 @@ def create_attribute(
         vertical_bindings=vertical_bindings,
         status=status,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await attribute.insert().set_database(mongo_db)
+    return attribute.model_dump()
 
+async def list_attribute_sets(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_attribute_sets(db: Session, *, tenant_id: str) -> list[CommerceAttributeSetModel]:
-    query = select(CommerceAttributeSetModel).where(CommerceAttributeSetModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceAttributeSetModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    sets = await CommerceAttributeSet.find(CommerceAttributeSet.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [s.model_dump() for s in sets]
 
+async def get_attribute_set(db: Session, *, tenant_id: str, attribute_set_id: str) -> dict[str, Any] | None:
 
-def get_attribute_set(db: Session, *, tenant_id: str, attribute_set_id: str) -> CommerceAttributeSetModel | None:
-    query = select(CommerceAttributeSetModel).where(
-        CommerceAttributeSetModel.tenant_id == tenant_id,
-        CommerceAttributeSetModel.id == attribute_set_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attr_set = await CommerceAttributeSet.find_one(
+        CommerceAttributeSet.tenant_id == tenant_id, 
+        CommerceAttributeSet.id == attribute_set_id
+    ).set_database(mongo_db)
+    return attr_set.model_dump() if attr_set else None
 
+async def find_attribute_set_by_slug(db: Session, *, tenant_id: str, slug: str) -> dict[str, Any] | None:
 
-def find_attribute_set_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommerceAttributeSetModel | None:
-    query = select(CommerceAttributeSetModel).where(
-        CommerceAttributeSetModel.tenant_id == tenant_id,
-        CommerceAttributeSetModel.slug == slug,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attr_set = await CommerceAttributeSet.find_one(
+        CommerceAttributeSet.tenant_id == tenant_id, 
+        CommerceAttributeSet.slug == slug
+    ).set_database(mongo_db)
+    return attr_set.model_dump() if attr_set else None
 
-
-def create_attribute_set(
+async def create_attribute_set(
     db: Session,
     *,
     tenant_id: str,
@@ -539,8 +634,12 @@ def create_attribute_set(
     attribute_ids: list[str],
     vertical_bindings: list[str],
     status: str,
-) -> CommerceAttributeSetModel:
-    model = CommerceAttributeSetModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    attr_set = CommerceAttributeSet(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         slug=slug,
@@ -549,34 +648,37 @@ def create_attribute_set(
         vertical_bindings=vertical_bindings,
         status=status,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await attr_set.insert().set_database(mongo_db)
+    return attr_set.model_dump()
 
+async def list_products(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_products(db: Session, *, tenant_id: str) -> list[CommerceProductModel]:
-    query = select(CommerceProductModel).where(CommerceProductModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceProductModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    products = await CommerceProduct.find(CommerceProduct.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [p.model_dump() for p in products]
 
+async def get_product(db: Session, *, tenant_id: str, product_id: str) -> dict[str, Any] | None:
 
-def get_product(db: Session, *, tenant_id: str, product_id: str) -> CommerceProductModel | None:
-    query = select(CommerceProductModel).where(
-        CommerceProductModel.tenant_id == tenant_id,
-        CommerceProductModel.id == product_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    product = await CommerceProduct.find_one(
+        CommerceProduct.tenant_id == tenant_id, 
+        CommerceProduct.id == product_id
+    ).set_database(mongo_db)
+    return product.model_dump() if product else None
 
+async def find_product_by_slug(db: Session, *, tenant_id: str, slug: str) -> dict[str, Any] | None:
 
-def find_product_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommerceProductModel | None:
-    query = select(CommerceProductModel).where(
-        CommerceProductModel.tenant_id == tenant_id,
-        CommerceProductModel.slug == slug,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    product = await CommerceProduct.find_one(
+        CommerceProduct.tenant_id == tenant_id, 
+        CommerceProduct.slug == slug
+    ).set_database(mongo_db)
+    return product.model_dump() if product else None
 
-
-def create_product(
+async def create_product(
     db: Session,
     *,
     tenant_id: str,
@@ -591,8 +693,12 @@ def create_product(
     seo_title: str | None,
     seo_description: str | None,
     status: str,
-) -> CommerceProductModel:
-    model = CommerceProductModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    product = CommerceProduct(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         slug=slug,
@@ -606,45 +712,49 @@ def create_product(
         seo_description=seo_description,
         status=status,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await product.insert().set_database(mongo_db)
+    return product.model_dump()
 
+async def list_variants(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_variants(db: Session, *, tenant_id: str) -> list[CommerceVariantModel]:
-    query = select(CommerceVariantModel).where(CommerceVariantModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceVariantModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    variants = await CommerceVariant.find(CommerceVariant.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [v.model_dump() for v in variants]
 
-
-def list_variants_for_products(db: Session, *, tenant_id: str, product_ids: list[str]) -> list[CommerceVariantModel]:
+async def list_variants_for_products(db: Session, *, tenant_id: str, product_ids: list[str]) -> list[dict[str, Any]]:
     if not product_ids:
         return []
-    query = select(CommerceVariantModel).where(
-        CommerceVariantModel.tenant_id == tenant_id,
-        CommerceVariantModel.product_id.in_(product_ids),
-    )
-    query = query.order_by(CommerceVariantModel.created_at.asc())
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    variants = await CommerceVariant.find(
+        CommerceVariant.tenant_id == tenant_id, 
+        In(CommerceVariant.product_id, product_ids)
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [v.model_dump() for v in variants]
 
-def get_variant(db: Session, *, tenant_id: str, variant_id: str) -> CommerceVariantModel | None:
-    query = select(CommerceVariantModel).where(
-        CommerceVariantModel.tenant_id == tenant_id,
-        CommerceVariantModel.id == variant_id,
-    )
-    return db.scalar(query)
+async def get_variant(db: Session, *, tenant_id: str, variant_id: str) -> dict[str, Any] | None:
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    variant = await CommerceVariant.find_one(
+        CommerceVariant.tenant_id == tenant_id, 
+        CommerceVariant.id == variant_id
+    ).set_database(mongo_db)
+    return variant.model_dump() if variant else None
 
-def find_variant_by_sku(db: Session, *, tenant_id: str, sku: str) -> CommerceVariantModel | None:
-    query = select(CommerceVariantModel).where(
-        CommerceVariantModel.tenant_id == tenant_id,
-        CommerceVariantModel.sku == sku,
-    )
-    return db.scalar(query)
+async def find_variant_by_sku(db: Session, *, tenant_id: str, sku: str) -> dict[str, Any] | None:
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    variant = await CommerceVariant.find_one(
+        CommerceVariant.tenant_id == tenant_id, 
+        CommerceVariant.sku == sku
+    ).set_database(mongo_db)
+    return variant.model_dump() if variant else None
 
-def create_variant(
+async def create_variant(
     db: Session,
     *,
     tenant_id: str,
@@ -654,8 +764,12 @@ def create_variant(
     price_minor: int,
     currency: str,
     inventory_quantity: int,
-) -> CommerceVariantModel:
-    model = CommerceVariantModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    variant = CommerceVariant(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         product_id=product_id,
         sku=sku,
@@ -664,42 +778,47 @@ def create_variant(
         currency=currency,
         inventory_quantity=inventory_quantity,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await variant.insert().set_database(mongo_db)
+    return variant.model_dump()
 
+async def list_warehouses(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_warehouses(db: Session, *, tenant_id: str) -> list[CommerceWarehouseModel]:
-    query = select(CommerceWarehouseModel).where(CommerceWarehouseModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceWarehouseModel.is_default.desc(), CommerceWarehouseModel.created_at.asc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    warehouses = await CommerceWarehouse.find(CommerceWarehouse.tenant_id == tenant_id).sort("-is_default", "created_at").set_database(mongo_db).to_list()
+    return [w.model_dump() for w in warehouses]
 
+async def get_warehouse(db: Session, *, tenant_id: str, warehouse_id: str) -> dict[str, Any] | None:
 
-def get_warehouse(db: Session, *, tenant_id: str, warehouse_id: str) -> CommerceWarehouseModel | None:
-    query = select(CommerceWarehouseModel).where(
-        CommerceWarehouseModel.tenant_id == tenant_id,
-        CommerceWarehouseModel.id == warehouse_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    warehouse = await CommerceWarehouse.find_one(
+        CommerceWarehouse.tenant_id == tenant_id, 
+        CommerceWarehouse.id == warehouse_id
+    ).set_database(mongo_db)
+    return warehouse.model_dump() if warehouse else None
 
+async def find_warehouse_by_slug(db: Session, *, tenant_id: str, slug: str) -> dict[str, Any] | None:
 
-def find_warehouse_by_slug(db: Session, *, tenant_id: str, slug: str) -> CommerceWarehouseModel | None:
-    query = select(CommerceWarehouseModel).where(
-        CommerceWarehouseModel.tenant_id == tenant_id,
-        CommerceWarehouseModel.slug == slug,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    warehouse = await CommerceWarehouse.find_one(
+        CommerceWarehouse.tenant_id == tenant_id, 
+        CommerceWarehouse.slug == slug
+    ).set_database(mongo_db)
+    return warehouse.model_dump() if warehouse else None
 
+async def find_warehouse_by_code(db: Session, *, tenant_id: str, code: str) -> dict[str, Any] | None:
 
-def find_warehouse_by_code(db: Session, *, tenant_id: str, code: str) -> CommerceWarehouseModel | None:
-    query = select(CommerceWarehouseModel).where(
-        CommerceWarehouseModel.tenant_id == tenant_id,
-        CommerceWarehouseModel.code == code,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    warehouse = await CommerceWarehouse.find_one(
+        CommerceWarehouse.tenant_id == tenant_id, 
+        CommerceWarehouse.code == code
+    ).set_database(mongo_db)
+    return warehouse.model_dump() if warehouse else None
 
-
-def create_warehouse(
+async def create_warehouse(
     db: Session,
     *,
     tenant_id: str,
@@ -710,8 +829,12 @@ def create_warehouse(
     country: str | None,
     status: str,
     is_default: bool,
-) -> CommerceWarehouseModel:
-    model = CommerceWarehouseModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    warehouse = CommerceWarehouse(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         slug=slug,
@@ -721,59 +844,62 @@ def create_warehouse(
         status=status,
         is_default=is_default,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await warehouse.insert().set_database(mongo_db)
+    return warehouse.model_dump()
 
-
-def list_warehouse_stocks(
+async def list_warehouse_stocks(
     db: Session,
     *,
     tenant_id: str,
     warehouse_id: str | None = None,
     variant_id: str | None = None,
-) -> list[CommerceWarehouseStockModel]:
-    query = select(CommerceWarehouseStockModel).where(CommerceWarehouseStockModel.tenant_id == tenant_id)
+) -> list[dict[str, Any]]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    query = CommerceWarehouseStock.find(CommerceWarehouseStock.tenant_id == tenant_id)
     if warehouse_id:
-        query = query.where(CommerceWarehouseStockModel.warehouse_id == warehouse_id)
+        query = query.find(CommerceWarehouseStock.warehouse_id == warehouse_id)
     if variant_id:
-        query = query.where(CommerceWarehouseStockModel.variant_id == variant_id)
-    query = query.order_by(CommerceWarehouseStockModel.created_at.asc())
-    return list(db.scalars(query))
+        query = query.find(CommerceWarehouseStock.variant_id == variant_id)
+    stocks = await query.sort("created_at").set_database(mongo_db).to_list()
+    return [s.model_dump() for s in stocks]
 
-
-def list_warehouse_stocks_for_variants(
+async def list_warehouse_stocks_for_variants(
     db: Session,
     *,
     tenant_id: str,
     variant_ids: list[str],
-) -> list[CommerceWarehouseStockModel]:
+) -> list[dict[str, Any]]:
     if not variant_ids:
         return []
-    query = select(CommerceWarehouseStockModel).where(
-        CommerceWarehouseStockModel.tenant_id == tenant_id,
-        CommerceWarehouseStockModel.variant_id.in_(variant_ids),
-    )
-    query = query.order_by(CommerceWarehouseStockModel.created_at.asc())
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    stocks = await CommerceWarehouseStock.find(
+        CommerceWarehouseStock.tenant_id == tenant_id,
+        In(CommerceWarehouseStock.variant_id, variant_ids)
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [s.model_dump() for s in stocks]
 
-def get_warehouse_stock(
+async def get_warehouse_stock(
     db: Session,
     *,
     tenant_id: str,
     warehouse_id: str,
     variant_id: str,
-) -> CommerceWarehouseStockModel | None:
-    query = select(CommerceWarehouseStockModel).where(
-        CommerceWarehouseStockModel.tenant_id == tenant_id,
-        CommerceWarehouseStockModel.warehouse_id == warehouse_id,
-        CommerceWarehouseStockModel.variant_id == variant_id,
-    )
-    return db.scalar(query)
+) -> dict[str, Any] | None:
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    stock = await CommerceWarehouseStock.find_one(
+        CommerceWarehouseStock.tenant_id == tenant_id, 
+        CommerceWarehouseStock.warehouse_id == warehouse_id,
+        CommerceWarehouseStock.variant_id == variant_id
+    ).set_database(mongo_db)
+    return stock.model_dump() if stock else None
 
-def create_warehouse_stock(
+async def create_warehouse_stock(
     db: Session,
     *,
     tenant_id: str,
@@ -782,8 +908,12 @@ def create_warehouse_stock(
     on_hand_quantity: int,
     reserved_quantity: int,
     low_stock_threshold: int,
-) -> CommerceWarehouseStockModel:
-    model = CommerceWarehouseStockModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    stock = CommerceWarehouseStock(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         warehouse_id=warehouse_id,
         variant_id=variant_id,
@@ -791,28 +921,28 @@ def create_warehouse_stock(
         reserved_quantity=reserved_quantity,
         low_stock_threshold=low_stock_threshold,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await stock.insert().set_database(mongo_db)
+    return stock.model_dump()
 
-
-def list_stock_ledger_entries(
+async def list_stock_ledger_entries(
     db: Session,
     *,
     tenant_id: str,
     warehouse_id: str | None = None,
     variant_id: str | None = None,
-) -> list[CommerceStockLedgerEntryModel]:
-    query = select(CommerceStockLedgerEntryModel).where(CommerceStockLedgerEntryModel.tenant_id == tenant_id)
+) -> list[dict[str, Any]]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    query = CommerceStockLedgerEntry.find(CommerceStockLedgerEntry.tenant_id == tenant_id)
     if warehouse_id:
-        query = query.where(CommerceStockLedgerEntryModel.warehouse_id == warehouse_id)
+        query = query.find(CommerceStockLedgerEntry.warehouse_id == warehouse_id)
     if variant_id:
-        query = query.where(CommerceStockLedgerEntryModel.variant_id == variant_id)
-    query = query.order_by(CommerceStockLedgerEntryModel.created_at.desc())
-    return list(db.scalars(query))
+        query = query.find(CommerceStockLedgerEntry.variant_id == variant_id)
+    entries = await query.sort("-created_at").set_database(mongo_db).to_list()
+    return [e.model_dump() for e in entries]
 
-
-def create_stock_ledger_entry(
+async def create_stock_ledger_entry(
     db: Session,
     *,
     tenant_id: str,
@@ -826,8 +956,12 @@ def create_stock_ledger_entry(
     reference_id: str | None,
     notes: str | None,
     recorded_by_user_id: str,
-) -> CommerceStockLedgerEntryModel:
-    model = CommerceStockLedgerEntryModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    entry = CommerceStockLedgerEntry(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         warehouse_id=warehouse_id,
         variant_id=variant_id,
@@ -840,107 +974,115 @@ def create_stock_ledger_entry(
         notes=notes,
         recorded_by_user_id=recorded_by_user_id,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await entry.insert().set_database(mongo_db)
+    return entry.model_dump()
 
-
-def list_product_attribute_values_for_products(
+async def list_product_attribute_values_for_products(
     db: Session,
     *,
     tenant_id: str,
     product_ids: list[str],
-) -> list[CommerceProductAttributeValueModel]:
+) -> list[dict[str, Any]]:
     if not product_ids:
         return []
-    query = select(CommerceProductAttributeValueModel).where(
-        CommerceProductAttributeValueModel.tenant_id == tenant_id,
-        CommerceProductAttributeValueModel.product_id.in_(product_ids),
-    )
-    query = query.order_by(CommerceProductAttributeValueModel.created_at.asc())
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    values = await CommerceProductAttributeValue.find(
+        CommerceProductAttributeValue.tenant_id == tenant_id,
+        In(CommerceProductAttributeValue.product_id, product_ids)
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [v.model_dump() for v in values]
 
-def create_product_attribute_value(
+async def create_product_attribute_value(
     db: Session,
     *,
     tenant_id: str,
     product_id: str,
     attribute_id: str,
     value_json: object,
-) -> CommerceProductAttributeValueModel:
-    model = CommerceProductAttributeValueModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    val = CommerceProductAttributeValue(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         product_id=product_id,
         attribute_id=attribute_id,
-        value_json=value_json,
+        value=value_json,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await val.insert().set_database(mongo_db)
+    return val.model_dump()
 
-
-def list_variant_attribute_values_for_variants(
+async def list_variant_attribute_values_for_variants(
     db: Session,
     *,
     tenant_id: str,
     variant_ids: list[str],
-) -> list[CommerceVariantAttributeValueModel]:
+) -> list[dict[str, Any]]:
     if not variant_ids:
         return []
-    query = select(CommerceVariantAttributeValueModel).where(
-        CommerceVariantAttributeValueModel.tenant_id == tenant_id,
-        CommerceVariantAttributeValueModel.variant_id.in_(variant_ids),
-    )
-    query = query.order_by(CommerceVariantAttributeValueModel.created_at.asc())
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    values = await CommerceVariantAttributeValue.find(
+        CommerceVariantAttributeValue.tenant_id == tenant_id,
+        In(CommerceVariantAttributeValue.variant_id, variant_ids)
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [v.model_dump() for v in values]
 
-def create_variant_attribute_value(
+async def create_variant_attribute_value(
     db: Session,
     *,
     tenant_id: str,
     variant_id: str,
     attribute_id: str,
     value_json: object,
-) -> CommerceVariantAttributeValueModel:
-    model = CommerceVariantAttributeValueModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    val = CommerceVariantAttributeValue(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         variant_id=variant_id,
         attribute_id=attribute_id,
-        value_json=value_json,
+        value=value_json,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await val.insert().set_database(mongo_db)
+    return val.model_dump()
 
+async def list_orders(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_orders(db: Session, *, tenant_id: str) -> list[CommerceOrderModel]:
-    query = select(CommerceOrderModel).where(CommerceOrderModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceOrderModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    orders = await CommerceOrder.find(CommerceOrder.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [o.model_dump() for o in orders]
 
+async def get_order(db: Session, *, tenant_id: str, order_id: str) -> dict[str, Any] | None:
 
-def get_order(db: Session, *, tenant_id: str, order_id: str) -> CommerceOrderModel | None:
-    query = select(CommerceOrderModel).where(
-        CommerceOrderModel.tenant_id == tenant_id,
-        CommerceOrderModel.id == order_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    order = await CommerceOrder.find_one(
+        CommerceOrder.tenant_id == tenant_id, 
+        CommerceOrder.id == order_id
+    ).set_database(mongo_db)
+    return order.model_dump() if order else None
 
-
-def list_order_lines_for_orders(db: Session, *, tenant_id: str, order_ids: list[str]) -> list[CommerceOrderLineModel]:
+async def list_order_lines_for_orders(db: Session, *, tenant_id: str, order_ids: list[str]) -> list[dict[str, Any]]:
     if not order_ids:
         return []
-    query = select(CommerceOrderLineModel).where(
-        CommerceOrderLineModel.tenant_id == tenant_id,
-        CommerceOrderLineModel.order_id.in_(order_ids),
-    )
-    query = query.order_by(CommerceOrderLineModel.created_at.asc())
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    lines = await CommerceOrderLine.find(
+        CommerceOrderLine.tenant_id == tenant_id,
+        In(CommerceOrderLine.order_id, order_ids)
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [l.model_dump() for l in lines]
 
-def create_order(
+async def create_order(
     db: Session,
     *,
     tenant_id: str,
@@ -962,8 +1104,12 @@ def create_order(
     invoice_issued_at: str | None,
     inventory_reserved: bool,
     placed_at: str | None,
-) -> CommerceOrderModel:
-    model = CommerceOrderModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    order = CommerceOrder(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         customer_id=customer_id,
         price_list_id=price_list_id,
@@ -984,12 +1130,10 @@ def create_order(
         inventory_reserved=inventory_reserved,
         placed_at=placed_at,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await order.insert().set_database(mongo_db)
+    return order.model_dump()
 
-
-def create_order_line(
+async def create_order_line(
     db: Session,
     *,
     order_id: str,
@@ -1001,8 +1145,12 @@ def create_order_line(
     fulfilled_quantity: int,
     unit_price_minor: int,
     line_total_minor: int,
-) -> CommerceOrderLineModel:
-    model = CommerceOrderLineModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    line = CommerceOrderLine(
+        id=str(uuid4()),
         order_id=order_id,
         tenant_id=tenant_id,
         product_id=product_id,
@@ -1013,28 +1161,30 @@ def create_order_line(
         unit_price_minor=unit_price_minor,
         line_total_minor=line_total_minor,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await line.insert().set_database(mongo_db)
+    return line.model_dump()
 
+async def list_fulfillments(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[dict[str, Any]]:
 
-def list_fulfillments(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[CommerceFulfillmentModel]:
-    query = select(CommerceFulfillmentModel).where(CommerceFulfillmentModel.tenant_id == tenant_id)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    query = CommerceFulfillment.find(CommerceFulfillment.tenant_id == tenant_id)
     if order_id:
-        query = query.where(CommerceFulfillmentModel.order_id == order_id)
-    query = query.order_by(CommerceFulfillmentModel.created_at.desc())
-    return list(db.scalars(query))
+        query = query.find(CommerceFulfillment.order_id == order_id)
+    fulfillments = await query.sort("-created_at").set_database(mongo_db).to_list()
+    return [f.model_dump() for f in fulfillments]
 
+async def get_fulfillment(db: Session, *, tenant_id: str, fulfillment_id: str) -> dict[str, Any] | None:
 
-def get_fulfillment(db: Session, *, tenant_id: str, fulfillment_id: str) -> CommerceFulfillmentModel | None:
-    query = select(CommerceFulfillmentModel).where(
-        CommerceFulfillmentModel.tenant_id == tenant_id,
-        CommerceFulfillmentModel.id == fulfillment_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    fulfillment = await CommerceFulfillment.find_one(
+        CommerceFulfillment.tenant_id == tenant_id, 
+        CommerceFulfillment.id == fulfillment_id
+    ).set_database(mongo_db)
+    return fulfillment.model_dump() if fulfillment else None
 
-
-def create_fulfillment(
+async def create_fulfillment(
     db: Session,
     *,
     tenant_id: str,
@@ -1046,8 +1196,12 @@ def create_fulfillment(
     packed_at: str | None,
     shipped_at: str | None,
     delivered_at: str | None,
-) -> CommerceFulfillmentModel:
-    model = CommerceFulfillmentModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    fulfillment = CommerceFulfillment(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         order_id=order_id,
         warehouse_id=warehouse_id,
@@ -1058,28 +1212,27 @@ def create_fulfillment(
         shipped_at=shipped_at,
         delivered_at=delivered_at,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await fulfillment.insert().set_database(mongo_db)
+    return fulfillment.model_dump()
 
-
-def list_fulfillment_lines(
+async def list_fulfillment_lines(
     db: Session,
     *,
     tenant_id: str,
     fulfillment_ids: list[str],
-) -> list[CommerceFulfillmentLineModel]:
+) -> list[dict[str, Any]]:
     if not fulfillment_ids:
         return []
-    query = select(CommerceFulfillmentLineModel).where(
-        CommerceFulfillmentLineModel.tenant_id == tenant_id,
-        CommerceFulfillmentLineModel.fulfillment_id.in_(fulfillment_ids),
-    )
-    query = query.order_by(CommerceFulfillmentLineModel.created_at.asc())
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    lines = await CommerceFulfillmentLine.find(
+        CommerceFulfillmentLine.tenant_id == tenant_id,
+        In(CommerceFulfillmentLine.fulfillment_id, fulfillment_ids)
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [l.model_dump() for l in lines]
 
-def create_fulfillment_line(
+async def create_fulfillment_line(
     db: Session,
     *,
     tenant_id: str,
@@ -1087,41 +1240,47 @@ def create_fulfillment_line(
     order_line_id: str,
     variant_id: str,
     quantity: int,
-) -> CommerceFulfillmentLineModel:
-    model = CommerceFulfillmentLineModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    line = CommerceFulfillmentLine(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         fulfillment_id=fulfillment_id,
         order_line_id=order_line_id,
         variant_id=variant_id,
         quantity=quantity,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await line.insert().set_database(mongo_db)
+    return line.model_dump()
 
-
-def list_shipments(
+async def list_shipments(
     db: Session,
     *,
     tenant_id: str,
     fulfillment_id: str | None = None,
-) -> list[CommerceShipmentModel]:
-    query = select(CommerceShipmentModel).where(CommerceShipmentModel.tenant_id == tenant_id)
+) -> list[dict[str, Any]]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    query = CommerceShipment.find(CommerceShipment.tenant_id == tenant_id)
     if fulfillment_id:
-        query = query.where(CommerceShipmentModel.fulfillment_id == fulfillment_id)
-    query = query.order_by(CommerceShipmentModel.created_at.desc())
-    return list(db.scalars(query))
+        query = query.find(CommerceShipment.fulfillment_id == fulfillment_id)
+    shipments = await query.sort("-created_at").set_database(mongo_db).to_list()
+    return [s.model_dump() for s in shipments]
 
+async def get_shipment(db: Session, *, tenant_id: str, shipment_id: str) -> dict[str, Any] | None:
 
-def get_shipment(db: Session, *, tenant_id: str, shipment_id: str) -> CommerceShipmentModel | None:
-    query = select(CommerceShipmentModel).where(
-        CommerceShipmentModel.tenant_id == tenant_id,
-        CommerceShipmentModel.id == shipment_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    shipment = await CommerceShipment.find_one(
+        CommerceShipment.tenant_id == tenant_id, 
+        CommerceShipment.id == shipment_id
+    ).set_database(mongo_db)
+    return shipment.model_dump() if shipment else None
 
-
-def create_shipment(
+async def create_shipment(
     db: Session,
     *,
     tenant_id: str,
@@ -1133,8 +1292,12 @@ def create_shipment(
     shipped_at: str | None,
     delivered_at: str | None,
     metadata_json: dict[str, object],
-) -> CommerceShipmentModel:
-    model = CommerceShipmentModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    shipment = CommerceShipment(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         fulfillment_id=fulfillment_id,
         carrier=carrier,
@@ -1143,30 +1306,32 @@ def create_shipment(
         status=status,
         shipped_at=shipped_at,
         delivered_at=delivered_at,
-        metadata_json=metadata_json,
+        metadata=metadata_json,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await shipment.insert().set_database(mongo_db)
+    return shipment.model_dump()
 
+async def list_payments(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[dict[str, Any]]:
 
-def list_payments(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[CommercePaymentModel]:
-    query = select(CommercePaymentModel).where(CommercePaymentModel.tenant_id == tenant_id)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    query = CommercePayment.find(CommercePayment.tenant_id == tenant_id)
     if order_id:
-        query = query.where(CommercePaymentModel.order_id == order_id)
-    query = query.order_by(CommercePaymentModel.created_at.desc())
-    return list(db.scalars(query))
+        query = query.find(CommercePayment.order_id == order_id)
+    payments = await query.sort("-created_at").set_database(mongo_db).to_list()
+    return [p.model_dump() for p in payments]
 
+async def get_payment(db: Session, *, tenant_id: str, payment_id: str) -> dict[str, Any] | None:
 
-def get_payment(db: Session, *, tenant_id: str, payment_id: str) -> CommercePaymentModel | None:
-    query = select(CommercePaymentModel).where(
-        CommercePaymentModel.tenant_id == tenant_id,
-        CommercePaymentModel.id == payment_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    payment = await CommercePayment.find_one(
+        CommercePayment.tenant_id == tenant_id, 
+        CommercePayment.id == payment_id
+    ).set_database(mongo_db)
+    return payment.model_dump() if payment else None
 
-
-def create_payment(
+async def create_payment(
     db: Session,
     *,
     tenant_id: str,
@@ -1180,8 +1345,12 @@ def create_payment(
     notes: str | None,
     received_at: str,
     recorded_by_user_id: str,
-) -> CommercePaymentModel:
-    model = CommercePaymentModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    payment = CommercePayment(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         order_id=order_id,
         amount_minor=amount_minor,
@@ -1194,20 +1363,20 @@ def create_payment(
         received_at=received_at,
         recorded_by_user_id=recorded_by_user_id,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await payment.insert().set_database(mongo_db)
+    return payment.model_dump()
 
+async def list_refunds(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[dict[str, Any]]:
 
-def list_refunds(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[CommerceRefundModel]:
-    query = select(CommerceRefundModel).where(CommerceRefundModel.tenant_id == tenant_id)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    query = CommerceRefund.find(CommerceRefund.tenant_id == tenant_id)
     if order_id:
-        query = query.where(CommerceRefundModel.order_id == order_id)
-    query = query.order_by(CommerceRefundModel.created_at.desc())
-    return list(db.scalars(query))
+        query = query.find(CommerceRefund.order_id == order_id)
+    refunds = await query.sort("-created_at").set_database(mongo_db).to_list()
+    return [r.model_dump() for r in refunds]
 
-
-def create_refund(
+async def create_refund(
     db: Session,
     *,
     tenant_id: str,
@@ -1220,8 +1389,12 @@ def create_refund(
     status: str,
     refunded_at: str,
     recorded_by_user_id: str,
-) -> CommerceRefundModel:
-    model = CommerceRefundModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    refund = CommerceRefund(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         order_id=order_id,
         payment_id=payment_id,
@@ -1233,36 +1406,40 @@ def create_refund(
         refunded_at=refunded_at,
         recorded_by_user_id=recorded_by_user_id,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await refund.insert().set_database(mongo_db)
+    return refund.model_dump()
 
+async def list_invoices(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[dict[str, Any]]:
 
-def list_invoices(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[CommerceInvoiceModel]:
-    query = select(CommerceInvoiceModel).where(CommerceInvoiceModel.tenant_id == tenant_id)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    query = CommerceInvoice.find(CommerceInvoice.tenant_id == tenant_id)
     if order_id:
-        query = query.where(CommerceInvoiceModel.order_id == order_id)
-    query = query.order_by(CommerceInvoiceModel.created_at.desc())
-    return list(db.scalars(query))
+        query = query.find(CommerceInvoice.order_id == order_id)
+    invoices = await query.sort("-created_at").set_database(mongo_db).to_list()
+    return [i.model_dump() for i in invoices]
 
+async def list_returns(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[dict[str, Any]]:
 
-def list_returns(db: Session, *, tenant_id: str, order_id: str | None = None) -> list[CommerceReturnModel]:
-    query = select(CommerceReturnModel).where(CommerceReturnModel.tenant_id == tenant_id)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    query = CommerceReturn.find(CommerceReturn.tenant_id == tenant_id)
     if order_id:
-        query = query.where(CommerceReturnModel.order_id == order_id)
-    query = query.order_by(CommerceReturnModel.created_at.desc())
-    return list(db.scalars(query))
+        query = query.find(CommerceReturn.order_id == order_id)
+    returns = await query.sort("-created_at").set_database(mongo_db).to_list()
+    return [r.model_dump() for r in returns]
 
+async def get_return(db: Session, *, tenant_id: str, return_id: str) -> dict[str, Any] | None:
 
-def get_return(db: Session, *, tenant_id: str, return_id: str) -> CommerceReturnModel | None:
-    query = select(CommerceReturnModel).where(
-        CommerceReturnModel.tenant_id == tenant_id,
-        CommerceReturnModel.id == return_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    ret = await CommerceReturn.find_one(
+        CommerceReturn.tenant_id == tenant_id, 
+        CommerceReturn.id == return_id
+    ).set_database(mongo_db)
+    return ret.model_dump() if ret else None
 
-
-def create_return(
+async def create_return(
     db: Session,
     *,
     tenant_id: str,
@@ -1278,8 +1455,12 @@ def create_return(
     closed_at: str | None,
     created_by_user_id: str,
     closed_by_user_id: str | None,
-) -> CommerceReturnModel:
-    model = CommerceReturnModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    ret = CommerceReturn(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         order_id=order_id,
         return_number=return_number,
@@ -1294,28 +1475,27 @@ def create_return(
         created_by_user_id=created_by_user_id,
         closed_by_user_id=closed_by_user_id,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await ret.insert().set_database(mongo_db)
+    return ret.model_dump()
 
-
-def list_return_lines(
+async def list_return_lines(
     db: Session,
     *,
     tenant_id: str,
     return_ids: list[str],
-) -> list[CommerceReturnLineModel]:
+) -> list[dict[str, Any]]:
     if not return_ids:
         return []
-    query = select(CommerceReturnLineModel).where(
-        CommerceReturnLineModel.tenant_id == tenant_id,
-        CommerceReturnLineModel.return_id.in_(return_ids),
-    )
-    query = query.order_by(CommerceReturnLineModel.created_at.asc())
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    lines = await CommerceReturnLine.find(
+        CommerceReturnLine.tenant_id == tenant_id,
+        In(CommerceReturnLine.return_id, return_ids)
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [l.model_dump() for l in lines]
 
-def create_return_line(
+async def create_return_line(
     db: Session,
     *,
     tenant_id: str,
@@ -1328,8 +1508,12 @@ def create_return_line(
     restock_on_receive: bool,
     line_amount_minor: int,
     notes: str | None,
-) -> CommerceReturnLineModel:
-    model = CommerceReturnLineModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    line = CommerceReturnLine(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         return_id=return_id,
         order_line_id=order_line_id,
@@ -1341,26 +1525,27 @@ def create_return_line(
         line_amount_minor=line_amount_minor,
         notes=notes,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await line.insert().set_database(mongo_db)
+    return line.model_dump()
 
+async def list_settlements(db: Session, *, tenant_id: str) -> list[dict[str, Any]]:
 
-def list_settlements(db: Session, *, tenant_id: str) -> list[CommerceSettlementModel]:
-    query = select(CommerceSettlementModel).where(CommerceSettlementModel.tenant_id == tenant_id)
-    query = query.order_by(CommerceSettlementModel.created_at.desc())
-    return list(db.scalars(query))
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    settlements = await CommerceSettlement.find(CommerceSettlement.tenant_id == tenant_id).sort("-created_at").set_database(mongo_db).to_list()
+    return [s.model_dump() for s in settlements]
 
+async def get_settlement(db: Session, *, tenant_id: str, settlement_id: str) -> dict[str, Any] | None:
 
-def get_settlement(db: Session, *, tenant_id: str, settlement_id: str) -> CommerceSettlementModel | None:
-    query = select(CommerceSettlementModel).where(
-        CommerceSettlementModel.tenant_id == tenant_id,
-        CommerceSettlementModel.id == settlement_id,
-    )
-    return db.scalar(query)
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    settlement = await CommerceSettlement.find_one(
+        CommerceSettlement.tenant_id == tenant_id, 
+        CommerceSettlement.id == settlement_id
+    ).set_database(mongo_db)
+    return settlement.model_dump() if settlement else None
 
-
-def create_settlement(
+async def create_settlement(
     db: Session,
     *,
     tenant_id: str,
@@ -1380,8 +1565,12 @@ def create_settlement(
     notes: str | None,
     created_by_user_id: str,
     closed_by_user_id: str | None,
-) -> CommerceSettlementModel:
-    model = CommerceSettlementModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    settlement = CommerceSettlement(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         settlement_number=settlement_number,
         provider=provider,
@@ -1400,58 +1589,61 @@ def create_settlement(
         created_by_user_id=created_by_user_id,
         closed_by_user_id=closed_by_user_id,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await settlement.insert().set_database(mongo_db)
+    return settlement.model_dump()
 
-
-def list_settlement_entries(
+async def list_settlement_entries(
     db: Session,
     *,
     tenant_id: str,
     settlement_ids: list[str],
-) -> list[CommerceSettlementEntryModel]:
+) -> list[dict[str, Any]]:
     if not settlement_ids:
         return []
-    query = select(CommerceSettlementEntryModel).where(
-        CommerceSettlementEntryModel.tenant_id == tenant_id,
-        CommerceSettlementEntryModel.settlement_id.in_(settlement_ids),
-    )
-    query = query.order_by(CommerceSettlementEntryModel.created_at.asc())
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    entries = await CommerceSettlementEntry.find(
+        CommerceSettlementEntry.tenant_id == tenant_id,
+        In(CommerceSettlementEntry.settlement_id, settlement_ids)
+    ).sort("created_at").set_database(mongo_db).to_list()
+    return [e.model_dump() for e in entries]
 
-def list_settlement_entries_for_payment_ids(
+async def list_settlement_entries_for_payment_ids(
     db: Session,
     *,
     tenant_id: str,
     payment_ids: list[str],
-) -> list[CommerceSettlementEntryModel]:
+) -> list[dict[str, Any]]:
     if not payment_ids:
         return []
-    query = select(CommerceSettlementEntryModel).where(
-        CommerceSettlementEntryModel.tenant_id == tenant_id,
-        CommerceSettlementEntryModel.payment_id.in_(payment_ids),
-    )
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    entries = await CommerceSettlementEntry.find(
+        CommerceSettlementEntry.tenant_id == tenant_id,
+        In(CommerceSettlementEntry.payment_id, payment_ids)
+    ).set_database(mongo_db).to_list()
+    return [e.model_dump() for e in entries]
 
-def list_settlement_entries_for_refund_ids(
+async def list_settlement_entries_for_refund_ids(
     db: Session,
     *,
     tenant_id: str,
     refund_ids: list[str],
-) -> list[CommerceSettlementEntryModel]:
+) -> list[dict[str, Any]]:
     if not refund_ids:
         return []
-    query = select(CommerceSettlementEntryModel).where(
-        CommerceSettlementEntryModel.tenant_id == tenant_id,
-        CommerceSettlementEntryModel.refund_id.in_(refund_ids),
-    )
-    return list(db.scalars(query))
 
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    entries = await CommerceSettlementEntry.find(
+        CommerceSettlementEntry.tenant_id == tenant_id,
+        In(CommerceSettlementEntry.refund_id, refund_ids)
+    ).set_database(mongo_db).to_list()
+    return [e.model_dump() for e in entries]
 
-def create_settlement_entry(
+async def create_settlement_entry(
     db: Session,
     *,
     tenant_id: str,
@@ -1462,8 +1654,12 @@ def create_settlement_entry(
     amount_minor: int,
     label: str | None,
     notes: str | None,
-) -> CommerceSettlementEntryModel:
-    model = CommerceSettlementEntryModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    entry = CommerceSettlementEntry(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         settlement_id=settlement_id,
         entry_type=entry_type,
@@ -1473,12 +1669,10 @@ def create_settlement_entry(
         label=label,
         notes=notes,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await entry.insert().set_database(mongo_db)
+    return entry.model_dump()
 
-
-def create_invoice(
+async def create_invoice(
     db: Session,
     *,
     tenant_id: str,
@@ -1493,8 +1687,12 @@ def create_invoice(
     total_minor: int,
     issued_at: str,
     issued_by_user_id: str,
-) -> CommerceInvoiceModel:
-    model = CommerceInvoiceModel(
+) -> dict[str, Any]:
+
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    invoice = CommerceInvoice(
+        id=str(uuid4()),
         tenant_id=tenant_id,
         order_id=order_id,
         customer_id=customer_id,
@@ -1508,6 +1706,124 @@ def create_invoice(
         issued_at=issued_at,
         issued_by_user_id=issued_by_user_id,
     )
-    db.add(model)
-    db.flush()
-    return model
+    await invoice.insert().set_database(mongo_db)
+    return invoice.model_dump()
+
+async def _update_document(
+    db: Session,
+    collection_name: str,
+    *,
+    tenant_id: str,
+    document_id: str,
+    data: dict[str, Any],
+) -> dict[str, Any] | None:
+    tenant_slug = _get_tenant_database_id(db, tenant_id)
+    mongo_db = get_runtime_motor_database(get_settings(), tenant_slug=tenant_slug)
+    
+    # Map collection names to Beanie models
+    from app.models.commerce import (
+        CommerceCategory, CommerceBrand, CommerceVendor, CommerceCollection,
+        CommerceTaxProfile, CommercePriceList, CommerceCoupon, CommerceAttribute,
+        CommerceAttributeSet, CommerceProduct, CommerceVariant, CommerceWarehouse,
+        CommerceWarehouseStock, CommerceOrder, CommerceFulfillment, CommerceShipment,
+        CommerceReturn, CommerceSettlement, CommerceInvoice
+    )
+    
+    model_map = {
+        "commerce_categories": CommerceCategory,
+        "commerce_brands": CommerceBrand,
+        "commerce_vendors": CommerceVendor,
+        "commerce_collections": CommerceCollection,
+        "commerce_tax_profiles": CommerceTaxProfile,
+        "commerce_price_lists": CommercePriceList,
+        "commerce_coupons": CommerceCoupon,
+        "commerce_attributes": CommerceAttribute,
+        "commerce_attribute_sets": CommerceAttributeSet,
+        "commerce_products": CommerceProduct,
+        "commerce_variants": CommerceVariant,
+        "commerce_warehouses": CommerceWarehouse,
+        "commerce_warehouse_stocks": CommerceWarehouseStock,
+        "commerce_orders": CommerceOrder,
+        "commerce_fulfillments": CommerceFulfillment,
+        "commerce_shipments": CommerceShipment,
+        "commerce_returns": CommerceReturn,
+        "commerce_settlements": CommerceSettlement,
+        "commerce_invoices": CommerceInvoice,
+    }
+    
+    model_cls = model_map.get(collection_name)
+    if not model_cls:
+        # Fallback to direct motor if no beanie model is matched
+        coll = mongo_db[collection_name]
+        update_data = {**data, "updated_at": _now_iso()}
+        doc = await coll.find_one_and_update(
+            {"tenant_id": tenant_id, "id": document_id},
+            {"$set": update_data},
+            return_document=True,
+        )
+        return doc
+
+    doc = await model_cls.find_one(
+        model_cls.tenant_id == tenant_id, 
+        model_cls.id == document_id
+    ).set_database(mongo_db)
+    
+    if not doc:
+        return None
+        
+    await doc.update({"$set": data}).set_database(mongo_db)
+    return doc.model_dump()
+
+async def update_product(db: Session, *, tenant_id: str, product_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_products", tenant_id=tenant_id, document_id=product_id, data=data)
+
+async def update_variant(db: Session, *, tenant_id: str, variant_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_variants", tenant_id=tenant_id, document_id=variant_id, data=data)
+
+async def update_warehouse(db: Session, *, tenant_id: str, warehouse_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_warehouses", tenant_id=tenant_id, document_id=warehouse_id, data=data)
+
+async def update_warehouse_stock(db: Session, *, tenant_id: str, stock_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_warehouse_stocks", tenant_id=tenant_id, document_id=stock_id, data=data)
+
+async def update_order(db: Session, *, tenant_id: str, order_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_orders", tenant_id=tenant_id, document_id=order_id, data=data)
+
+async def update_fulfillment(db: Session, *, tenant_id: str, fulfillment_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_fulfillments", tenant_id=tenant_id, document_id=fulfillment_id, data=data)
+
+async def update_shipment(db: Session, *, tenant_id: str, shipment_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_shipments", tenant_id=tenant_id, document_id=shipment_id, data=data)
+
+async def update_return(db: Session, *, tenant_id: str, return_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_returns", tenant_id=tenant_id, document_id=return_id, data=data)
+
+async def update_settlement(db: Session, *, tenant_id: str, settlement_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_settlements", tenant_id=tenant_id, document_id=settlement_id, data=data)
+
+async def update_category(db: Session, *, tenant_id: str, category_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_categories", tenant_id=tenant_id, document_id=category_id, data=data)
+
+async def update_brand(db: Session, *, tenant_id: str, brand_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_brands", tenant_id=tenant_id, document_id=brand_id, data=data)
+
+async def update_vendor(db: Session, *, tenant_id: str, vendor_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_vendors", tenant_id=tenant_id, document_id=vendor_id, data=data)
+
+async def update_collection(db: Session, *, tenant_id: str, collection_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_collections", tenant_id=tenant_id, document_id=collection_id, data=data)
+
+async def update_tax_profile(db: Session, *, tenant_id: str, tax_profile_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_tax_profiles", tenant_id=tenant_id, document_id=tax_profile_id, data=data)
+
+async def update_price_list(db: Session, *, tenant_id: str, price_list_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_price_lists", tenant_id=tenant_id, document_id=price_list_id, data=data)
+
+async def update_coupon(db: Session, *, tenant_id: str, coupon_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_coupons", tenant_id=tenant_id, document_id=coupon_id, data=data)
+
+async def update_attribute(db: Session, *, tenant_id: str, attribute_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_attributes", tenant_id=tenant_id, document_id=attribute_id, data=data)
+
+async def update_attribute_set(db: Session, *, tenant_id: str, attribute_set_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db, "commerce_attribute_sets", tenant_id=tenant_id, document_id=attribute_set_id, data=data)

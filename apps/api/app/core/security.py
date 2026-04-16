@@ -1,11 +1,15 @@
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Header, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
 from app.core.config import Settings, get_settings
+from sqlalchemy.orm import Session
+
+
 
 http_bearer = HTTPBearer(auto_error=False)
 ALGORITHM = "HS256"
@@ -14,21 +18,22 @@ ALGORITHM = "HS256"
 class TokenPayload(BaseModel):
     sub: str
     tenant_id: str
-    roles: list[str]
+    role: str
     exp: int
 
 
 class SessionContext(BaseModel):
-    user_id: str
-    tenant_id: str
-    roles: list[str]
+    user_id: str | None
+    tenant_id: str | None
+    role: str
+    tenant_db_name: str | None = None
 
 
 def create_access_token(
     *,
     user_id: str,
     tenant_id: str,
-    roles: list[str],
+    role: str,
     settings: Settings,
     expires_delta: timedelta = timedelta(hours=8),
 ) -> str:
@@ -36,7 +41,7 @@ def create_access_token(
     payload = {
         "sub": user_id,
         "tenant_id": tenant_id,
-        "roles": roles,
+        "role": role,
         "exp": int(expire_at.timestamp()),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)
@@ -54,15 +59,49 @@ def decode_access_token(token: str, settings: Settings) -> TokenPayload:
     return TokenPayload(**raw_payload)
 
 
+def get_tenant_slug(
+    x_tenant_slug: Annotated[str | None, Header(alias="X-Tenant-Slug")] = None,
+) -> str:
+    """
+    Extracts the tenant slug from the X-Tenant-Slug header.
+    Used for public routes where JWT is not available.
+    """
+    if not x_tenant_slug:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="X-Tenant-Slug header is required for this operation.",
+        )
+    return x_tenant_slug
+
+
+from fastapi import Depends, HTTPException, status, Header
+from fastapi.security import HTTPAuthorizationCredentials
+from typing import Optional
+from app.db.session import get_db_session
+
 def get_current_session(
-    credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
+    x_tenant_db: Optional[str] = Header(None, alias="x-tenant-db"),
     settings: Settings = Depends(get_settings),
 ) -> SessionContext:
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Bearer token required.",
+
+    # Case 1: Bearer token exists
+    if credentials and credentials.scheme.lower() == "bearer":
+        payload = decode_access_token(credentials.credentials, settings)
+        return SessionContext(
+            user_id=payload.sub,
+            tenant_id=payload.tenant_id,
+            tenant_db_name=x_tenant_db,
+            role=payload.role,
+    
+        )
+    else:
+        return SessionContext(
+            user_id=None,
+            tenant_id=None,
+            tenant_db_name=x_tenant_db,
+            role="guest",
         )
 
-    payload = decode_access_token(credentials.credentials, settings)
-    return SessionContext(user_id=payload.sub, tenant_id=payload.tenant_id, roles=payload.roles)
+
+

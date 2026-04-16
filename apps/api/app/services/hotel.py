@@ -2398,11 +2398,13 @@ def get_property_profile(
     property_id: str,
 ) -> dict[str, object]:
     tenant = _tenant(db, tenant_slug)
+    db_name = tenant.mongo_db_name
     property_model = _property_or_raise(db, tenant_id=tenant.id, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_PROFILE_COLLECTION,
         tenant_slug=tenant.slug,
         document_key=_hotel_doc_key(property_id),
+        database_name=db_name
     )
     if document is None:
         payload = _default_property_profile(property_model)
@@ -2411,6 +2413,7 @@ def get_property_profile(
             tenant_slug=tenant.slug,
             document_key=_hotel_doc_key(property_id),
             payload=payload,
+            database_name=db_name
         )
         return payload
     return document["payload"]
@@ -2426,6 +2429,7 @@ def upsert_property_profile(
     payload: dict[str, object],
 ) -> dict[str, object]:
     tenant = _tenant(db, tenant_slug)
+    db_name = tenant.mongo_db_name
     _property_or_raise(db, tenant_id=tenant.id, property_id=property_id)
     profile_payload = {
         "property_id": property_id,
@@ -2437,6 +2441,7 @@ def upsert_property_profile(
         tenant_slug=tenant.slug,
         document_key=_hotel_doc_key(property_id),
         payload=profile_payload,
+        database_name=db_name
     )
     _audit(
         db,
@@ -2466,11 +2471,13 @@ def get_amenity_catalog(
     property_id: str,
 ) -> dict[str, object]:
     tenant = _tenant(db, tenant_slug)
+    db_name = tenant.mongo_db_name
     property_model = _property_or_raise(db, tenant_id=tenant.id, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_AMENITY_COLLECTION,
         tenant_slug=tenant.slug,
         document_key=_hotel_doc_key(property_id),
+        database_name=db_name
     )
     if document is None:
         payload = _default_amenity_catalog(property_model)
@@ -2479,6 +2486,7 @@ def get_amenity_catalog(
             tenant_slug=tenant.slug,
             document_key=_hotel_doc_key(property_id),
             payload=payload,
+            database_name=db_name
         )
         return payload
     return document["payload"]
@@ -2494,6 +2502,7 @@ def upsert_amenity_catalog(
     payload: dict[str, object],
 ) -> dict[str, object]:
     tenant = _tenant(db, tenant_slug)
+    db_name = tenant.mongo_db_name
     _property_or_raise(db, tenant_id=tenant.id, property_id=property_id)
     amenity_payload = {
         "property_id": property_id,
@@ -2505,6 +2514,7 @@ def upsert_amenity_catalog(
         tenant_slug=tenant.slug,
         document_key=_hotel_doc_key(property_id),
         payload=amenity_payload,
+        database_name=db_name
     )
     _audit(
         db,
@@ -2527,11 +2537,13 @@ def get_nearby_places(
     property_id: str,
 ) -> dict[str, object]:
     tenant = _tenant(db, tenant_slug)
+    db_name = tenant.mongo_db_name
     property_model = _property_or_raise(db, tenant_id=tenant.id, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_NEARBY_COLLECTION,
         tenant_slug=tenant.slug,
         document_key=_hotel_doc_key(property_id),
+        database_name=db_name
     )
     if document is None:
         payload = _default_nearby_places(property_model)
@@ -2540,6 +2552,7 @@ def get_nearby_places(
             tenant_slug=tenant.slug,
             document_key=_hotel_doc_key(property_id),
             payload=payload,
+            database_name=db_name
         )
         return payload
     return document["payload"]
@@ -2555,6 +2568,7 @@ def upsert_nearby_places(
     payload: dict[str, object],
 ) -> dict[str, object]:
     tenant = _tenant(db, tenant_slug)
+    db_name = tenant.mongo_db_name
     _property_or_raise(db, tenant_id=tenant.id, property_id=property_id)
     nearby_payload = {
         "property_id": property_id,
@@ -2566,6 +2580,7 @@ def upsert_nearby_places(
         tenant_slug=tenant.slug,
         document_key=_hotel_doc_key(property_id),
         payload=nearby_payload,
+        database_name=db_name
     )
     _audit(
         db,

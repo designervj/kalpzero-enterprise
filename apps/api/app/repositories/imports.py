@@ -4,13 +4,13 @@ from sqlalchemy.orm import Session
 from app.db.models import ImportJobModel, ImportSourceModel
 
 
-def list_import_sources(db: Session, *, tenant_id: str) -> list[ImportSourceModel]:
+async def list_import_sources(db: Session, *, tenant_id: str) -> list[ImportSourceModel]:
     query = select(ImportSourceModel).where(ImportSourceModel.tenant_id == tenant_id)
     query = query.order_by(ImportSourceModel.created_at.desc())
     return list(db.scalars(query))
 
 
-def get_import_source(db: Session, *, source_id: str, tenant_id: str) -> ImportSourceModel | None:
+async def get_import_source(db: Session, *, source_id: str, tenant_id: str) -> ImportSourceModel | None:
     query = select(ImportSourceModel).where(
         ImportSourceModel.id == source_id,
         ImportSourceModel.tenant_id == tenant_id,
@@ -18,7 +18,7 @@ def get_import_source(db: Session, *, source_id: str, tenant_id: str) -> ImportS
     return db.scalar(query)
 
 
-def create_import_source(
+async def create_import_source(
     db: Session,
     *,
     tenant_id: str,
@@ -41,13 +41,13 @@ def create_import_source(
     return source
 
 
-def list_import_jobs(db: Session, *, tenant_id: str) -> list[ImportJobModel]:
+async def list_import_jobs(db: Session, *, tenant_id: str) -> list[ImportJobModel]:
     query = select(ImportJobModel).where(ImportJobModel.tenant_id == tenant_id)
     query = query.order_by(ImportJobModel.created_at.desc())
     return list(db.scalars(query))
 
 
-def create_import_job(
+async def create_import_job(
     db: Session,
     *,
     tenant_id: str,

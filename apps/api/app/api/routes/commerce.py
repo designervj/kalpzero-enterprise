@@ -95,69 +95,69 @@ def _raise_http_error(exc: Exception) -> None:
     if isinstance(exc, ConflictError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     raise exc
-
+# --- Commerce Routes (Unified Public/Protected) ---
 
 @router.get("/overview")
-def commerce_overview(
+async def commerce_overview(
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return get_overview(db, tenant_slug=session.tenant_id)
+        return await get_overview(db, tenant_slug=session.tenant_id)
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/categories")
-def commerce_categories(
+async def commerce_categories(
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "categories": list_categories(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "categories": await list_categories(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/categories", status_code=status.HTTP_201_CREATED)
-def commerce_categories_create(
+async def commerce_categories_create(
     payload: CreateCommerceCategoryRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_category(
+        return await create_category(
             db,
             tenant_slug=session.tenant_id,
-            actor_user_id=session.user_id,
             name=payload.name,
             slug=payload.slug,
             description=payload.description,
             parent_category_id=payload.parent_category_id,
+            db_name=session.tenant_db_name
         )
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/brands")
-def commerce_brands(
+async def commerce_brands(
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "brands": list_brands(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "brands": await list_brands(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/brands", status_code=status.HTTP_201_CREATED)
-def commerce_brands_create(
+async def commerce_brands_create(
     payload: CreateCommerceBrandRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_brand(
+        return await create_brand(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -172,24 +172,24 @@ def commerce_brands_create(
 
 
 @router.get("/vendors")
-def commerce_vendors(
+async def commerce_vendors(
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "vendors": list_vendors(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "vendors": await list_vendors(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/vendors", status_code=status.HTTP_201_CREATED)
-def commerce_vendors_create(
+async def commerce_vendors_create(
     payload: CreateCommerceVendorRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_vendor(
+        return await create_vendor(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -207,24 +207,24 @@ def commerce_vendors_create(
 
 
 @router.get("/collections")
-def commerce_collections(
+async def commerce_collections(
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "collections": list_collections(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "collections": await list_collections(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/collections", status_code=status.HTTP_201_CREATED)
-def commerce_collections_create(
+async def commerce_collections_create(
     payload: CreateCommerceCollectionRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_collection(
+        return await create_collection(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -239,24 +239,24 @@ def commerce_collections_create(
 
 
 @router.get("/warehouses")
-def commerce_warehouses(
+async def commerce_warehouses(
     session: SessionContext = Depends(require_permission("commerce.inventory.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "warehouses": list_warehouses(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "warehouses": await list_warehouses(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/warehouses", status_code=status.HTTP_201_CREATED)
-def commerce_warehouses_create(
+async def commerce_warehouses_create(
     payload: CreateCommerceWarehouseRequest,
     session: SessionContext = Depends(require_permission("commerce.inventory.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_warehouse(
+        return await create_warehouse(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -273,7 +273,7 @@ def commerce_warehouses_create(
 
 
 @router.get("/stock-levels")
-def commerce_stock_levels(
+async def commerce_stock_levels(
     warehouse_id: str | None = None,
     variant_id: str | None = None,
     session: SessionContext = Depends(require_permission("commerce.inventory.read")),
@@ -282,7 +282,7 @@ def commerce_stock_levels(
     try:
         return {
             "tenant_id": session.tenant_id,
-            "stock_levels": list_stock_levels(
+            "stock_levels": await list_stock_levels(
                 db,
                 tenant_slug=session.tenant_id,
                 warehouse_id=warehouse_id,
@@ -294,7 +294,7 @@ def commerce_stock_levels(
 
 
 @router.get("/stock-ledger")
-def commerce_stock_ledger(
+async def commerce_stock_ledger(
     warehouse_id: str | None = None,
     variant_id: str | None = None,
     session: SessionContext = Depends(require_permission("commerce.inventory.read")),
@@ -303,7 +303,7 @@ def commerce_stock_ledger(
     try:
         return {
             "tenant_id": session.tenant_id,
-            "entries": list_stock_ledger(
+            "entries": await list_stock_ledger(
                 db,
                 tenant_slug=session.tenant_id,
                 warehouse_id=warehouse_id,
@@ -315,14 +315,14 @@ def commerce_stock_ledger(
 
 
 @router.post("/warehouses/{warehouse_id}/stock-adjustments", status_code=status.HTTP_201_CREATED)
-def commerce_stock_adjustments_create(
+async def commerce_stock_adjustments_create(
     warehouse_id: str,
     payload: CreateCommerceStockAdjustmentRequest,
     session: SessionContext = Depends(require_permission("commerce.inventory.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return adjust_stock(
+        return await adjust_stock(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -337,24 +337,24 @@ def commerce_stock_adjustments_create(
 
 
 @router.get("/tax-profiles")
-def commerce_tax_profiles(
+async def commerce_tax_profiles(
     session: SessionContext = Depends(require_permission("commerce.pricing.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "tax_profiles": list_tax_profiles(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "tax_profiles": await list_tax_profiles(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/tax-profiles", status_code=status.HTTP_201_CREATED)
-def commerce_tax_profiles_create(
+async def commerce_tax_profiles_create(
     payload: CreateCommerceTaxProfileRequest,
     session: SessionContext = Depends(require_permission("commerce.pricing.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_tax_profile(
+        return await create_tax_profile(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -370,24 +370,24 @@ def commerce_tax_profiles_create(
 
 
 @router.get("/price-lists")
-def commerce_price_lists(
+async def commerce_price_lists(
     session: SessionContext = Depends(require_permission("commerce.pricing.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "price_lists": list_price_lists(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "price_lists": await list_price_lists(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/price-lists", status_code=status.HTTP_201_CREATED)
-def commerce_price_lists_create(
+async def commerce_price_lists_create(
     payload: CreateCommercePriceListRequest,
     session: SessionContext = Depends(require_permission("commerce.pricing.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_price_list(
+        return await create_price_list(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -404,24 +404,24 @@ def commerce_price_lists_create(
 
 
 @router.get("/coupons")
-def commerce_coupons(
+async def commerce_coupons(
     session: SessionContext = Depends(require_permission("commerce.pricing.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "coupons": list_coupons(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "coupons": await list_coupons(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/coupons", status_code=status.HTTP_201_CREATED)
-def commerce_coupons_create(
+async def commerce_coupons_create(
     payload: CreateCommerceCouponRequest,
     session: SessionContext = Depends(require_permission("commerce.pricing.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_coupon(
+        return await create_coupon(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -440,24 +440,24 @@ def commerce_coupons_create(
 
 
 @router.get("/attributes")
-def commerce_attributes(
+async def commerce_attributes(
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "attributes": list_attributes(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "attributes": await list_attributes(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/attributes", status_code=status.HTTP_201_CREATED)
-def commerce_attributes_create(
+async def commerce_attributes_create(
     payload: CreateCommerceAttributeRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_attribute(
+        return await create_attribute(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -480,27 +480,27 @@ def commerce_attributes_create(
 
 
 @router.get("/attribute-sets")
-def commerce_attribute_sets(
+async def commerce_attribute_sets(
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
         return {
             "tenant_id": session.tenant_id,
-            "attribute_sets": list_attribute_sets(db, tenant_slug=session.tenant_id),
+            "attribute_sets": await list_attribute_sets(db, tenant_slug=session.tenant_id),
         }
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/attribute-sets", status_code=status.HTTP_201_CREATED)
-def commerce_attribute_sets_create(
+async def commerce_attribute_sets_create(
     payload: CreateCommerceAttributeSetRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_attribute_set(
+        return await create_attribute_set(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -516,24 +516,24 @@ def commerce_attribute_sets_create(
 
 
 @router.get("/products")
-def commerce_products(
+async def commerce_products(
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "products": list_products(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "products": await list_products(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/products", status_code=status.HTTP_201_CREATED)
-def commerce_products_create(
+async def commerce_products_create(
     payload: CreateCommerceProductRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_product(
+        return await create_product(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -556,18 +556,18 @@ def commerce_products_create(
 
 
 @router.get("/orders")
-def commerce_orders(
+async def commerce_orders(
     session: SessionContext = Depends(require_permission("commerce.orders.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "orders": list_orders(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "orders": await list_orders(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/fulfillments")
-def commerce_fulfillments(
+async def commerce_fulfillments(
     order_id: str | None = None,
     session: SessionContext = Depends(require_permission("commerce.fulfillment.read")),
     db: Session = Depends(get_db_session),
@@ -575,14 +575,14 @@ def commerce_fulfillments(
     try:
         return {
             "tenant_id": session.tenant_id,
-            "fulfillments": list_fulfillments(db, tenant_slug=session.tenant_id, order_id=order_id),
+            "fulfillments": await list_fulfillments(db, tenant_slug=session.tenant_id, order_id=order_id),
         }
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/shipments")
-def commerce_shipments(
+async def commerce_shipments(
     fulfillment_id: str | None = None,
     session: SessionContext = Depends(require_permission("commerce.fulfillment.read")),
     db: Session = Depends(get_db_session),
@@ -590,103 +590,103 @@ def commerce_shipments(
     try:
         return {
             "tenant_id": session.tenant_id,
-            "shipments": list_shipments(db, tenant_slug=session.tenant_id, fulfillment_id=fulfillment_id),
+            "shipments": await list_shipments(db, tenant_slug=session.tenant_id, fulfillment_id=fulfillment_id),
         }
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/payments")
-def commerce_payments(
+async def commerce_payments(
     order_id: str | None = None,
     session: SessionContext = Depends(require_permission("commerce.finance.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "payments": list_payments(db, tenant_slug=session.tenant_id, order_id=order_id)}
+        return {"tenant_id": session.tenant_id, "payments": await list_payments(db, tenant_slug=session.tenant_id, order_id=order_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/refunds")
-def commerce_refunds(
+async def commerce_refunds(
     order_id: str | None = None,
     session: SessionContext = Depends(require_permission("commerce.finance.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "refunds": list_refunds(db, tenant_slug=session.tenant_id, order_id=order_id)}
+        return {"tenant_id": session.tenant_id, "refunds": await list_refunds(db, tenant_slug=session.tenant_id, order_id=order_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/returns")
-def commerce_returns(
+async def commerce_returns(
     order_id: str | None = None,
     session: SessionContext = Depends(require_permission("commerce.orders.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "returns": list_returns(db, tenant_slug=session.tenant_id, order_id=order_id)}
+        return {"tenant_id": session.tenant_id, "returns": await list_returns(db, tenant_slug=session.tenant_id, order_id=order_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/returns/{return_id}")
-def commerce_return_detail(
+async def commerce_return_detail(
     return_id: str,
     session: SessionContext = Depends(require_permission("commerce.orders.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return get_return_detail(db, tenant_slug=session.tenant_id, return_id=return_id)
+        return await get_return_detail(db, tenant_slug=session.tenant_id, return_id=return_id)
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/invoices")
-def commerce_invoices(
+async def commerce_invoices(
     order_id: str | None = None,
     session: SessionContext = Depends(require_permission("commerce.finance.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "invoices": list_invoices(db, tenant_slug=session.tenant_id, order_id=order_id)}
+        return {"tenant_id": session.tenant_id, "invoices": await list_invoices(db, tenant_slug=session.tenant_id, order_id=order_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/settlements")
-def commerce_settlements(
+async def commerce_settlements(
     session: SessionContext = Depends(require_permission("commerce.finance.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "settlements": list_settlements(db, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "settlements": await list_settlements(db, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/settlements/{settlement_id}")
-def commerce_settlement_detail(
+async def commerce_settlement_detail(
     settlement_id: str,
     session: SessionContext = Depends(require_permission("commerce.finance.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return get_settlement_detail(db, tenant_slug=session.tenant_id, settlement_id=settlement_id)
+        return await get_settlement_detail(db, tenant_slug=session.tenant_id, settlement_id=settlement_id)
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/orders", status_code=status.HTTP_201_CREATED)
-def commerce_orders_create(
+async def commerce_orders_create(
     payload: CreateCommerceOrderRequest,
     session: SessionContext = Depends(require_permission("commerce.orders.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_order(
+        return await create_order(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -703,13 +703,13 @@ def commerce_orders_create(
 
 
 @router.post("/settlements", status_code=status.HTTP_201_CREATED)
-def commerce_settlements_create(
+async def commerce_settlements_create(
     payload: CreateCommerceSettlementRequest,
     session: SessionContext = Depends(require_permission("commerce.finance.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_settlement(
+        return await create_settlement(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -728,14 +728,14 @@ def commerce_settlements_create(
 
 
 @router.post("/orders/{order_id}/returns", status_code=status.HTTP_201_CREATED)
-def commerce_order_return_create(
+async def commerce_order_return_create(
     order_id: str,
     payload: CreateCommerceReturnRequest,
     session: SessionContext = Depends(require_permission("commerce.orders.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_return(
+        return await create_return(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -749,26 +749,26 @@ def commerce_order_return_create(
 
 
 @router.get("/orders/{order_id}/finance")
-def commerce_order_finance_detail(
+async def commerce_order_finance_detail(
     order_id: str,
     session: SessionContext = Depends(require_permission("commerce.finance.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return get_order_finance_detail(db, tenant_slug=session.tenant_id, order_id=order_id)
+        return await get_order_finance_detail(db, tenant_slug=session.tenant_id, order_id=order_id)
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.post("/orders/{order_id}/payments", status_code=status.HTTP_201_CREATED)
-def commerce_order_payment_create(
+async def commerce_order_payment_create(
     order_id: str,
     payload: CreateCommercePaymentRequest,
     session: SessionContext = Depends(require_permission("commerce.finance.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return record_payment(
+        return await record_payment(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -785,14 +785,14 @@ def commerce_order_payment_create(
 
 
 @router.post("/orders/{order_id}/refunds", status_code=status.HTTP_201_CREATED)
-def commerce_order_refund_create(
+async def commerce_order_refund_create(
     order_id: str,
     payload: CreateCommerceRefundRequest,
     session: SessionContext = Depends(require_permission("commerce.finance.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return record_refund(
+        return await record_refund(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -807,13 +807,13 @@ def commerce_order_refund_create(
 
 
 @router.post("/orders/{order_id}/issue-invoice")
-def commerce_order_issue_invoice(
+async def commerce_order_issue_invoice(
     order_id: str,
     session: SessionContext = Depends(require_permission("commerce.finance.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return issue_order_invoice(
+        return await issue_order_invoice(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -824,14 +824,14 @@ def commerce_order_issue_invoice(
 
 
 @router.patch("/returns/{return_id}/status")
-def commerce_return_update_status(
+async def commerce_return_update_status(
     return_id: str,
     payload: CommerceReturnStatusRequest,
     session: SessionContext = Depends(require_permission("commerce.orders.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return update_return_status(
+        return await update_return_status(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -843,14 +843,14 @@ def commerce_return_update_status(
 
 
 @router.patch("/settlements/{settlement_id}/status")
-def commerce_settlement_update_status(
+async def commerce_settlement_update_status(
     settlement_id: str,
     payload: CommerceSettlementStatusRequest,
     session: SessionContext = Depends(require_permission("commerce.finance.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return update_settlement_status(
+        return await update_settlement_status(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -862,14 +862,14 @@ def commerce_settlement_update_status(
 
 
 @router.post("/orders/{order_id}/fulfillments", status_code=status.HTTP_201_CREATED)
-def commerce_order_fulfillment_create(
+async def commerce_order_fulfillment_create(
     order_id: str,
     payload: CreateCommerceFulfillmentRequest,
     session: SessionContext = Depends(require_permission("commerce.fulfillment.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_fulfillment(
+        return await create_fulfillment(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -882,14 +882,14 @@ def commerce_order_fulfillment_create(
 
 
 @router.patch("/fulfillments/{fulfillment_id}/status")
-def commerce_fulfillment_update_status(
+async def commerce_fulfillment_update_status(
     fulfillment_id: str,
     payload: CommerceFulfillmentStatusRequest,
     session: SessionContext = Depends(require_permission("commerce.fulfillment.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return update_fulfillment_status(
+        return await update_fulfillment_status(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -901,14 +901,14 @@ def commerce_fulfillment_update_status(
 
 
 @router.post("/fulfillments/{fulfillment_id}/shipments", status_code=status.HTTP_201_CREATED)
-def commerce_shipment_create(
+async def commerce_shipment_create(
     fulfillment_id: str,
     payload: CreateCommerceShipmentRequest,
     session: SessionContext = Depends(require_permission("commerce.fulfillment.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_shipment(
+        return await create_shipment(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -923,14 +923,14 @@ def commerce_shipment_create(
 
 
 @router.patch("/shipments/{shipment_id}/status")
-def commerce_shipment_update_status(
+async def commerce_shipment_update_status(
     shipment_id: str,
     payload: CommerceShipmentStatusRequest,
     session: SessionContext = Depends(require_permission("commerce.fulfillment.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return update_shipment_status(
+        return await update_shipment_status(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -942,14 +942,14 @@ def commerce_shipment_update_status(
 
 
 @router.patch("/orders/{order_id}/status")
-def commerce_orders_update_status(
+async def commerce_orders_update_status(
     order_id: str,
     payload: CommerceOrderStatusRequest,
     session: SessionContext = Depends(require_permission("commerce.orders.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return update_order_status(
+        return await update_order_status(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,

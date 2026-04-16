@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.mongo import (
+    build_runtime_database_name,
     describe_tenant_runtime_document_store,
     get_runtime_document_store,
     provision_runtime_document_store_for_tenant,
@@ -108,6 +109,7 @@ def serialize_tenant(tenant, *, settings: Settings | None = None, bootstrap: dic
         "business_type": tenant.business_type,
         "feature_flags": tenant.feature_flags,
         "dedicated_profile_id": tenant.dedicated_profile_id,
+        "mongo_db_name": tenant.mongo_db_name,
         "created_at": tenant.created_at.isoformat(),
     }
     if settings is not None:
@@ -327,6 +329,9 @@ def create_tenant(
         dedicated_profile_id=dedicated_profile_id,
     )
 
+
+    mongo_db_name = build_runtime_database_name(settings, tenant_slug=slug)
+
     tenant = platform_repository.create_tenant(
         db,
         agency_id=agency.id,
@@ -337,6 +342,7 @@ def create_tenant(
         business_type=business_type,
         feature_flags=feature_flags,
         dedicated_profile_id=dedicated_profile_id,
+        mongo_db_name=mongo_db_name,
     )
     
     runtime_provisioning = provision_runtime_document_store_for_tenant(
@@ -353,12 +359,14 @@ def create_tenant(
         "business_type": business_type,
         "infra_mode": infra_mode,
     }
+
  
     runtime_bootstrap = publishing_service.bootstrap_tenant_runtime_documents(
-        runtime_provisioning["store"],
+        get_runtime_document_store(settings),
         tenant,
         extra_metadata=extra_metadata,
     )
+
     platform_repository.create_audit_event(
         db,
         tenant_id=tenant.id,
@@ -419,7 +427,7 @@ def get_onboarding_readiness_report(
 
 
 def get_tenant_or_raise(db: Session, *, tenant_slug: str):
-    tenant = platform_repository.get_tenant_by_slug(db, tenant_slug)
+    tenant = platform_repository.get_tenant_by_id(db, tenant_slug)
     if tenant is None:
         raise NotFoundError(f"Tenant '{tenant_slug}' was not found.")
     return tenant

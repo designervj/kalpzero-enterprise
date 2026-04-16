@@ -152,19 +152,36 @@ ROLE_GRANTS: dict[str, set[str]] = {
         "publishing.discovery.read",
         "ai.runtime.read",
     },
+    "guest": {
+        "commerce.catalog.read",
+        "commerce.pricing.read",
+        "commerce.orders.read",
+        "commerce.fulfillment.read",
+        "travel.packages.read",
+        "travel.leads.read",
+        "hotel.properties.read",
+        "hotel.rooms.read",
+        "hotel.reservations.read",
+        "hotel.finance.read",
+        "hotel.staff.read",
+        "hotel.operations.read",
+        "publishing.blueprints.read",
+        "publishing.pages.read",
+        "publishing.discovery.read",
+        "ai.runtime.read",
+        "commerce.catalog.manage",
+    }
 }
 
 
-def assert_permission_granted(permission: str, role_keys: list[str]) -> None:
+def assert_permission_granted(permission: str, role_key: str) -> None:
     if permission not in PERMISSION_REGISTRY:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission definition missing. Access denied by default.",
         )
 
-    granted_permissions: set[str] = set()
-    for role_key in role_keys:
-        granted_permissions.update(ROLE_GRANTS.get(role_key, set()))
+    granted_permissions = ROLE_GRANTS.get(role_key, set())
 
     if permission not in granted_permissions:
         raise HTTPException(
@@ -175,7 +192,7 @@ def assert_permission_granted(permission: str, role_keys: list[str]) -> None:
 
 def require_permission(permission: str) -> Callable[[SessionContext], SessionContext]:
     def dependency(session: SessionContext = Depends(get_current_session)) -> SessionContext:
-        assert_permission_granted(permission, session.roles)
+        assert_permission_granted(permission, session.role)
         return session
 
     return dependency

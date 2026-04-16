@@ -6,7 +6,7 @@ class RegisterRequest(BaseModel):
     email: str
     password: str = Field(min_length=10)
     tenant_slug:str | None = None
-    role: list[str] = Field(default_factory=list)
+    role: str | None = None
 
 
 class LoginRequest(BaseModel):
@@ -713,3 +713,28 @@ class UpsertDiscoveryDocumentRequest(BaseModel):
     summary: str = Field(min_length=2, max_length=500)
     tags: list[str] = Field(default_factory=list)
     cards: list[DiscoveryCardRequest] = Field(default_factory=list)
+
+
+class AddressRequest(BaseModel):
+    address1: str = Field(min_length=1, max_length=255)
+    address2: str | None = Field(default=None, max_length=255)
+    city: str = Field(min_length=1, max_length=120)
+    state: str = Field(min_length=1, max_length=120)
+    zipcode: str = Field(min_length=1, max_length=32)
+    country: str = Field(min_length=1, max_length=120)
+    is_default: bool = False
+
+
+class CreateCustomerRequest(BaseModel):
+    tenant_slug: str = Field(min_length=3, max_length=120)
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=10)
+    addresses: list[AddressRequest] = Field(default_factory=list)
+
+
+class LoginCustomerRequest(BaseModel):
+    tenant_slug: str = Field(min_length=3, max_length=120)
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=10)
