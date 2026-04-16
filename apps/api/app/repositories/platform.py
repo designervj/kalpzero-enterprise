@@ -34,6 +34,9 @@ def get_tenant_by_slug(db: Session, slug: str) -> TenantModel | None:
     return db.scalar(select(TenantModel).where(TenantModel.slug == slug))
 
 
+def get_tenant_by_id(db: Session, id: str) -> TenantModel | None:
+    return db.scalar(select(TenantModel).where(TenantModel.id == id))
+
 def create_tenant(
     db: Session,
     *,
@@ -45,6 +48,7 @@ def create_tenant(
     business_type: str | None,
     feature_flags: list[str],
     dedicated_profile_id: str | None,
+    mongo_db_name: str | None,
 ) -> TenantModel:
     # Keep the stored value list-shaped so existing publishing/bootstrap helpers
     # can continue to read tenant.vertical_packs without a broader refactor.
@@ -57,6 +61,7 @@ def create_tenant(
         business_type=business_type,
         feature_flags=feature_flags,
         dedicated_profile_id=dedicated_profile_id,
+        mongo_db_name=mongo_db_name,
     )
     db.add(tenant)
     db.flush()

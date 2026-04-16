@@ -15,24 +15,25 @@ router = APIRouter()
 
 
 @router.get("/sources")
-def import_sources(
+async def import_sources(
     session: SessionContext = Depends(require_permission("imports.sources.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "sources": list_import_sources(db, tenant_slug=session.tenant_id)}
+        sources = await list_import_sources(db, tenant_slug=session.tenant_id)
+        return {"tenant_id": ctx.tenant_id, "sources": sources}
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.post("/sources", status_code=status.HTTP_201_CREATED)
-def import_sources_create(
+async def import_sources_create(
     payload: CreateImportSourceRequest,
     session: SessionContext = Depends(require_permission("imports.sources.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_import_source(
+        return await create_import_source(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
@@ -47,24 +48,25 @@ def import_sources_create(
 
 
 @router.get("/jobs")
-def import_jobs(
+async def import_jobs(
     session: SessionContext = Depends(require_permission("imports.jobs.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "jobs": list_import_jobs(db, tenant_slug=session.tenant_id)}
+        jobs = await list_import_jobs(db, tenant_slug=session.tenant_id)
+        return {"tenant_id": ctx.tenant_id, "jobs": jobs}
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)
-def import_jobs_create(
+async def import_jobs_create(
     payload: CreateImportJobRequest,
     session: SessionContext = Depends(require_permission("imports.jobs.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return create_import_job(
+        return await create_import_job(
             db,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,

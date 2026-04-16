@@ -4,9 +4,19 @@ from functools import lru_cache
 import re
 from typing import Protocol
 
-from fastapi import Depends
 from pymongo import MongoClient
 from pymongo.database import Database
+from motor.motor_asyncio import AsyncIOMotorClient
+from motor.core import AgnosticDatabase, AgnosticCollection
+from beanie import init_beanie
+from fastapi import Depends
+
+# Patch MotorClient to avoid Beanie 2.1.0 initialization error.
+# Beanie 2.1.0 incorrectly assumes that database.client.append_metadata is a valid method if it is callable().
+# In Motor 3.x, accessing a non-existent attribute on a client returns a MotorDatabase object, 
+# which has a __call__ method that raises a TypeError, thus making callable() return True.
+if not hasattr(AsyncIOMotorClient, "append_metadata"):
+    AsyncIOMotorClient.append_metadata = lambda self, metadata: None
 
 from app.core.config import Settings, get_settings
 
@@ -92,24 +102,86 @@ def get_mongo_client(mongo_url: str) -> MongoClient:
     return MongoClient(mongo_url, tz_aware=True)
 
 
+@lru_cache
+def get_motor_client(mongo_url: str) -> AsyncIOMotorClient:
+    return AsyncIOMotorClient(mongo_url)
+
+
 def _normalize_mongo_name_segment(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
     return normalized or "tenant"
 
 
 def build_runtime_database_name(settings: Settings, *, tenant_slug: str) -> str:
-    base_name = _normalize_mongo_name_segment(settings.runtime_mongo_db)
+    """
+    Builds the MongoDB database name for a tenant.
+    If the provided slug already looks like a normalized database name (starts with kp_),
+    it is returned as-is. Otherwise, it is normalized and prefixed.
+    """
+    if tenant_slug.startswith("kp_"):
+        return tenant_slug
+        
     tenant_name = _normalize_mongo_name_segment(tenant_slug)
-    return f"{base_name}__tenant__{tenant_name}"
+    return f"kp_{tenant_name}"
 
 
-def get_runtime_mongo_database(settings: Settings, *, tenant_slug: str | None = None) -> Database:
-    database_name = settings.runtime_mongo_db if tenant_slug is None else build_runtime_database_name(settings, tenant_slug=tenant_slug)
-    return get_mongo_client(settings.runtime_mongo_url)[database_name]
+def get_runtime_mongo_database(settings: Settings, *, database_name: str | None = None) -> Database:
+    resolved_db_name = database_name
+    return get_mongo_client(settings.runtime_mongo_url)[resolved_db_name]
+
+
+def get_runtime_motor_database(settings: Settings, *, database_name: str | None = None) -> AgnosticDatabase:
+    resolved_db_name = database_name
+    return get_motor_client(settings.runtime_mongo_url)[resolved_db_name]
+
+
+def get_tenant_collection(settings: Settings, database_name: str, collection_name: str):
+    db = get_runtime_mongo_database(settings, database_name=database_name)
+    return db[collection_name]
+
+
+def get_tenant_motor_collection(settings: Settings, database_name: str, collection_name: str) -> AgnosticCollection:
+    db = get_runtime_motor_database(settings, tenant_slug=tenant_slug)
+    return db[collection_name]
+
+
+
+_BEANE_INITIALIZED_TENANTS: set[str] = set()
+
+
+async def init_beanie_utility(settings: Settings, *, document_models: list = None, database_name: str | None = None):
+    """
+    Initializes Beanie for a specific database (tenant or platform).
+    """
+    db = get_runtime_motor_database(settings, database_name=database_name)
+    await init_beanie(database=db, document_models=document_models or [])
+
+
+async def ensure_tenant_vertical_initialized(
+    settings: Settings, 
+    *, 
+    vertical: str, 
+    document_models: list,
+    database_name: str | None = None
+):
+    """
+    Ensures that Beanie is initialized for the specified tenant's database
+    and vertical-specific models.
+    """
+    cache_key = f"{database_name}"
+    if cache_key in _BEANE_INITIALIZED_TENANTS:
+        return
+    
+    await init_beanie_utility(
+        settings, 
+        document_models=document_models,
+        database_name=database_name
+    )
+    _BEANE_INITIALIZED_TENANTS.add(cache_key)
 
 
 class RuntimeDocumentStore(Protocol):
-    def get_document(self, *, collection: str, tenant_slug: str, document_key: str) -> dict[str, object] | None: ...
+    def get_document(self, *, collection: str, tenant_slug: str, document_key: str, database_name: str | None = None) -> dict[str, object] | None: ...
 
     def upsert_document(
         self,
@@ -118,9 +190,10 @@ class RuntimeDocumentStore(Protocol):
         tenant_slug: str,
         document_key: str,
         payload: dict[str, object],
+        database_name: str | None = None,
     ) -> dict[str, object]: ...
 
-    def list_documents(self, *, collection: str, tenant_slug: str) -> list[dict[str, object]]: ...
+    def list_documents(self, *, collection: str, tenant_slug: str, database_name: str | None = None) -> list[dict[str, object]]: ...
 
 
 class MemoryRuntimeDocumentStore:
@@ -130,7 +203,7 @@ class MemoryRuntimeDocumentStore:
     def _composite_key(self, tenant_slug: str, document_key: str) -> str:
         return f"{tenant_slug}:{document_key}"
 
-    def get_document(self, *, collection: str, tenant_slug: str, document_key: str) -> dict[str, object] | None:
+    def get_document(self, *, collection: str, tenant_slug: str, document_key: str, database_name: str | None = None) -> dict[str, object] | None:
         return self._collections[collection].get(self._composite_key(tenant_slug, document_key))
 
     def upsert_document(
@@ -140,6 +213,7 @@ class MemoryRuntimeDocumentStore:
         tenant_slug: str,
         document_key: str,
         payload: dict[str, object],
+        database_name: str | None = None,
     ) -> dict[str, object]:
         record = {
             "_id": self._composite_key(tenant_slug, document_key),
@@ -151,7 +225,7 @@ class MemoryRuntimeDocumentStore:
         self._collections[collection][self._composite_key(tenant_slug, document_key)] = record
         return record
 
-    def list_documents(self, *, collection: str, tenant_slug: str) -> list[dict[str, object]]:
+    def list_documents(self, *, collection: str, tenant_slug: str, database_name: str | None = None) -> list[dict[str, object]]:
         prefix = f"{tenant_slug}:"
         return [
             record
@@ -173,11 +247,11 @@ class MongoRuntimeDocumentStore:
         # Allow passing the direct collection name for vertical-specific collections
         return collection
 
-    def _database(self, tenant_slug: str) -> Database:
-        return get_runtime_mongo_database(self.settings, tenant_slug=tenant_slug)
+    def _database(self, tenant_slug: str, database_name: str | None = None) -> Database:
+        return get_runtime_mongo_database(self.settings, tenant_slug=tenant_slug, database_name=database_name)
 
-    def get_document(self, *, collection: str, tenant_slug: str, document_key: str) -> dict[str, object] | None:
-        document = self._database(tenant_slug)[self._collection_name(collection)].find_one(
+    def get_document(self, *, collection: str, tenant_slug: str, document_key: str, database_name: str | None = None) -> dict[str, object] | None:
+        document = self._database(tenant_slug, database_name=database_name)[self._collection_name(collection)].find_one(
             {"tenant_slug": tenant_slug, "document_key": document_key}
         )
         return document
@@ -189,9 +263,10 @@ class MongoRuntimeDocumentStore:
         tenant_slug: str,
         document_key: str,
         payload: dict[str, object],
+        database_name: str | None = None,
     ) -> dict[str, object]:
         updated_at = datetime.now(tz=UTC).isoformat()
-        self._database(tenant_slug)[self._collection_name(collection)].update_one(
+        self._database(tenant_slug, database_name=database_name)[self._collection_name(collection)].update_one(
             {"tenant_slug": tenant_slug, "document_key": document_key},
             {
                 "$set": {
@@ -203,13 +278,13 @@ class MongoRuntimeDocumentStore:
             },
             upsert=True,
         )
-        document = self.get_document(collection=collection, tenant_slug=tenant_slug, document_key=document_key)
+        document = self.get_document(collection=collection, tenant_slug=tenant_slug, document_key=document_key, database_name=database_name)
         if document is None:
             raise RuntimeError("Mongo runtime document upsert did not return a document.")
         return document
 
-    def list_documents(self, *, collection: str, tenant_slug: str) -> list[dict[str, object]]:
-        cursor = self._database(tenant_slug)[self._collection_name(collection)].find({"tenant_slug": tenant_slug})
+    def list_documents(self, *, collection: str, tenant_slug: str, database_name: str | None = None) -> list[dict[str, object]]:
+        cursor = self._database(tenant_slug, database_name=database_name)[self._collection_name(collection)].find({"tenant_slug": tenant_slug})
         return list(cursor)
 
 

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class SessionResponse(BaseModel):
     user_id: str
     tenant_id: str
-    roles: list[str]
+    role: str
 
 
 class LoginResponse(BaseModel):

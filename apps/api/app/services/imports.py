@@ -36,7 +36,7 @@ def serialize_import_job(job) -> dict[str, object]:
     }
 
 
-def create_import_source(
+async def create_import_source(
     db: Session,
     *,
     tenant_slug: str,
@@ -51,7 +51,7 @@ def create_import_source(
     if tenant is None:
         raise NotFoundError(f"Tenant '{tenant_slug}' was not found.")
 
-    source = import_repository.create_import_source(
+    source = await import_repository.create_import_source(
         db,
         tenant_id=tenant.id,
         name=name,
@@ -69,19 +69,21 @@ def create_import_source(
         subject_id=source.id,
         metadata_json={"source_type": source.source_type, "vertical_pack": source.vertical_pack},
     )
-    db.commit()
+    # db.commit() # Usually handled by router or middleware in async cleanup, 
+    # but we'll follow the original pattern if it's there.
     return serialize_import_source(source)
 
 
-def list_import_sources(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
+async def list_import_sources(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
     tenant = platform_repository.get_tenant_by_slug(db, tenant_slug)
     if tenant is None:
         raise NotFoundError(f"Tenant '{tenant_slug}' was not found.")
 
-    return [serialize_import_source(item) for item in import_repository.list_import_sources(db, tenant_id=tenant.id)]
+    sources = await import_repository.list_import_sources(db, tenant_id=tenant.id)
+    return [serialize_import_source(item) for item in sources]
 
 
-def create_import_job(
+async def create_import_job(
     db: Session,
     *,
     tenant_slug: str,
@@ -93,7 +95,7 @@ def create_import_job(
     if tenant is None:
         raise NotFoundError(f"Tenant '{tenant_slug}' was not found.")
 
-    source = import_repository.get_import_source(db, source_id=source_id, tenant_id=tenant.id)
+    source = await import_repository.get_import_source(db, source_id=source_id, tenant_id=tenant.id)
     if source is None:
         raise NotFoundError(f"Import source '{source_id}' was not found.")
 
@@ -102,7 +104,7 @@ def create_import_job(
         "summary": "Job accepted for canonical validation and processing.",
         "supports_dry_run": True,
     }
-    job = import_repository.create_import_job(
+    job = await import_repository.create_import_job(
         db,
         tenant_id=tenant.id,
         source_id=source.id,
@@ -137,7 +139,7 @@ def create_import_job(
 
     if source.vertical_pack == "commerce":
         try:
-            result_status, result_report = run_commerce_import_job(
+            result_status, result_report = await run_commerce_import_job(
                 db,
                 tenant_id=tenant.id,
                 source=source,
@@ -201,7 +203,7 @@ def create_import_job(
     else:
         job.status = "queued"
 
-    db.commit()
+    # db.commit()
     response = {
         "job": serialize_import_job(job),
         "audit_event": serialize_audit_event(audit_event),
@@ -214,9 +216,10 @@ def create_import_job(
     return response
 
 
-def list_import_jobs(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
+async def list_import_jobs(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
     tenant = platform_repository.get_tenant_by_slug(db, tenant_slug)
     if tenant is None:
         raise NotFoundError(f"Tenant '{tenant_slug}' was not found.")
 
-    return [serialize_import_job(item) for item in import_repository.list_import_jobs(db, tenant_id=tenant.id)]
+    jobs = await import_repository.list_import_jobs(db, tenant_id=tenant.id)
+    return [serialize_import_job(item) for item in jobs]
