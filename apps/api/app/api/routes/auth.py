@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -21,6 +21,7 @@ router = APIRouter()
 @router.post("/register", response_model=RegisterResponse)
 def register(
     payload: RegisterRequest,
+    response: Response,
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> RegisterResponse:
@@ -29,56 +30,86 @@ def register(
     expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
 
     token = create_access_token(
-        user_id=user.email,
+        id=user.id,
+        email=user.email,
         tenant_id=user.tenant_id or "platform_control",
         role=user.role,
         settings=settings,
+    )
+
+    response.set_cookie(
+        key="auth_token",
+        value=token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=1440 * 60,
+        path="/",
     )
 
     return RegisterResponse(
         access_token=token,
         expires_at=expires_at.isoformat(),
         session={
-            "user_id": user.email,
+            "email": user.email,
             "tenant_id": user.tenant_id or "platform_control",
             "role": user.role,
+            "name": user.name,
+            "isTenantOwner": user.istenantowner,
         },
     )
 
 
 @router.post("/login", response_model=LoginResponse)
 def login(
+    response: Response,
     payload: LoginRequest,
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
     user = authenticate_user(db, payload.email, payload.password)
-
     expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
     token = create_access_token(
-        user_id=user.email,
+        id=user.id,
+        email=user.email,
         tenant_id=user.tenant_id or "platform_control",
         role=user.role,
         settings=settings,
+    )
+
+
+    response.set_cookie(
+        key="auth_token",
+        value=token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=1440 * 60,
+        path="/",
     )
 
     return LoginResponse(
         access_token=token,
         expires_at=expires_at.isoformat(),
         session={
-            "user_id": user.email,
+            "email": user.email,
             "tenant_id": user.tenant_id or "platform_control",
             "role": user.role,
+            "name": user.name,
+            "isTenantOwner": user.istenantowner,
         },
     )
 
 
 @router.get("/me", response_model=SessionResponse)
 def me(session: SessionContext = Depends(get_current_session)) -> SessionResponse:
+    user = db.scalar(select(UserModel).where(UserModel.id == session.id))
     return SessionResponse(
-        user_id=session.user_id,
+        email=session.email,
         tenant_id=session.tenant_id,
         role=session.role,
+        name=user.name,
+        isTenantOwner=user.isTenantOwner,
     )
 
 

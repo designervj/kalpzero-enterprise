@@ -60,6 +60,7 @@ def create_user(
     db: Session,
     payload: RegisterRequest,
 ) -> UserModel:
+    
     # ✅ Check if user already exists
     existing_user = db.scalar(select(UserModel).where(UserModel.email == payload.email))
     if existing_user:
@@ -83,7 +84,6 @@ def create_user(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Tenant not found.",
             )
-        
         tenant_id = tenant_info.id
 
     # ✅ Hash password
@@ -95,6 +95,8 @@ def create_user(
         hashed_password=hashed_password,
         tenant_id=tenant_id,
         role=role,
+        name=payload.name,
+        istenantowner=payload.istenantowner,
     )
 
     db.add(new_user)

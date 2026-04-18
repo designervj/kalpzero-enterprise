@@ -16,7 +16,8 @@ ALGORITHM = "HS256"
 
 
 class TokenPayload(BaseModel):
-    sub: str
+    id: str
+    email: str
     tenant_id: str
     role: str
     exp: int
@@ -24,6 +25,7 @@ class TokenPayload(BaseModel):
 
 class SessionContext(BaseModel):
     user_id: str | None
+    email: str | None
     tenant_id: str | None
     role: str
     tenant_db_name: str | None = None
@@ -31,7 +33,8 @@ class SessionContext(BaseModel):
 
 def create_access_token(
     *,
-    user_id: str,
+    id: str,
+    email: str,
     tenant_id: str,
     role: str,
     settings: Settings,
@@ -39,7 +42,8 @@ def create_access_token(
 ) -> str:
     expire_at = datetime.now(tz=UTC) + expires_delta
     payload = {
-        "sub": user_id,
+        "id": id,
+        "email": email,
         "tenant_id": tenant_id,
         "role": role,
         "exp": int(expire_at.timestamp()),
@@ -89,15 +93,16 @@ def get_current_session(
     if credentials and credentials.scheme.lower() == "bearer":
         payload = decode_access_token(credentials.credentials, settings)
         return SessionContext(
-            user_id=payload.sub,
+            user_id=payload.id,
+            email=payload.email,
             tenant_id=payload.tenant_id,
             tenant_db_name=x_tenant_db,
             role=payload.role,
-    
         )
     else:
         return SessionContext(
             user_id=None,
+            email=None,
             tenant_id=None,
             tenant_db_name=x_tenant_db,
             role="guest",

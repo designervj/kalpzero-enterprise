@@ -17,6 +17,8 @@ class UserModel(TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     tenant_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("tenants.id"), nullable=True)
     role: Mapped[str] = mapped_column(String(32), default="tenant_admin")
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    istenantowner: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class AgencyModel(TimestampMixin, Base):

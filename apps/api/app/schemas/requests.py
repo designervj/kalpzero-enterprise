@@ -7,6 +7,9 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=10)
     tenant_slug:str | None = None
     role: str | None = None
+    name: str | None = None
+    istenantowner: bool = False
+
 
 
 class LoginRequest(BaseModel):

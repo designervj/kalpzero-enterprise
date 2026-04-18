@@ -2,9 +2,11 @@ from pydantic import BaseModel
 
 
 class SessionResponse(BaseModel):
-    user_id: str
+    email: str
     tenant_id: str
     role: str
+    name: str
+    isTenantOwner: bool
 
 
 class LoginResponse(BaseModel):
