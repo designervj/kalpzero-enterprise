@@ -37,8 +37,8 @@ __pycache__/
 *.db
 
 scripts
-
-
 package.json
 README.md
 
+#prevent previous code
+kalpzero

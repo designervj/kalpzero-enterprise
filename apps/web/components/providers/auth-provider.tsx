@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { getCurrentSession, login as loginRequest, type LoginPayload, type SessionDto } from "@/lib/api";
 import { AUTH_STORAGE_KEY } from "@/lib/auth-storage";
+import { AuthUser, setAuthUser } from "@/lib/slices/auth/authSlice";
+import { useDispatch } from "react-redux";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
@@ -54,6 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [session, setSession] = useState<SessionDto | null>(null);
 
+  const dispatch = useDispatch();
+
   const refresh = useCallback(async () => {
     const nextToken = readStoredToken();
     if (!nextToken) {
@@ -68,6 +72,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(nextToken);
       setSession(nextSession);
       setStatus("authenticated");
+
+      // Restore auth user in Redux on page refresh
+      const userData: AuthUser = {
+        id: nextSession.user_id ?? "",
+        name: "",
+        email: nextSession.user_id ?? "",
+        roles: nextSession.roles[0] ?? "",
+        tenant_id: nextSession.tenant_id ?? "",
+        access_token: nextToken,
+      };
+      dispatch(setAuthUser(userData));
+
       return nextSession;
     } catch {
       writeStoredToken(null);
@@ -76,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStatus("anonymous");
       return null;
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     void refresh();
@@ -84,12 +100,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (payload: LoginPayload) => {
     const response = await loginRequest(payload);
+
+    const usrerdata: AuthUser = {
+      id: response.session?.user_id ?? "",
+      name: "",
+      email: response.session.user_id ?? "",
+      roles: response.session.roles[0] ?? "",
+      tenant_id: response.session.tenant_id ?? "",
+      //tenant_slug:response.session.tenant_slug??"",
+      access_token: response.access_token ?? "",
+      expires_at: response.expires_at ?? "",
+    };
+    dispatch(setAuthUser(usrerdata));
+    // console.log("login ",response)
     writeStoredToken(response.access_token);
     setToken(response.access_token);
     setSession(response.session);
     setStatus("authenticated");
     return response.session;
-  }, []);
+  }, [dispatch]);
 
   const logout = useCallback(() => {
     writeStoredToken(null);

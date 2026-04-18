@@ -1,4 +1,12 @@
-import bcrypt
+import base64
+import hashlib
+import hmac
+import secrets
+
+try:
+    import bcrypt  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    bcrypt = None
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,12 +17,42 @@ from app.repositories import auth as auth_repository
 from app.schemas.requests import CreateCustomerRequest, RegisterRequest
 
 
+def _b64encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _b64decode(raw: str) -> bytes:
+    padded = raw + "=" * (-len(raw) % 4)
+    return base64.urlsafe_b64decode(padded.encode("ascii"))
+
+
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    if bcrypt is not None:
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+    iterations = 600_000
+    salt = secrets.token_bytes(16)
+    derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, dklen=32)
+    return f"pbkdf2_sha256${iterations}${_b64encode(salt)}${_b64encode(derived)}"
 
 
 def verify_password(password: str, hashed: str) -> bool:
+    if hashed.startswith("pbkdf2_sha256$"):
+        try:
+            _, iterations, salt, expected = hashed.split("$", 3)
+            iterations_int = int(iterations)
+        except ValueError:
+            return False
+
+        derived = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), _b64decode(salt), iterations_int, dklen=32
+        )
+        return hmac.compare_digest(_b64encode(derived), expected)
+
+    if bcrypt is None:
+        return False
+
     return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 

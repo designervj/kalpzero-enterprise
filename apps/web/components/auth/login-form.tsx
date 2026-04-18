@@ -2,7 +2,7 @@
 
 import { startTransition, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Hotel, ShoppingBag } from "lucide-react";
+import { Building2, Hotel, ShoppingBag, Eye, EyeOff } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { Badge } from "@/components/ui/badge";
@@ -31,10 +31,11 @@ export function LoginForm() {
   const { login } = useAuth();
   const [mode, setMode] = useState<RoleMode>("platform");
   const [email, setEmail] = useState("founder@kalpzero.com");
-  const [password, setPassword] = useState("very-secure-password");
+  const [password, setPassword] = useState("1234567899");
   const [tenantSlug, setTenantSlug] = useState("demo-tenant");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const helperCopy = useMemo(() => {
     if (mode === "platform") {
@@ -54,7 +55,7 @@ export function LoginForm() {
         password,
         tenant_slug: mode === "tenant" ? tenantSlug : undefined
       });
-
+      console.log(session)
       startTransition(() => {
         router.push(session.roles.includes("platform_admin") ? "/platform" : "/tenant");
       });
@@ -145,7 +146,22 @@ export function LoginForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </div>
             {mode === "tenant" ? (
               <div className="space-y-2">

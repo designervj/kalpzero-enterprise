@@ -6,7 +6,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-from sqlalchemy_utils import create_database, database_exists
 
 from app.core.config import Settings, get_settings
 from app.db.base import Base
@@ -48,10 +47,6 @@ def init_db(settings: Settings) -> None:
     database_url = _normalize_database_url(settings.database_url)
     engine = get_engine(database_url)
     
-    # Create database if it doesn't exist (handled by sqlalchemy-utils)
-    if not database_exists(engine.url):
-        create_database(engine.url)
-        
     Base.metadata.create_all(bind=engine)
 
 

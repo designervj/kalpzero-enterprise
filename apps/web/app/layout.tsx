@@ -3,6 +3,7 @@ import { Fraunces, Space_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { ReduxProvider } from "@/components/providers/redux-provider";
 
 import "./globals.css";
 
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="en">
       <body className={`${headingFont.variable} ${bodyFont.variable} font-body antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <ReduxProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ReduxProvider>
       </body>
     </html>
   );

@@ -58,7 +58,7 @@ export function ConsoleShell({
                 <div>
                   <p className="font-heading text-2xl font-semibold tracking-tight text-foreground">KalpZero</p>
                   <p className="text-sm text-muted-foreground">
-                    {scope === "platform" ? "Super Admin Console" : "Tenant Operator Console"}
+                    {scope === "platform" ? "Super Admin" : "Tenant Operator"}
                   </p>
                 </div>
               </div>
