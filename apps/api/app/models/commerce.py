@@ -160,6 +160,7 @@ class CommerceStockLedgerEntry(TimestampDocument):
     entry_type: str
     quantity_delta: int
     balance_after: int
+    reserved_after: int = 0
     reference_type: Optional[str] = None
     reference_id: Optional[str] = None
     notes: Optional[str] = None

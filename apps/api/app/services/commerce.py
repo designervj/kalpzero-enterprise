@@ -177,7 +177,7 @@ def _serialize_stock_ledger_entry(model) -> dict[str, object]:
         "entry_type": model["entry_type"],
         "quantity_delta": model["quantity_delta"],
         "balance_after": model["balance_after"],
-        "reserved_after": model["reserved_after"],
+        "reserved_after": model.get("reserved_after", 0),
         "reference_type": model.get("reference_type"),
         "reference_id": str(model.get("reference_id")) if model.get("reference_id") else None,
         "notes": model.get("notes"),
