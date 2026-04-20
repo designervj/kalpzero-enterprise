@@ -17,9 +17,11 @@ def test_auth_me_returns_current_session(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "user_id": "founder@kalpzero.com",
+        "email": "founder@kalpzero.com",
         "tenant_id": "platform_control",
-        "roles": ["platform_admin"],
+        "role": "platform_admin",
+        "name": "Platform Founder",
+        "isTenantOwner": False,
     }
 
 

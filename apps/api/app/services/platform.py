@@ -99,13 +99,14 @@ def serialize_agency(agency) -> dict[str, object]:
 
 
 def serialize_tenant(tenant, *, settings: Settings | None = None, bootstrap: dict[str, object] | None = None) -> dict[str, object]:
+    vertical_packs = tenant.vertical_packs if isinstance(tenant.vertical_packs, list) else [tenant.vertical_packs]
     payload = {
         "id": str(tenant.id),
         "agency_id": str(tenant.agency_id),
         "slug": tenant.slug,
         "display_name": tenant.display_name,
         "infra_mode": tenant.infra_mode,
-        "vertical_packs": tenant.vertical_packs,
+        "vertical_packs": vertical_packs,
         "business_type": tenant.business_type,
         "feature_flags": tenant.feature_flags,
         "dedicated_profile_id": str(tenant.dedicated_profile_id) if tenant.dedicated_profile_id else None,
@@ -166,10 +167,14 @@ def get_onboarding_readiness(
     settings: Settings,
     *,
     requested_vertical_pack: str | None = None,
+    requested_vertical_packs: list[str] | None = None,
     infra_mode: str | None = None,
     dedicated_profile_id: str | None = None,
 ) -> dict[str, object]:
-    requested_vertical = requested_vertical_pack
+    requested_verticals: list[str] = []
+    for vertical in [requested_vertical_pack, *(requested_vertical_packs or [])]:
+        if vertical and vertical not in requested_verticals:
+            requested_verticals.append(vertical)
     blockers: list[str] = []
     warnings: list[str] = []
     checks: list[dict[str, str]] = []
@@ -213,9 +218,10 @@ def get_onboarding_readiness(
     if infra_mode == "shared" and dedicated_profile_id:
         blockers.append("Shared tenant onboarding must not include a dedicated_profile_id.")
 
-    if requested_vertical:
+    for requested_vertical in requested_verticals:
         if requested_vertical not in KNOWN_VERTICALS:
             blockers.append(f"Unknown vertical pack requested: {requested_vertical}.")
+            continue
 
         if requested_vertical not in ONBOARDING_VERTICALS:
             blockers.append(
@@ -232,14 +238,15 @@ def get_onboarding_readiness(
         "environment": settings.env,
         "supported_vertical_packs": sorted(ONBOARDING_VERTICALS),
         "planned_vertical_packs": sorted(KNOWN_VERTICALS - ONBOARDING_VERTICALS),
-        "requested_vertical_pack": requested_vertical,
+        "requested_vertical_packs": requested_verticals,
         "infra_mode": infra_mode,
         "blockers": blockers,
         "warnings": warnings,
         "checks": checks,
         "vertical_readiness": {
             vertical: VERTICAL_READINESS[vertical]
-            for vertical in [requested_vertical] if vertical and vertical in VERTICAL_READINESS
+            for vertical in requested_verticals
+            if vertical in VERTICAL_READINESS
         } or {
             vertical: VERTICAL_READINESS[vertical]
             for vertical in sorted(ONBOARDING_VERTICALS)
@@ -415,19 +422,23 @@ def get_onboarding_readiness_report(
     settings: Settings,
     *,
     requested_vertical_pack: str | None = None,
+    requested_vertical_packs: list[str] | None = None,
     infra_mode: str | None = None,
     dedicated_profile_id: str | None = None,
 ) -> dict[str, object]:
     return get_onboarding_readiness(
         settings,
         requested_vertical_pack=requested_vertical_pack,
+        requested_vertical_packs=requested_vertical_packs,
         infra_mode=infra_mode,
         dedicated_profile_id=dedicated_profile_id,
     )
 
 
 def get_tenant_or_raise(db: Session, *, tenant_slug: str):
-    tenant = platform_repository.get_tenant_by_id(db, tenant_slug)
+    tenant = platform_repository.get_tenant_by_slug(db, tenant_slug)
+    if tenant is None:
+        tenant = platform_repository.get_tenant_by_id(db, tenant_slug)
     if tenant is None:
         raise NotFoundError(f"Tenant '{tenant_slug}' was not found.")
     return tenant

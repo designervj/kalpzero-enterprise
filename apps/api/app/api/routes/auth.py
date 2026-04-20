@@ -1,14 +1,20 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.security import SessionContext, create_access_token, get_current_session
-from app.db.session import get_db_session
-from sqlalchemy import select
 from app.db.models import TenantModel, UserModel
-from app.schemas.requests import CreateCustomerRequest, LoginCustomerRequest, LoginRequest, MagicLoginRequest, RegisterRequest
+from app.db.session import get_db_session
+from app.schemas.requests import (
+    CreateCustomerRequest,
+    LoginCustomerRequest,
+    LoginRequest,
+    MagicLoginRequest,
+    RegisterRequest,
+)
 from app.schemas.responses import LoginResponse, RegisterResponse, SessionResponse
 from app.services.auth import (
     authenticate_customer,
@@ -20,6 +26,39 @@ from app.services.auth import (
 router = APIRouter()
 
 
+def _resolve_tenant_slug(db: Session, tenant_id: str | None) -> str:
+    if tenant_id is None:
+        return "platform_control"
+    tenant = db.get(TenantModel, tenant_id)
+    return tenant.slug if tenant else tenant_id
+
+
+def _serialize_user_session(db: Session, user: UserModel) -> SessionResponse:
+    return SessionResponse(
+        email=user.email,
+        tenant_id=_resolve_tenant_slug(db, user.tenant_id),
+        role=user.role,
+        name=user.name or user.email,
+        isTenantOwner=user.istenantowner,
+    )
+
+
+def _serialize_customer_session(
+    *,
+    email: str,
+    tenant_slug: str,
+    role: str,
+    name: str | None,
+) -> SessionResponse:
+    return SessionResponse(
+        email=email,
+        tenant_id=tenant_slug,
+        role=role,
+        name=name or email,
+        isTenantOwner=False,
+    )
+
+
 @router.post("/register", response_model=RegisterResponse)
 def register(
     payload: RegisterRequest,
@@ -28,13 +67,12 @@ def register(
     settings: Settings = Depends(get_settings),
 ) -> RegisterResponse:
     user = create_user(db, payload)
-
+    session_payload = _serialize_user_session(db, user)
     expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
-
     token = create_access_token(
         id=user.id,
         email=user.email,
-        tenant_id=user.tenant_id or "platform_control",
+        tenant_id=session_payload.tenant_id,
         role=user.role,
         settings=settings,
     )
@@ -52,13 +90,7 @@ def register(
     return RegisterResponse(
         access_token=token,
         expires_at=expires_at.isoformat(),
-        session={
-            "email": user.email,
-            "tenant_id": user.tenant_id or "platform_control",
-            "role": user.role,
-            "name": user.name,
-            "isTenantOwner": user.istenantowner,
-        },
+        session=session_payload,
     )
 
 
@@ -69,17 +101,16 @@ def login(
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
-    user = authenticate_user(db, payload.email, payload.password)
-    print("user---", user)
+    user = authenticate_user(db, payload.email, payload.password, tenant_slug=payload.tenant_slug)
+    session_payload = _serialize_user_session(db, user)
     expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
     token = create_access_token(
         id=user.id,
         email=user.email,
-        tenant_id=user.tenant_id or "platform_control",
+        tenant_id=session_payload.tenant_id,
         role=user.role,
         settings=settings,
     )
-
 
     response.set_cookie(
         key="auth_token",
@@ -94,26 +125,23 @@ def login(
     return LoginResponse(
         access_token=token,
         expires_at=expires_at.isoformat(),
-        session={
-            "email": user.email,
-            "tenant_id": user.tenant_id or "platform_control",
-            "role": user.role,
-            "name": user.name,
-            "isTenantOwner": user.istenantowner,
-        },
+        session=session_payload,
     )
 
 
 @router.get("/me", response_model=SessionResponse)
-def me(session: SessionContext = Depends(get_current_session)) -> SessionResponse:
-    user = db.scalar(select(UserModel).where(UserModel.id == session.id))
-    return SessionResponse(
-        email=session.email,
-        tenant_id=session.tenant_id,
-        role=session.role,
-        name=user.name,
-        isTenantOwner=user.isTenantOwner,
-    )
+def me(
+    session: SessionContext = Depends(get_current_session),
+    db: Session = Depends(get_db_session),
+) -> SessionResponse:
+    if session.user_id is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.")
+
+    user = db.get(UserModel, session.user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+
+    return _serialize_user_session(db, user)
 
 
 @router.post("/register/customer", response_model=RegisterResponse)
@@ -122,12 +150,17 @@ def register_customer(
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> RegisterResponse:
-
     customer = create_customer(db, payload)
-
+    session_payload = _serialize_customer_session(
+        email=customer.email,
+        tenant_slug=payload.tenant_slug,
+        role=customer.role,
+        name=f"{customer.first_name} {customer.last_name}".strip(),
+    )
     expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
     token = create_access_token(
-        user_id=customer.email,
+        id=customer.id,
+        email=customer.email,
         tenant_id=payload.tenant_slug,
         role=customer.role,
         settings=settings,
@@ -136,11 +169,7 @@ def register_customer(
     return RegisterResponse(
         access_token=token,
         expires_at=expires_at.isoformat(),
-        session={
-            "user_id": customer.email,
-            "tenant_id": payload.tenant_slug,
-            "role": customer.role,
-        },
+        session=session_payload,
     )
 
 
@@ -156,10 +185,16 @@ def login_customer(
         email=payload.email,
         password=payload.password,
     )
-
+    session_payload = _serialize_customer_session(
+        email=customer.email,
+        tenant_slug=payload.tenant_slug,
+        role=customer.role,
+        name=f"{customer.first_name} {customer.last_name}".strip(),
+    )
     expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
     token = create_access_token(
-        user_id=customer.email,
+        id=customer.id,
+        email=customer.email,
         tenant_id=payload.tenant_slug,
         role=customer.role,
         settings=settings,
@@ -168,22 +203,18 @@ def login_customer(
     return LoginResponse(
         access_token=token,
         expires_at=expires_at.isoformat(),
-        session={
-            "user_id": customer.email,
-            "tenant_id": payload.tenant_slug,
-            "role": customer.role,
-        },
+        session=session_payload,
     )
+
 
 @router.get("/magic/options")
 def get_magic_options(
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ):
-    if settings.env not in ["development", "testing"]:
+    if settings.env not in ["development", "test", "testing"]:
         return {"users": []}
 
-    # Fetch a few representative users
     users = db.scalars(
         select(UserModel)
         .where(UserModel.role.in_(["platform_admin", "tenant_admin"]))
@@ -192,18 +223,16 @@ def get_magic_options(
 
     options = []
     for user in users:
-        tenant_slug = None
-        if user.tenant_id:
-            tenant = db.get(TenantModel, user.tenant_id)
-            tenant_slug = tenant.slug if tenant else None
-        
-        options.append({
-            "id": user.id,
-            "email": user.email,
-            "role": user.role,
-            "name": user.name or user.email.split("@")[0].capitalize(),
-            "tenant_slug": tenant_slug
-        })
+        tenant_slug = _resolve_tenant_slug(db, user.tenant_id) if user.tenant_id else None
+        options.append(
+            {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role,
+                "name": user.name or user.email.split("@")[0].capitalize(),
+                "tenant_slug": tenant_slug,
+            }
+        )
 
     return {"users": options}
 
@@ -215,18 +244,19 @@ def magic_login(
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
-    if settings.env not in ["development", "testing"]:
+    if settings.env not in ["development", "test", "testing"]:
         raise HTTPException(status_code=403, detail="Magic login disabled in this environment")
 
     user = db.get(UserModel, payload.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    session_payload = _serialize_user_session(db, user)
     expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
     token = create_access_token(
         id=user.id,
         email=user.email,
-        tenant_id=user.tenant_id or "platform_control",
+        tenant_id=session_payload.tenant_id,
         role=user.role,
         settings=settings,
     )
@@ -244,11 +274,5 @@ def magic_login(
     return LoginResponse(
         access_token=token,
         expires_at=expires_at.isoformat(),
-        session={
-            "email": user.email,
-            "tenant_id": user.tenant_id or "platform_control",
-            "role": user.role,
-            "name": user.name,
-            "isTenantOwner": user.istenantowner,
-        },
+        session=session_payload,
     )

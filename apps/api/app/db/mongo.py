@@ -113,25 +113,21 @@ def _normalize_mongo_name_segment(value: str) -> str:
 
 
 def build_runtime_database_name(settings: Settings, *, tenant_slug: str) -> str:
-    """
-    Builds the MongoDB database name for a tenant.
-    If the provided slug already looks like a normalized database name (starts with kp_),
-    it is returned as-is. Otherwise, it is normalized and prefixed.
-    """
-    if tenant_slug.startswith("kp_"):
+    base_name = _normalize_mongo_name_segment(settings.runtime_mongo_db)
+    if tenant_slug.startswith("kp_") or tenant_slug.startswith(f"{base_name}__tenant__"):
         return tenant_slug
-        
+
     tenant_name = _normalize_mongo_name_segment(tenant_slug)
-    return f"kp_{tenant_name}"
+    return f"{base_name}__tenant__{tenant_name}"
 
 
 def get_runtime_mongo_database(settings: Settings, *, database_name: str | None = None) -> Database:
-    resolved_db_name = database_name
+    resolved_db_name = database_name or settings.runtime_mongo_db
     return get_mongo_client(settings.runtime_mongo_url)[resolved_db_name]
 
 
 def get_runtime_motor_database(settings: Settings, *, database_name: str | None = None) -> AgnosticDatabase:
-    resolved_db_name = database_name
+    resolved_db_name = database_name or settings.runtime_mongo_db
     return get_motor_client(settings.runtime_mongo_url)[resolved_db_name]
 
 
@@ -141,7 +137,7 @@ def get_tenant_collection(settings: Settings, database_name: str, collection_nam
 
 
 def get_tenant_motor_collection(settings: Settings, database_name: str, collection_name: str) -> AgnosticCollection:
-    db = get_runtime_motor_database(settings, tenant_slug=tenant_slug)
+    db = get_runtime_motor_database(settings, database_name=database_name)
     return db[collection_name]
 
 

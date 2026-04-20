@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import os
 import secrets
 
 try:
@@ -27,7 +28,7 @@ def _b64decode(raw: str) -> bytes:
 
 
 def hash_password(password: str) -> str:
-    if bcrypt is not None:
+    if bcrypt is not None and os.getenv("KALPZERO_ENV") not in {"test", "testing"}:
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
@@ -109,14 +110,27 @@ def authenticate_user(
     db: Session,
     email: str,
     password: str,
+    tenant_slug: str | None = None,
 ) -> UserModel:
     user = db.scalar(select(UserModel).where(UserModel.email == email))
-    print("user---1", user)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
         )
+
+    if tenant_slug:
+        if tenant_slug == "platform_control":
+            expected_tenant_id = None
+        else:
+            tenant = db.scalar(select(TenantModel).where(TenantModel.slug == tenant_slug))
+            expected_tenant_id = tenant.id if tenant else None
+
+        if user.tenant_id != expected_tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password.",
+            )
 
     if not verify_password(password, user.hashed_password):
         raise HTTPException(

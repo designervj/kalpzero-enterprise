@@ -45,10 +45,10 @@ def create_tenant(
     display_name: str,
     infra_mode: str,
     vertical_pack: str,
-    business_type: str | None,
+    business_type: str | None = None,
     feature_flags: list[str],
     dedicated_profile_id: str | None,
-    mongo_db_name: str | None,
+    mongo_db_name: str | None = None,
 ) -> TenantModel:
     tenant = TenantModel(
         agency_id=agency_id,
