@@ -258,15 +258,15 @@ def create_package(
         for item in sorted(itinerary_days, key=lambda entry: int(entry["day_number"]))
     ]
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="travel.package.created",
-        subject_type="travel_package",
-        subject_id=str(package.id),
-        metadata={"code": code, "slug": slug, "itinerary_days": len(created_itinerary)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="travel.package.created",
+        # subject_type="travel_package",
+        # subject_id=str(package.id),
+        # metadata={"code": code, "slug": slug, "itinerary_days": len(created_itinerary)},
+    # )
     db.commit()
     return _serialize_package(package, {str(package.id): [_serialize_itinerary_day(item) for item in created_itinerary]})
 
@@ -320,15 +320,15 @@ def create_departure(
         price_override_minor=price_override_minor,
         status=effective_status,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="travel.departure.created",
-        subject_type="travel_departure",
-        subject_id=str(departure.id),
-        metadata={"package_id": str(package_id), "status": effective_status},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="travel.departure.created",
+        # subject_type="travel_departure",
+        # subject_id=str(departure.id),
+        # metadata={"package_id": str(package_id), "status": effective_status},
+    # )
     db.commit()
     return _serialize_departure(departure)
 
@@ -347,15 +347,15 @@ def update_departure_status(
         raise ConflictError("A departure with zero available seats cannot be scheduled.")
 
     departure.status = _normalize_departure_status(requested_status=status, seats_available=departure.seats_available)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="travel.departure.updated",
-        subject_type="travel_departure",
-        subject_id=str(departure.id),
-        metadata={"status": departure.status},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="travel.departure.updated",
+        # subject_type="travel_departure",
+        # subject_id=str(departure.id),
+        # metadata={"status": departure.status},
+    # )
     db.commit()
     return _serialize_departure(departure)
 
@@ -425,15 +425,15 @@ def create_lead(
         status=status,
         notes=notes,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="travel.lead.created",
-        subject_type="travel_lead",
-        subject_id=str(lead.id),
-        metadata={"source": source, "status": status},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="travel.lead.created",
+        # subject_type="travel_lead",
+        # subject_id=str(lead.id),
+        # metadata={"source": source, "status": status},
+    # )
     _outbox_lead(db, tenant_id=tenant.id, lead=lead)
     db.commit()
     return _serialize_lead(lead)
@@ -450,15 +450,15 @@ def update_lead_status(
     tenant = _tenant(db, tenant_slug)
     lead = _lead_or_raise(db, tenant_id=tenant.id, lead_id=lead_id)
     lead.status = status
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="travel.lead.updated",
-        subject_type="travel_lead",
-        subject_id=str(lead.id),
-        metadata={"status": status},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="travel.lead.updated",
+        # subject_type="travel_lead",
+        # subject_id=str(lead.id),
+        # metadata={"status": status},
+    # )
     _outbox_lead(db, tenant_id=tenant.id, lead=lead)
     db.commit()
     return _serialize_lead(lead)

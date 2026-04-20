@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import Callable
 
 from fastapi import Depends, HTTPException, status
@@ -54,6 +55,7 @@ PERMISSION_REGISTRY: dict[str, str] = {
 
 ROLE_GRANTS: dict[str, set[str]] = {
     "platform_admin": set(PERMISSION_REGISTRY.keys()),
+    "platform_owner": set(PERMISSION_REGISTRY.keys()),
     "tenant_admin": {
         "platform.registry.read",
         "platform.audit.read",
@@ -174,24 +176,39 @@ ROLE_GRANTS: dict[str, set[str]] = {
 }
 
 
-def assert_permission_granted(permission: str, role_key: str) -> None:
+def _normalize_roles(role_key: str | Iterable[str] | None) -> list[str]:
+    if role_key is None:
+        return []
+    if isinstance(role_key, str):
+        return [role_key]
+    return [role for role in role_key if isinstance(role, str)]
+
+
+def assert_permission_granted(permission: str, role_key: str | Iterable[str] | None) -> None:
     if permission not in PERMISSION_REGISTRY:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission definition missing. Access denied by default.",
         )
 
-    granted_permissions = ROLE_GRANTS.get(role_key, set())
+    for role in _normalize_roles(role_key):
+        granted_permissions = ROLE_GRANTS.get(role, set())
+        if permission in granted_permissions:
+            return
 
-    if permission not in granted_permissions:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permission denied for requested operation.",
-        )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Permission denied for requested operation.",
+    )
 
 
 def require_permission(permission: str) -> Callable[[SessionContext], SessionContext]:
     def dependency(session: SessionContext = Depends(get_current_session)) -> SessionContext:
+        if session.user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required.",
+            )
         assert_permission_granted(permission, session.role)
         return session
 

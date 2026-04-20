@@ -69,8 +69,7 @@ async def create_import_source(
         subject_id=str(source.id),
         metadata_json={"source_type": source.source_type, "vertical_pack": source.vertical_pack},
     )
-    # db.commit() # Usually handled by router or middleware in async cleanup, 
-    # but we'll follow the original pattern if it's there.
+    db.commit()
     return serialize_import_source(source)
 
 
@@ -203,7 +202,7 @@ async def create_import_job(
     else:
         job.status = "queued"
 
-    # db.commit()
+    db.commit()
     response = {
         "job": serialize_import_job(job),
         "audit_event": serialize_audit_event(audit_event),

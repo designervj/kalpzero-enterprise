@@ -2,7 +2,8 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from app.db.mongo import RuntimeDocumentStore
+from app.core.config import get_settings
+from app.db.mongo import RuntimeDocumentStore, get_runtime_mongo_database
 from app.repositories import commerce as commerce_repository
 from app.repositories import platform as platform_repository
 from app.repositories import travel as travel_repository
@@ -16,6 +17,61 @@ DISCOVERY_COLLECTION = "discovery_profiles"
 HOTEL_PROFILE_COLLECTION = "hotel_property_profiles"
 HOTEL_AMENITY_COLLECTION = "hotel_amenity_catalogs"
 HOTEL_NEARBY_COLLECTION = "hotel_nearby_places"
+
+
+def _tenant_runtime_database(db: Session, *, tenant_id: str):
+    tenant = platform_repository.get_tenant_by_id(db, tenant_id)
+    if tenant is None or not tenant.mongo_db_name:
+        raise NotFoundError(f"Tenant '{tenant_id}' runtime database was not found.")
+    return get_runtime_mongo_database(get_settings(), database_name=tenant.mongo_db_name)
+
+
+def _normalize_runtime_document(document: dict[str, object] | None) -> dict[str, object] | None:
+    if document is None:
+        return None
+    normalized = dict(document)
+    identifier = normalized.pop("_id", normalized.get("id"))
+    normalized["id"] = str(identifier) if identifier is not None else None
+    return normalized
+
+
+def _travel_runtime_snapshot(db: Session, *, tenant_id: str) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    runtime_db = _tenant_runtime_database(db, tenant_id=tenant_id)
+    packages = [
+        _normalize_runtime_document(item)
+        for item in runtime_db["travel_packages"].find({"status": "active"}).sort("created_at", -1)
+    ]
+    departures = [
+        _normalize_runtime_document(item)
+        for item in runtime_db["travel_departures"].find({"status": "scheduled"}).sort("departure_date", 1)
+    ]
+    return [item for item in packages if item is not None], [item for item in departures if item is not None]
+
+
+def _commerce_runtime_snapshot(
+    db: Session, *, tenant_id: str
+) -> tuple[list[dict[str, object]], dict[str, dict[str, object]], list[dict[str, object]]]:
+    runtime_db = _tenant_runtime_database(db, tenant_id=tenant_id)
+    products = [
+        _normalize_runtime_document(item)
+        for item in runtime_db["commerce_products"].find({"status": "active"}).sort("created_at", -1)
+    ]
+    products = [item for item in products if item is not None]
+    categories = [
+        _normalize_runtime_document(item)
+        for item in runtime_db["commerce_categories"].find({}).sort("created_at", -1)
+    ]
+    category_lookup = {
+        str(item["id"]): item
+        for item in categories
+        if item is not None and item.get("id") is not None
+    }
+    product_ids = [str(item["id"]) for item in products if item.get("id") is not None]
+    variants = [
+        _normalize_runtime_document(item)
+        for item in runtime_db["commerce_variants"].find({"product_id": {"$in": product_ids}}).sort("created_at", 1)
+    ] if product_ids else []
+    return products, category_lookup, [item for item in variants if item is not None]
 
 
 def _format_minor_currency(amount_minor: int, currency: str) -> str:
@@ -511,46 +567,41 @@ def _ensure_seeded(db: Session, store: RuntimeDocumentStore, tenant_slug: str):
 
 
 def _travel_package_items(db: Session, *, tenant_id: str) -> list[dict[str, object]]:
-    packages = travel_repository.list_packages(db, tenant_id=tenant_id)
-    departures = travel_repository.list_departures(db, tenant_id=tenant_id, status="scheduled")
+    packages, departures = _travel_runtime_snapshot(db, tenant_id=tenant_id)
     departures_by_package: dict[str, int] = {}
     for departure in departures:
-        departures_by_package[departure.package_id] = departures_by_package.get(departure.package_id, 0) + 1
+        package_id = str(departure.get("package_id"))
+        departures_by_package[package_id] = departures_by_package.get(package_id, 0) + 1
 
     items: list[dict[str, object]] = []
     for package in packages[:6]:
         items.append(
             {
-                "title": package.title,
+                "title": str(package["title"]),
                 "description": (
-                    f"{package.destination_city}, {package.destination_country} · "
-                    f"{package.duration_days} days · {departures_by_package.get(str(package.id), 0)} scheduled departures"
+                    f"{package['destination_city']}, {package['destination_country']} · "
+                    f"{package['duration_days']} days · {departures_by_package.get(str(package['id']), 0)} scheduled departures"
                 ),
-                "value": f"{package.currency} {package.base_price_minor:,}",
+                "value": f"{package['currency']} {int(package['base_price_minor']):,}",
             }
         )
     return items
 
 
-def _commerce_catalog_snapshot(db: Session, *, tenant_id: str) -> tuple[list, dict[str, object], list]:
-    products = [
-        item for item in commerce_repository.list_products(db, tenant_id=tenant_id) if item.status == "active"
-    ]
-    categories = commerce_repository.list_categories(db, tenant_id=tenant_id)
-    category_lookup = {item.id: item for item in categories}
-    variants = commerce_repository.list_variants_for_products(
-        db,
-        tenant_id=tenant_id,
-        product_ids=[item.id for item in products],
-    )
-    return products, category_lookup, variants
+def _commerce_catalog_snapshot(
+    db: Session, *, tenant_id: str
+) -> tuple[list[dict[str, object]], dict[str, dict[str, object]], list[dict[str, object]]]:
+    return _commerce_runtime_snapshot(db, tenant_id=tenant_id)
 
 
-def _commerce_category_items(products: list, category_lookup: dict[str, object]) -> list[dict[str, object]]:
+def _commerce_category_items(
+    products: list[dict[str, object]], category_lookup: dict[str, dict[str, object]]
+) -> list[dict[str, object]]:
     counts_by_category: dict[str, int] = {}
     for product in products:
-        for category_id in product.category_ids:
-            counts_by_category[category_id] = counts_by_category.get(category_id, 0) + 1
+        for category_id in product.get("category_ids", []):
+            normalized_category_id = str(category_id)
+            counts_by_category[normalized_category_id] = counts_by_category.get(normalized_category_id, 0) + 1
 
     items: list[dict[str, object]] = []
     for category_id, count in sorted(counts_by_category.items(), key=lambda item: (-item[1], item[0]))[:6]:
@@ -559,8 +610,8 @@ def _commerce_category_items(products: list, category_lookup: dict[str, object])
             continue
         items.append(
             {
-                "title": category.name,
-                "description": category.description or "Commerce catalog category",
+                "title": str(category["name"]),
+                "description": str(category.get("description") or "Commerce catalog category"),
                 "value": f"{count} active products",
                 "href": "/catalog",
             }
@@ -568,18 +619,22 @@ def _commerce_category_items(products: list, category_lookup: dict[str, object])
     return items
 
 
-def _commerce_product_items(products: list, variants: list, category_lookup: dict[str, object]) -> list[dict[str, object]]:
-    variants_by_product: dict[str, list] = {}
+def _commerce_product_items(
+    products: list[dict[str, object]],
+    variants: list[dict[str, object]],
+    category_lookup: dict[str, dict[str, object]],
+) -> list[dict[str, object]]:
+    variants_by_product: dict[str, list[dict[str, object]]] = {}
     for variant in variants:
-        variants_by_product.setdefault(variant.product_id, []).append(variant)
+        variants_by_product.setdefault(str(variant["product_id"]), []).append(variant)
 
     items: list[dict[str, object]] = []
     for product in products[:8]:
-        product_variants = variants_by_product.get(product.id, [])
+        product_variants = variants_by_product.get(str(product["id"]), [])
         if product_variants:
-            min_price = min(variant.price_minor for variant in product_variants)
-            max_price = max(variant.price_minor for variant in product_variants)
-            currency = product_variants[0].currency
+            min_price = min(int(variant["price_minor"]) for variant in product_variants)
+            max_price = max(int(variant["price_minor"]) for variant in product_variants)
+            currency = str(product_variants[0]["currency"])
             if min_price == max_price:
                 price_label = _format_minor_currency(min_price, currency)
             else:
@@ -588,20 +643,20 @@ def _commerce_product_items(products: list, variants: list, category_lookup: dic
             price_label = "Price on request"
 
         category_names = [
-            category_lookup[category_id].name
-            for category_id in product.category_ids
-            if category_id in category_lookup
+            str(category_lookup[str(category_id)]["name"])
+            for category_id in product.get("category_ids", [])
+            if str(category_id) in category_lookup
         ]
         items.append(
             {
-                "title": product.name,
+                "title": str(product["name"]),
                 "description": (
-                    product.description
+                    str(product.get("description") or "")
                     or ", ".join(category_names)
                     or "Live product synchronized from the commerce catalog."
                 ),
                 "value": price_label,
-                "href": f"/catalog/{product.slug}",
+                "href": f"/catalog/{product['slug']}",
             }
         )
     return items
@@ -653,19 +708,22 @@ def _commerce_dynamic_page(
     product_slug = page_slug.split("/", 1)[1].strip().lower()
     if not product_slug:
         return None
-    product = commerce_repository.find_product_by_slug(db, tenant_id=tenant.id, slug=product_slug)
-    if product is None or product.status != "active":
+    runtime_db = _tenant_runtime_database(db, tenant_id=str(tenant.id))
+    product = _normalize_runtime_document(
+        runtime_db["commerce_products"].find_one({"slug": product_slug, "status": "active"})
+    )
+    if product is None:
         return None
-    product_variants = [item for item in variants if item.product_id == product.id]
+    product_variants = [item for item in variants if item["product_id"] == product["id"]]
     category_names = [
-        category_lookup[category_id].name
-        for category_id in product.category_ids
-        if category_id in category_lookup
+        str(category_lookup[str(category_id)]["name"])
+        for category_id in product.get("category_ids", [])
+        if str(category_id) in category_lookup
     ]
-    primary_currency = product_variants[0].currency if product_variants else "INR"
+    primary_currency = str(product_variants[0]["currency"]) if product_variants else "INR"
     if product_variants:
-        min_price = min(item.price_minor for item in product_variants)
-        max_price = max(item.price_minor for item in product_variants)
+        min_price = min(int(item["price_minor"]) for item in product_variants)
+        max_price = max(int(item["price_minor"]) for item in product_variants)
         if min_price == max_price:
             price_label = _format_minor_currency(min_price, primary_currency)
         else:
@@ -675,9 +733,9 @@ def _commerce_dynamic_page(
 
     variant_items = [
         {
-            "title": variant.label,
-            "description": f"SKU {variant.sku}",
-            "value": _format_minor_currency(variant.price_minor, variant.currency),
+            "title": str(variant["label"]),
+            "description": f"SKU {variant['sku']}",
+            "value": _format_minor_currency(int(variant["price_minor"]), str(variant["currency"])),
         }
         for variant in product_variants[:6]
     ]
@@ -686,18 +744,20 @@ def _commerce_dynamic_page(
         "tenant_slug": tenant.slug,
         "page_slug": page_slug,
         "route_path": f"/{page_slug}",
-        "title": product.name,
+        "title": str(product["name"]),
         "status": "live",
-        "seo_title": product.seo_title or product.name,
-        "seo_description": product.seo_description or product.description or f"{product.name} on {tenant.display_name}",
+        "seo_title": str(product.get("seo_title") or product["name"]),
+        "seo_description": str(
+            product.get("seo_description") or product.get("description") or f"{product['name']} on {tenant.display_name}"
+        ),
         "layout": "catalog",
         "blocks": [
             {
                 "id": "commerce-product-hero",
                 "kind": "hero",
                 "eyebrow": category_names[0] if category_names else blueprint["business_label"],
-                "headline": product.name,
-                "body": product.description or "Product detail materialized from the commerce runtime.",
+                "headline": str(product["name"]),
+                "body": str(product.get("description") or "Product detail materialized from the commerce runtime."),
                 "cta_label": "Back to Catalog",
                 "cta_href": "/catalog",
                 "items": [],
@@ -769,16 +829,17 @@ def _travel_dynamic_blocks(db: Session, *, tenant_id: str, page_slug: str) -> li
 
 def _travel_discovery_cards(db: Session, *, tenant_id: str) -> list[dict[str, object]]:
     cards: list[dict[str, object]] = []
-    for package in travel_repository.list_packages(db, tenant_id=tenant_id)[:6]:
+    packages, _ = _travel_runtime_snapshot(db, tenant_id=tenant_id)
+    for package in packages[:6]:
         cards.append(
             {
-                "title": package.title,
+                "title": str(package["title"]),
                 "summary": (
-                    f"{package.destination_city}, {package.destination_country} · "
-                    f"{package.duration_days} days from {package.currency} {package.base_price_minor:,}"
+                    f"{package['destination_city']}, {package['destination_country']} · "
+                    f"{package['duration_days']} days from {package['currency']} {int(package['base_price_minor']):,}"
                 ),
                 "href": "/packages",
-                "tags": ["travel", package.destination_city.lower().replace(" ", "-")],
+                "tags": ["travel", str(package["destination_city"]).lower().replace(" ", "-")],
             }
         )
     return cards

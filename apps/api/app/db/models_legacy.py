@@ -56,25 +56,6 @@ class CommerceCollectionModel(TimestampMixin, Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 
-class CommerceAttributeModel(TimestampMixin, Base):
-    __tablename__ = "commerce_attributes"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    code: Mapped[str] = mapped_column(String(120), index=True)
-    slug: Mapped[str] = mapped_column(String(120), index=True)
-    label: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    value_type: Mapped[str] = mapped_column(String(32))
-    scope: Mapped[str] = mapped_column(String(32), default="product")
-    options_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
-    unit_label: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    is_required: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_filterable: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_variation_axis: Mapped[bool] = mapped_column(Boolean, default=False)
-    vertical_bindings: Mapped[list[str]] = mapped_column(JSON, default=list)
-    status: Mapped[str] = mapped_column(String(32), default="active")
-
 
 class CommerceAttributeSetModel(TimestampMixin, Base):
     __tablename__ = "commerce_attribute_sets"
@@ -83,8 +64,9 @@ class CommerceAttributeSetModel(TimestampMixin, Base):
     tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
     name: Mapped[str] = mapped_column(String(255))
     slug: Mapped[str] = mapped_column(String(120), index=True)
+    appliesTo: Mapped[str | None] = mapped_column(String(64), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    attribute_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    attributes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     vertical_bindings: Mapped[list[str]] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(32), default="active")
 
@@ -163,24 +145,6 @@ class CommerceStockLedgerEntryModel(TimestampMixin, Base):
     recorded_by_user_id: Mapped[str] = mapped_column(String(255))
 
 
-class CommerceProductAttributeValueModel(TimestampMixin, Base):
-    __tablename__ = "commerce_product_attribute_values"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    product_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_products.id"), index=True)
-    attribute_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_attributes.id"), index=True)
-    value_json: Mapped[Any] = mapped_column(JSON)
-
-
-class CommerceVariantAttributeValueModel(TimestampMixin, Base):
-    __tablename__ = "commerce_variant_attribute_values"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
-    variant_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_variants.id"), index=True)
-    attribute_id: Mapped[str] = mapped_column(String(36), ForeignKey("commerce_attributes.id"), index=True)
-    value_json: Mapped[Any] = mapped_column(JSON)
 
 
 class CommerceTaxProfileModel(TimestampMixin, Base):

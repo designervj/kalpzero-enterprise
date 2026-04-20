@@ -21,7 +21,7 @@ async def import_sources(
 ):
     try:
         sources = await list_import_sources(db, tenant_slug=session.tenant_id)
-        return {"tenant_id": ctx.tenant_id, "sources": sources}
+        return {"tenant_id": session.tenant_id, "sources": sources}
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -54,7 +54,7 @@ async def import_jobs(
 ):
     try:
         jobs = await list_import_jobs(db, tenant_slug=session.tenant_id)
-        return {"tenant_id": ctx.tenant_id, "jobs": jobs}
+        return {"tenant_id": session.tenant_id, "jobs": jobs}
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

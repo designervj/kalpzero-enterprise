@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from types import SimpleNamespace
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.models import TenantModel
 from app.repositories import commerce as commerce_repository
 from app.services import commerce as commerce_service
 from app.services.errors import ConflictError, NotFoundError, ValidationError
@@ -17,12 +18,26 @@ SUPPORTED_COMMERCE_IMPORT_KEYS = (
     "collections",
     "warehouses",
     "tax_profiles",
-    "attributes",
     "attribute_sets",
     "products",
     "price_lists",
     "coupons",
 )
+
+
+def _tenant_context(db: Session, *, tenant_id: str) -> tuple[str, str]:
+    tenant_row = db.execute(
+        select(TenantModel.slug, TenantModel.mongo_db_name).where(TenantModel.id == tenant_id)
+    ).first()
+    if tenant_row is None:
+        raise NotFoundError(f"Tenant with ID '{tenant_id}' not found.")
+    tenant_slug, tenant_db_name = tenant_row
+    resolved_db_name = str(tenant_db_name or tenant_slug)
+    return str(tenant_slug), resolved_db_name
+
+
+async def _repo_call(db_name: str, operation: str, /, **kwargs):
+    return await getattr(commerce_repository, operation)(db_name, **kwargs)
 
 
 async def run_commerce_import_job(
@@ -34,34 +49,20 @@ async def run_commerce_import_job(
     job_id: str,
     mode: str,
 ) -> tuple[str, dict[str, object]]:
-    # We still need the slug for JIT initialization
-    from app.services.platform import get_tenant_or_raise
-    from app.db.mongo import ensure_tenant_vertical_initialized
-    from app.core.config import get_settings
-    from app.models.commerce import COMMERCE_MODELS
-
-    # Use a placeholder slug since we already have tenant_id in some context, 
-    # but the repo needs to query it anyway. 
-    # Actually, let's get the slug properly.
-    from sqlalchemy import select
-    from app.db.models import TenantModel
-    tenant_slug = db.scalar(select(TenantModel.slug).where(TenantModel.id == tenant_id))
-    if not tenant_slug:
-        raise NotFoundError(f"Tenant with ID '{tenant_id}' not found.")
-
-    await ensure_tenant_vertical_initialized(
-        get_settings(),
-        tenant_slug=tenant_slug,
-        vertical="commerce",
-        document_models=COMMERCE_MODELS
-    )
+    # Removed Beanie JIT initialization
 
     dataset = source.config_json.get("dataset", {})
     if not isinstance(dataset, dict):
         raise ValidationError("Commerce import source config requires a dataset object.")
 
     report = _make_report(source=source, mode=mode, dataset=dataset)
-    plan = await _build_commerce_import_plan(db, tenant_id=tenant_id, dataset=dataset, report=report)
+    plan = await _build_commerce_import_plan(
+        db,
+        tenant_id=tenant_id,
+        db_name=tenant_db_name,
+        dataset=dataset,
+        report=report,
+    )
     _finalize_report_counts(report)
 
     if report["errors"]:
@@ -83,6 +84,7 @@ async def run_commerce_import_job(
         await _execute_commerce_import_plan(
             db,
             tenant_id=tenant_id,
+            db_name=tenant_db_name,
             actor_user_id=actor_user_id,
             job_id=job_id,
             plan=plan,
@@ -181,9 +183,6 @@ def _norm_code(value: object) -> str:
     return str(value or "").strip().upper()
 
 
-def _norm_attribute_code(value: object) -> str:
-    return str(value or "").strip().lower()
-
 
 def _opt_str(value: object | None) -> str | None:
     if value is None:
@@ -206,6 +205,7 @@ async def _build_commerce_import_plan(
     db: Session,
     *,
     tenant_id: str,
+    db_name: str,
     dataset: dict[str, object],
     report: dict[str, object],
 ) -> dict[str, list[dict[str, Any]]]:
@@ -214,7 +214,7 @@ async def _build_commerce_import_plan(
     # Use asyncio.gather for parallel lookups
     (
         categories, brands, vendors, collections, 
-        warehouses, tax_profiles, all_attributes, 
+        warehouses, tax_profiles, 
         attribute_sets, products, price_lists, coupons
     ) = await asyncio.gather(
         commerce_repository.list_categories(db, tenant_id=tenant_id),
@@ -223,7 +223,6 @@ async def _build_commerce_import_plan(
         commerce_repository.list_collections(db, tenant_id=tenant_id),
         commerce_repository.list_warehouses(db, tenant_id=tenant_id),
         commerce_repository.list_tax_profiles(db, tenant_id=tenant_id),
-        commerce_repository.list_attributes(db, tenant_id=tenant_id),
         commerce_repository.list_attribute_sets(db, tenant_id=tenant_id),
         commerce_repository.list_products(db, tenant_id=tenant_id),
         commerce_repository.list_price_lists(db, tenant_id=tenant_id),
@@ -237,15 +236,14 @@ async def _build_commerce_import_plan(
     existing_warehouses_by_slug = {_norm_slug(item["slug"]): item for item in warehouses}
     existing_tax_profiles_by_code = {_norm_code(item["code"]): item for item in tax_profiles}
     
-    existing_attributes_by_code = {_norm_attribute_code(item["code"]): item for item in all_attributes}
-    existing_attributes_by_id = {item["id"]: item for item in all_attributes}
+
     
     existing_attribute_sets_by_slug = {_norm_slug(item["slug"]): item for item in attribute_sets}
     existing_products_by_slug = {_norm_slug(item["slug"]): item for item in products}
     
-    existing_variants = await commerce_repository.list_variants_for_products(
-        db,
-        tenant_id=tenant_id,
+    existing_variants = await _repo_call(
+        db_name,
+        "list_variants_for_products",
         product_ids=[item["id"] for item in products],
     )
     existing_variants_by_sku = {_norm_code(item["sku"]): item for item in existing_variants}
@@ -445,75 +443,7 @@ async def _build_commerce_import_plan(
         )
         report["entities"]["tax_profiles"]["create_candidates"] += 1
 
-    attribute_records = _dataset_list(dataset, "attributes", report)
-    planned_attributes_by_code: dict[str, Any] = {}
-    planned_attribute_slugs: set[str] = set()
-    for index, item in enumerate(attribute_records, start=1):
-        code = _norm_attribute_code(item.get("code"))
-        slug = _norm_slug(item.get("slug"))
-        label = _opt_str(item.get("label"))
-        if not code or not slug or not label:
-            _add_entity_error(report, "attributes", f"Record #{index} requires code, slug, and label.")
-            continue
-        if code in planned_attributes_by_code or slug in planned_attribute_slugs:
-            _add_entity_error(report, "attributes", f"Duplicate attribute code/slug in record #{index}.")
-            continue
-        if code in existing_attributes_by_code:
-            report["entities"]["attributes"]["skipped_existing"] += 1
-            continue
-        planned_attribute_slugs.add(slug)
-        try:
-            options = commerce_service._validate_attribute_definition(
-                value_type=str(item.get("value_type", "")),
-                scope=str(item.get("scope", "product")),
-                options=list(item.get("options", [])),
-                is_variation_axis=bool(item.get("is_variation_axis", False)),
-            )
-        except (TypeError, ValidationError) as exc:
-            _add_entity_error(report, "attributes", f"Attribute '{code}': {exc}")
-            continue
-        payload = {
-            "code": code,
-            "slug": slug,
-            "label": label,
-            "description": _opt_str(item.get("description")),
-            "value_type": str(item.get("value_type", "")),
-            "scope": str(item.get("scope", "product")),
-            "options": options,
-            "unit_label": _opt_str(item.get("unit_label")),
-            "is_required": bool(item.get("is_required", False)),
-            "is_filterable": bool(item.get("is_filterable", False)),
-            "is_variation_axis": bool(item.get("is_variation_axis", False)),
-            "vertical_bindings": commerce_service._dedupe_strings(
-                [str(entry) for entry in item.get("vertical_bindings", ["commerce"])],
-                default=["commerce"],
-            ),
-            "status": _norm_slug(item.get("status") or "active"),
-        }
-        synthetic_id = f"import-attribute:{code}"
-        planned_attributes_by_code[code] = SimpleNamespace(
-            id=synthetic_id,
-            code=code,
-            slug=slug,
-            label=label,
-            description=payload["description"],
-            value_type=payload["value_type"],
-            scope=payload["scope"],
-            options_json=options,
-            unit_label=payload["unit_label"],
-            is_required=payload["is_required"],
-            is_filterable=payload["is_filterable"],
-            is_variation_axis=payload["is_variation_axis"],
-            vertical_bindings=payload["vertical_bindings"],
-            status=payload["status"],
-        )
-        plan["attributes"].append(payload)
-        report["entities"]["attributes"]["create_candidates"] += 1
 
-    known_attributes_by_code = {**existing_attributes_by_code, **planned_attributes_by_code}
-    known_attributes_by_id = {**existing_attributes_by_id}
-    for item in planned_attributes_by_code.values():
-        known_attributes_by_id[item.id] = item
 
     attribute_set_records = _dataset_list(dataset, "attribute_sets", report)
     planned_attribute_sets_by_slug: dict[str, Any] = {}
@@ -529,26 +459,13 @@ async def _build_commerce_import_plan(
         if slug in existing_attribute_sets_by_slug:
             report["entities"]["attribute_sets"]["skipped_existing"] += 1
             continue
-        attribute_codes = commerce_service._dedupe_strings(
-            [_norm_attribute_code(entry) for entry in item.get("attribute_codes", [])]
-        )
-        if not attribute_codes:
-            _add_entity_error(report, "attribute_sets", f"Attribute set '{slug}' requires attribute_codes.")
-            continue
-        missing_codes = [code for code in attribute_codes if code not in known_attributes_by_code]
-        if missing_codes:
-            _add_entity_error(
-                report,
-                "attribute_sets",
-                f"Attribute set '{slug}' references unknown attributes: {', '.join(missing_codes)}.",
-            )
-            continue
-        attribute_ids = [known_attributes_by_code[code].id for code in attribute_codes]
+        attributes = item.get("attributes", [])
         payload = {
             "name": name,
             "slug": slug,
+            "appliesTo": _opt_str(item.get("appliesTo", "product")),
             "description": _opt_str(item.get("description")),
-            "attribute_codes": attribute_codes,
+            "attributes": attributes,
             "vertical_bindings": commerce_service._dedupe_strings(
                 [str(entry) for entry in item.get("vertical_bindings", ["commerce"])],
                 default=["commerce"],
@@ -559,7 +476,8 @@ async def _build_commerce_import_plan(
         planned_attribute_sets_by_slug[slug] = SimpleNamespace(
             id=f"import-attribute-set:{slug}",
             slug=slug,
-            attribute_ids=attribute_ids,
+            appliesTo=payload["appliesTo"],
+            attributes=attributes,
             status=payload["status"],
         )
         report["entities"]["attribute_sets"]["create_candidates"] += 1
@@ -628,29 +546,7 @@ async def _build_commerce_import_plan(
             )
             continue
 
-        raw_product_attributes = item.get("product_attributes", [])
-        if not isinstance(raw_product_attributes, list):
-            _add_entity_error(report, "products", f"Product '{slug}' product_attributes must be a list.")
-            continue
-        product_attribute_values: list[dict[str, object]] = []
-        for attr_index, attr_item in enumerate(raw_product_attributes, start=1):
-            if not isinstance(attr_item, dict):
-                _add_entity_error(
-                    report,
-                    "products",
-                    f"Product '{slug}' product attribute #{attr_index} must be an object.",
-                )
-                continue
-            attribute_code = _norm_attribute_code(attr_item.get("attribute_code"))
-            attribute = known_attributes_by_code.get(attribute_code)
-            if attribute is None:
-                _add_entity_error(
-                    report,
-                    "products",
-                    f"Product '{slug}' references unknown product attribute '{attribute_code}'.",
-                )
-                continue
-            product_attribute_values.append({"attribute_id": attribute.id, "value": attr_item.get("value")})
+
 
         raw_variants = item.get("variants", [])
         if not isinstance(raw_variants, list) or not raw_variants:
@@ -680,32 +576,7 @@ async def _build_commerce_import_plan(
                 variant_item.get("inventory_quantity", 0),
                 field=f"{slug}.{sku}.inventory_quantity",
             )
-            raw_variant_attributes = variant_item.get("attribute_values", [])
-            if not isinstance(raw_variant_attributes, list):
-                _add_entity_error(report, "products", f"Product '{slug}' variant '{sku}' attribute_values must be a list.")
-                valid_variants = False
-                continue
-            attribute_values: list[dict[str, object]] = []
-            for attr_index, attr_item in enumerate(raw_variant_attributes, start=1):
-                if not isinstance(attr_item, dict):
-                    _add_entity_error(
-                        report,
-                        "products",
-                        f"Product '{slug}' variant '{sku}' attribute #{attr_index} must be an object.",
-                    )
-                    valid_variants = False
-                    continue
-                attribute_code = _norm_attribute_code(attr_item.get("attribute_code"))
-                attribute = known_attributes_by_code.get(attribute_code)
-                if attribute is None:
-                    _add_entity_error(
-                        report,
-                        "products",
-                        f"Product '{slug}' variant '{sku}' references unknown attribute '{attribute_code}'.",
-                    )
-                    valid_variants = False
-                    continue
-                attribute_values.append({"attribute_id": attribute.id, "value": attr_item.get("value")})
+
 
             warehouse_stock_payloads: list[dict[str, Any]] = []
             raw_warehouse_stocks = variant_item.get("warehouse_stock", [])
@@ -785,81 +656,15 @@ async def _build_commerce_import_plan(
                     "price_minor": price_minor,
                     "currency": str(variant_item.get("currency", "INR")).strip().upper(),
                     "inventory_quantity": inventory_quantity,
-                    "attribute_values": attribute_values,
-                    "warehouse_stock": warehouse_stock_payloads,
                 }
             )
-            variant_attribute_payloads.append(attribute_values)
+            variant_attribute_payloads.append([])
             variant_sku_keys.append(sku)
 
         if not valid_variants:
             continue
 
-        attribute_lookup_by_id = dict(known_attributes_by_id)
-        try:
-            normalized_product_attributes = commerce_service._validate_attribute_payload(
-                attribute_lookup=attribute_lookup_by_id,
-                values=product_attribute_values,
-                allowed_scopes={"product", "both"},
-                owner=f"product '{slug}'",
-            )
-            normalized_variant_attributes = [
-                commerce_service._validate_attribute_payload(
-                    attribute_lookup=attribute_lookup_by_id,
-                    values=values,
-                    allowed_scopes={"variant", "both"},
-                    owner=f"variant '{variant['sku']}'",
-                )
-                for variant, values in zip(normalized_variants, variant_attribute_payloads, strict=True)
-            ]
-        except (NotFoundError, ValidationError) as exc:
-            _add_entity_error(report, "products", f"Product '{slug}': {exc}")
-            continue
 
-        required_attribute_ids: list[str] = []
-        if attribute_set_slug:
-            attribute_set = known_attribute_sets_by_slug[attribute_set_slug]
-            required_attribute_ids = list(attribute_set.attribute_ids)
-            allowed_attribute_ids = set(attribute_set.attribute_ids)
-            payload_attribute_ids = {entry["attribute_id"] for entry in normalized_product_attributes}
-            payload_attribute_ids.update(
-                entry["attribute_id"] for values in normalized_variant_attributes for entry in values
-            )
-            disallowed_attribute_ids = [
-                attribute_id for attribute_id in payload_attribute_ids if attribute_id not in allowed_attribute_ids
-            ]
-            if disallowed_attribute_ids:
-                _add_entity_error(
-                    report,
-                    "products",
-                    f"Product '{slug}' includes attributes outside the selected attribute set.",
-                )
-                continue
-        else:
-            required_attribute_ids = commerce_service._dedupe_strings(
-                [entry["attribute_id"] for entry in normalized_product_attributes]
-                + [
-                    entry["attribute_id"]
-                    for values in normalized_variant_attributes
-                    for entry in values
-                ]
-            )
-
-        try:
-            commerce_service._validate_required_attributes(
-                attribute_lookup=attribute_lookup_by_id,
-                attribute_ids=required_attribute_ids,
-                normalized_product_attributes=normalized_product_attributes,
-                normalized_variant_attributes=normalized_variant_attributes,
-            )
-            axis_lookup = {attribute_id: attribute_lookup_by_id[attribute_id] for attribute_id in required_attribute_ids}
-            commerce_service._validate_variation_axes(
-                attribute_lookup=axis_lookup,
-                normalized_variant_attributes=normalized_variant_attributes,
-            )
-        except ValidationError as exc:
-            _add_entity_error(report, "products", f"Product '{slug}': {exc}")
-            continue
 
         plan["products"].append(
             {
@@ -874,7 +679,6 @@ async def _build_commerce_import_plan(
                 "seo_title": _opt_str(item.get("seo_title")),
                 "seo_description": _opt_str(item.get("seo_description")),
                 "status": _norm_slug(item.get("status") or "active"),
-                "product_attributes": normalized_product_attributes,
                 "variants": normalized_variants,
             }
         )
@@ -1011,13 +815,14 @@ async def _execute_commerce_import_plan(
     db: Session,
     *,
     tenant_id: str,
+    db_name: str,
     actor_user_id: str,
     job_id: str,
     plan: dict[str, list[dict[str, Any]]],
     report: dict[str, object],
 ) -> None:
     category_lookup = {
-        _norm_slug(item["slug"]): item for item in await commerce_repository.list_categories(db, tenant_id=tenant_id)
+        _norm_slug(item["slug"]): item for item in await _repo_call(db_name, "list_categories")
     }
     unresolved_categories = list(plan["categories"])
     while unresolved_categories:
@@ -1028,9 +833,9 @@ async def _execute_commerce_import_plan(
             if item["parent_slug"] and parent is None:
                 remaining.append(item)
                 continue
-            created = await commerce_repository.create_category(
-                db,
-                tenant_id=tenant_id,
+            created = await _repo_call(
+                db_name,
+                "create_category",
                 name=item["name"],
                 slug=item["slug"],
                 description=item["description"],
@@ -1043,12 +848,12 @@ async def _execute_commerce_import_plan(
             raise ValidationError("Category hierarchy could not be resolved during execution.")
         unresolved_categories = remaining
 
-    brands_list = await commerce_repository.list_brands(db, tenant_id=tenant_id)
+    brands_list = await _repo_call(db_name, "list_brands")
     brand_lookup = {_norm_slug(item["slug"]): item for item in brands_list}
     for item in plan["brands"]:
-        created = await commerce_repository.create_brand(
-            db,
-            tenant_id=tenant_id,
+        created = await _repo_call(
+            db_name,
+            "create_brand",
             name=item["name"],
             slug=item["slug"],
             code=item["code"],
@@ -1058,12 +863,12 @@ async def _execute_commerce_import_plan(
         brand_lookup[item["slug"]] = created
         report["entities"]["brands"]["created"] += 1
 
-    vendors_list = await commerce_repository.list_vendors(db, tenant_id=tenant_id)
+    vendors_list = await _repo_call(db_name, "list_vendors")
     vendor_lookup = {_norm_slug(item["slug"]): item for item in vendors_list}
     for item in plan["vendors"]:
-        created = await commerce_repository.create_vendor(
-            db,
-            tenant_id=tenant_id,
+        created = await _repo_call(
+            db_name,
+            "create_vendor",
             name=item["name"],
             slug=item["slug"],
             code=item["code"],
@@ -1076,12 +881,12 @@ async def _execute_commerce_import_plan(
         vendor_lookup[item["slug"]] = created
         report["entities"]["vendors"]["created"] += 1
 
-    collections_list = await commerce_repository.list_collections(db, tenant_id=tenant_id)
+    collections_list = await _repo_call(db_name, "list_collections")
     collection_lookup = {_norm_slug(item["slug"]): item for item in collections_list}
     for item in plan["collections"]:
-        created = await commerce_repository.create_collection(
-            db,
-            tenant_id=tenant_id,
+        created = await _repo_call(
+            db_name,
+            "create_collection",
             name=item["name"],
             slug=item["slug"],
             description=item["description"],
@@ -1091,12 +896,12 @@ async def _execute_commerce_import_plan(
         collection_lookup[item["slug"]] = created
         report["entities"]["collections"]["created"] += 1
 
-    warehouses_list = await commerce_repository.list_warehouses(db, tenant_id=tenant_id)
+    warehouses_list = await _repo_call(db_name, "list_warehouses")
     warehouse_lookup = {_norm_slug(item["slug"]): item for item in warehouses_list}
     for item in plan["warehouses"]:
-        created = await commerce_repository.create_warehouse(
-            db,
-            tenant_id=tenant_id,
+        created = await _repo_call(
+            db_name,
+            "create_warehouse",
             name=item["name"],
             slug=item["slug"],
             code=item["code"],
@@ -1108,12 +913,12 @@ async def _execute_commerce_import_plan(
         warehouse_lookup[item["slug"]] = created
         report["entities"]["warehouses"]["created"] += 1
 
-    tax_profiles_list = await commerce_repository.list_tax_profiles(db, tenant_id=tenant_id)
+    tax_profiles_list = await _repo_call(db_name, "list_tax_profiles")
     tax_profile_lookup = {_norm_code(item["code"]): item for item in tax_profiles_list}
     for item in plan["tax_profiles"]:
-        created = await commerce_repository.create_tax_profile(
-            db,
-            tenant_id=tenant_id,
+        created = await _repo_call(
+            db_name,
+            "create_tax_profile",
             name=item["name"],
             code=item["code"],
             description=item["description"],
@@ -1124,54 +929,32 @@ async def _execute_commerce_import_plan(
         tax_profile_lookup[item["code"]] = created
         report["entities"]["tax_profiles"]["created"] += 1
 
-    attributes_list = await commerce_repository.list_attributes(db, tenant_id=tenant_id)
-    attribute_lookup_by_code = {_norm_attribute_code(item["code"]): item for item in attributes_list}
-    attribute_lookup_by_id = {item["id"]: item for item in attribute_lookup_by_code.values()}
-    for item in plan["attributes"]:
-        created = await commerce_repository.create_attribute(
-            db,
-            tenant_id=tenant_id,
-            code=item["code"],
-            slug=item["slug"],
-            label=item["label"],
-            description=item["description"],
-            value_type=item["value_type"],
-            scope=item["scope"],
-            options_json=item["options"],
-            unit_label=item["unit_label"],
-            is_required=item["is_required"],
-            is_filterable=item["is_filterable"],
-            is_variation_axis=item["is_variation_axis"],
-            vertical_bindings=item["vertical_bindings"],
-            status=item["status"],
-        )
-        attribute_lookup_by_code[item["code"]] = created
-        attribute_lookup_by_id[created["id"]] = created
-        report["entities"]["attributes"]["created"] += 1
 
-    attribute_sets_list = await commerce_repository.list_attribute_sets(db, tenant_id=tenant_id)
+
+    attribute_sets_list = await _repo_call(db_name, "list_attribute_sets")
     attribute_set_lookup = {_norm_slug(item["slug"]): item for item in attribute_sets_list}
     for item in plan["attribute_sets"]:
-        attr_ids = [attribute_lookup_by_code[code]["id"] for code in item["attribute_codes"]]
+        attrs = item["attributes"]
         created = await commerce_repository.create_attribute_set(
             db,
             tenant_id=tenant_id,
             name=item["name"],
             slug=item["slug"],
+            appliesTo=item["appliesTo"],
             description=item["description"],
-            attribute_ids=attr_ids,
+            attributes=attrs,
             vertical_bindings=item["vertical_bindings"],
             status=item["status"],
         )
         attribute_set_lookup[item["slug"]] = created
         report["entities"]["attribute_sets"]["created"] += 1
 
-    products_list = await commerce_repository.list_products(db, tenant_id=tenant_id)
+    products_list = await _repo_call(db_name, "list_products")
     product_lookup = {_norm_slug(item["slug"]): item for item in products_list}
     
-    variants_list = await commerce_repository.list_variants_for_products(
-        db,
-        tenant_id=tenant_id,
+    variants_list = await _repo_call(
+        db_name,
+        "list_variants_for_products",
         product_ids=[item["id"] for item in product_lookup.values()],
     )
     variant_lookup_by_sku = {_norm_code(item["sku"]): item for item in variants_list}
@@ -1180,6 +963,7 @@ async def _execute_commerce_import_plan(
         created_product, created_variants = await _create_product_from_import(
             db,
             tenant_id=tenant_id,
+            db_name=db_name,
             actor_user_id=actor_user_id,
             job_id=job_id,
             payload=item,
@@ -1188,8 +972,6 @@ async def _execute_commerce_import_plan(
             vendor_lookup=vendor_lookup,
             collection_lookup=collection_lookup,
             attribute_set_lookup=attribute_set_lookup,
-            attribute_lookup_by_code=attribute_lookup_by_code,
-            attribute_lookup_by_id=attribute_lookup_by_id,
             warehouse_lookup=warehouse_lookup,
         )
         product_lookup[item["slug"]] = created_product
@@ -1197,12 +979,12 @@ async def _execute_commerce_import_plan(
             variant_lookup_by_sku[_norm_code(variant["sku"])] = variant
         report["entities"]["products"]["created"] += 1
 
-    price_lists_list = await commerce_repository.list_price_lists(db, tenant_id=tenant_id)
+    price_lists_list = await _repo_call(db_name, "list_price_lists")
     price_list_lookup = {_norm_slug(item["slug"]): item for item in price_lists_list}
     for item in plan["price_lists"]:
-        created = await commerce_repository.create_price_list(
-            db,
-            tenant_id=tenant_id,
+        created = await _repo_call(
+            db_name,
+            "create_price_list",
             name=item["name"],
             slug=item["slug"],
             currency=item["currency"],
@@ -1212,9 +994,9 @@ async def _execute_commerce_import_plan(
         )
         for price_item in item["items"]:
             variant = variant_lookup_by_sku[price_item["variant_sku"]]
-            await commerce_repository.create_price_list_item(
-                db,
-                tenant_id=tenant_id,
+            await _repo_call(
+                db_name,
+                "create_price_list_item",
                 price_list_id=created["id"],
                 variant_id=variant["id"],
                 price_minor=price_item["price_minor"],
@@ -1225,9 +1007,9 @@ async def _execute_commerce_import_plan(
     for item in plan["coupons"]:
         cat_ids = [category_lookup[slug]["id"] for slug in item["applicable_category_slugs"]]
         var_ids = [variant_lookup_by_sku[sku]["id"] for sku in item["applicable_variant_skus"]]
-        await commerce_repository.create_coupon(
-            db,
-            tenant_id=tenant_id,
+        await _repo_call(
+            db_name,
+            "create_coupon",
             code=item["code"],
             description=item["description"],
             discount_type=item["discount_type"],
@@ -1245,6 +1027,7 @@ async def _create_product_from_import(
     db: Session,
     *,
     tenant_id: str,
+    db_name: str,
     actor_user_id: str,
     job_id: str,
     payload: dict[str, Any],
@@ -1253,60 +1036,13 @@ async def _create_product_from_import(
     vendor_lookup: dict[str, Any],
     collection_lookup: dict[str, Any],
     attribute_set_lookup: dict[str, Any],
-    attribute_lookup_by_code: dict[str, Any],
-    attribute_lookup_by_id: dict[str, Any],
     warehouse_lookup: dict[str, Any],
 ):
-    actual_product_attributes = _remap_import_attribute_ids(
-        payload["product_attributes"],
-        attribute_lookup_by_code=attribute_lookup_by_code,
-    )
-    actual_variant_attributes = [
-        _remap_import_attribute_ids(
-            variant["attribute_values"],
-            attribute_lookup_by_code=attribute_lookup_by_code,
-        )
-        for variant in payload["variants"]
-    ]
     attribute_set = attribute_set_lookup.get(payload["attribute_set_slug"]) if payload["attribute_set_slug"] else None
-    normalized_product_attributes = commerce_service._validate_attribute_payload(
-        attribute_lookup=attribute_lookup_by_id,
-        values=actual_product_attributes,
-        allowed_scopes={"product", "both"},
-        owner=f"product '{payload['slug']}'",
-    )
-    normalized_variant_attributes = [
-        commerce_service._validate_attribute_payload(
-            attribute_lookup=attribute_lookup_by_id,
-            values=values,
-            allowed_scopes={"variant", "both"},
-            owner=f"variant '{variant['sku']}'",
-        )
-        for variant, values in zip(payload["variants"], actual_variant_attributes, strict=True)
-    ]
-    required_attribute_ids = list(attribute_set["attribute_ids"]) if attribute_set is not None else commerce_service._dedupe_strings(
-        [entry["attribute_id"] for entry in normalized_product_attributes]
-        + [
-            entry["attribute_id"]
-            for values in normalized_variant_attributes
-            for entry in values
-        ]
-    )
-    commerce_service._validate_required_attributes(
-        attribute_lookup=attribute_lookup_by_id,
-        attribute_ids=required_attribute_ids,
-        normalized_product_attributes=normalized_product_attributes,
-        normalized_variant_attributes=normalized_variant_attributes,
-    )
-    axis_lookup = {attribute_id: attribute_lookup_by_id[attribute_id] for attribute_id in required_attribute_ids}
-    commerce_service._validate_variation_axes(
-        attribute_lookup=axis_lookup,
-        normalized_variant_attributes=normalized_variant_attributes,
-    )
 
-    product = await commerce_repository.create_product(
-        db,
-        tenant_id=tenant_id,
+    product = await _repo_call(
+        db_name,
+        "create_product",
         name=payload["name"],
         slug=payload["slug"],
         description=payload["description"],
@@ -1319,21 +1055,9 @@ async def _create_product_from_import(
         seo_description=payload["seo_description"],
         status=payload["status"],
     )
-    for value in normalized_product_attributes:
-        await commerce_repository.create_product_attribute_value(
-            db,
-            tenant_id=tenant_id,
-            product_id=product["id"],
-            attribute_id=value["attribute_id"],
-            value_json=value["value"],
-        )
 
     created_variants = []
-    for variant_payload, normalized_variant_values in zip(
-        payload["variants"],
-        normalized_variant_attributes,
-        strict=True,
-    ):
+    for variant_payload in payload["variants"]:
         variant = await commerce_repository.create_variant(
             db,
             tenant_id=tenant_id,
@@ -1345,17 +1069,10 @@ async def _create_product_from_import(
             inventory_quantity=variant_payload["inventory_quantity"],
         )
         created_variants.append(variant)
-        for value in normalized_variant_values:
-            await commerce_repository.create_variant_attribute_value(
-                db,
-                tenant_id=tenant_id,
-                variant_id=variant["id"],
-                attribute_id=value["attribute_id"],
-                value_json=value["value"],
-            )
         await _seed_variant_warehouse_stock(
             db,
             tenant_id=tenant_id,
+            db_name=db_name,
             actor_user_id=actor_user_id,
             job_id=job_id,
             variant=variant,
@@ -1369,6 +1086,7 @@ async def _seed_variant_warehouse_stock(
     db: Session,
     *,
     tenant_id: str,
+    db_name: str,
     actor_user_id: str,
     job_id: str,
     variant,
@@ -1393,18 +1111,18 @@ async def _seed_variant_warehouse_stock(
         return
     for item in payloads:
         warehouse = warehouse_lookup[item["warehouse_slug"]]
-        stock = await commerce_repository.create_warehouse_stock(
-            db,
-            tenant_id=tenant_id,
+        stock = await _repo_call(
+            db_name,
+            "create_warehouse_stock",
             warehouse_id=warehouse["id"],
             variant_id=variant["id"],
             on_hand_quantity=item["on_hand_quantity"],
             reserved_quantity=0,
             low_stock_threshold=item["low_stock_threshold"],
         )
-        await commerce_repository.create_stock_ledger_entry(
-            db,
-            tenant_id=tenant_id,
+        await _repo_call(
+            db_name,
+            "create_stock_ledger_entry",
             warehouse_id=warehouse["id"],
             variant_id=variant["id"],
             entry_type="adjustment",
@@ -1416,7 +1134,11 @@ async def _seed_variant_warehouse_stock(
             notes="Imported opening inventory.",
             recorded_by_user_id=actor_user_id,
         )
-    await commerce_service._sync_variant_inventory_from_stocks(db, tenant_id=tenant_id, variant_ids=[variant["id"]])
+    await commerce_service._sync_variant_inventory_from_stocks(
+        db_name,
+        tenant_id=tenant_id,
+        variant_ids=[variant["id"]],
+    )
 
 
 def _add_entity_error(report: dict[str, object], entity_key: str, message: str) -> None:
@@ -1428,22 +1150,6 @@ def _add_entity_error(report: dict[str, object], entity_key: str, message: str) 
 def _add_global_error(report: dict[str, object], message: str) -> None:
     report["errors"].append(message)
 
-
-def _remap_import_attribute_ids(
-    values: list[dict[str, object]],
-    *,
-    attribute_lookup_by_code: dict[str, Any],
-) -> list[dict[str, object]]:
-    remapped: list[dict[str, object]] = []
-    for item in values:
-        attribute_id = str(item["attribute_id"])
-        if attribute_id.startswith("import-attribute:"):
-            attribute_code = attribute_id.split(":", 1)[1]
-            attribute = attribute_lookup_by_code.get(attribute_code)
-            remapped.append({"attribute_id": attribute["id"], "value": item.get("value")})
-            continue
-        remapped.append({"attribute_id": attribute_id, "value": item.get("value")})
-    return remapped
 
 
 def _finalize_report_counts(report: dict[str, object]) -> None:

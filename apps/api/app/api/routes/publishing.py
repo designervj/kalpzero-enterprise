@@ -93,7 +93,7 @@ def publishing_pages(
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return {"tenant_id": ctx.tenant_id, "pages": list_pages(db, store, tenant_slug=session.tenant_id)}
+        return {"tenant_id": session.tenant_id, "pages": list_pages(db, store, tenant_slug=session.tenant_id)}
     except Exception as exc:
         _raise_http_error(exc)
 

@@ -8,17 +8,13 @@ from pymongo import MongoClient
 from pymongo.database import Database
 from motor.motor_asyncio import AsyncIOMotorClient
 from motor.core import AgnosticDatabase, AgnosticCollection
-from beanie import init_beanie
 from fastapi import Depends
 
-# Patch MotorClient to avoid Beanie 2.1.0 initialization error.
-# Beanie 2.1.0 incorrectly assumes that database.client.append_metadata is a valid method if it is callable().
-# In Motor 3.x, accessing a non-existent attribute on a client returns a MotorDatabase object, 
-# which has a __call__ method that raises a TypeError, thus making callable() return True.
+from app.core.config import Settings, get_settings
+
+# Patch MotorClient to avoid issues with some libraries incorrectly checking for attributes.
 if not hasattr(AsyncIOMotorClient, "append_metadata"):
     AsyncIOMotorClient.append_metadata = lambda self, metadata: None
-
-from app.core.config import Settings, get_settings
 
 RUNTIME_COLLECTIONS = {
     "business_blueprints": "business_blueprints",
@@ -28,7 +24,7 @@ RUNTIME_COLLECTIONS = {
     "form_responses": "form_responses",
     "ai_knowledge": "ai_knowledge_documents",
     "import_staging": "import_staging_documents",
-    "discovery_snapshots": "discovery_snapshots",
+    "discovery_ snapshots": "discovery_snapshots",
 }
 
 VERTICAL_COLLECTIONS: dict[str, list[str]] = {
@@ -113,25 +109,21 @@ def _normalize_mongo_name_segment(value: str) -> str:
 
 
 def build_runtime_database_name(settings: Settings, *, tenant_slug: str) -> str:
-    """
-    Builds the MongoDB database name for a tenant.
-    If the provided slug already looks like a normalized database name (starts with kp_),
-    it is returned as-is. Otherwise, it is normalized and prefixed.
-    """
-    if tenant_slug.startswith("kp_"):
+    base_name = _normalize_mongo_name_segment(settings.runtime_mongo_db)
+    if tenant_slug.startswith("kp_") or tenant_slug.startswith(f"{base_name}__tenant__"):
         return tenant_slug
-        
+
     tenant_name = _normalize_mongo_name_segment(tenant_slug)
-    return f"kp_{tenant_name}"
+    return f"{base_name}__tenant__{tenant_name}"
 
 
 def get_runtime_mongo_database(settings: Settings, *, database_name: str | None = None) -> Database:
-    resolved_db_name = database_name
+    resolved_db_name = database_name or settings.runtime_mongo_db
     return get_mongo_client(settings.runtime_mongo_url)[resolved_db_name]
 
 
 def get_runtime_motor_database(settings: Settings, *, database_name: str | None = None) -> AgnosticDatabase:
-    resolved_db_name = database_name
+    resolved_db_name = database_name or settings.runtime_mongo_db
     return get_motor_client(settings.runtime_mongo_url)[resolved_db_name]
 
 
@@ -141,43 +133,8 @@ def get_tenant_collection(settings: Settings, database_name: str, collection_nam
 
 
 def get_tenant_motor_collection(settings: Settings, database_name: str, collection_name: str) -> AgnosticCollection:
-    db = get_runtime_motor_database(settings, tenant_slug=tenant_slug)
-    return db[collection_name]
-
-
-
-_BEANE_INITIALIZED_TENANTS: set[str] = set()
-
-
-async def init_beanie_utility(settings: Settings, *, document_models: list = None, database_name: str | None = None):
-    """
-    Initializes Beanie for a specific database (tenant or platform).
-    """
     db = get_runtime_motor_database(settings, database_name=database_name)
-    await init_beanie(database=db, document_models=document_models or [])
-
-
-async def ensure_tenant_vertical_initialized(
-    settings: Settings, 
-    *, 
-    vertical: str, 
-    document_models: list,
-    database_name: str | None = None
-):
-    """
-    Ensures that Beanie is initialized for the specified tenant's database
-    and vertical-specific models.
-    """
-    cache_key = f"{database_name}"
-    if cache_key in _BEANE_INITIALIZED_TENANTS:
-        return
-    
-    await init_beanie_utility(
-        settings, 
-        document_models=document_models,
-        database_name=database_name
-    )
-    _BEANE_INITIALIZED_TENANTS.add(cache_key)
+    return db[collection_name]
 
 
 class RuntimeDocumentStore(Protocol):
@@ -368,4 +325,6 @@ def describe_runtime_document_store(settings: Settings) -> dict[str, object]:
 
 def clear_mongo_cache() -> None:
     get_mongo_client.cache_clear()
+    get_motor_client.cache_clear()
     get_memory_document_store.cache_clear()
+    _BEANE_INITIALIZED_TENANTS.clear()

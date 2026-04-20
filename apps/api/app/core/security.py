@@ -1,15 +1,13 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Header, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
 from app.core.config import Settings, get_settings
-from sqlalchemy.orm import Session
-
-
+from app.db.mongo import build_runtime_database_name
 
 http_bearer = HTTPBearer(auto_error=False)
 ALGORITHM = "HS256"
@@ -66,10 +64,6 @@ def decode_access_token(token: str, settings: Settings) -> TokenPayload:
 def get_tenant_slug(
     x_tenant_slug: Annotated[str | None, Header(alias="X-Tenant-Slug")] = None,
 ) -> str:
-    """
-    Extracts the tenant slug from the X-Tenant-Slug header.
-    Used for public routes where JWT is not available.
-    """
     if not x_tenant_slug:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -78,35 +72,42 @@ def get_tenant_slug(
     return x_tenant_slug
 
 
-from fastapi import Depends, HTTPException, status, Header
-from fastapi.security import HTTPAuthorizationCredentials
-from typing import Optional
-from app.db.session import get_db_session
+def _resolve_tenant_db_name(
+    *,
+    tenant_slug: str | None,
+    x_tenant_db: str | None,
+    settings: Settings,
+) -> str | None:
+    if x_tenant_db:
+        return x_tenant_db
+    if not tenant_slug or tenant_slug == "platform_control":
+        return None
+    return build_runtime_database_name(settings, tenant_slug=tenant_slug)
+
 
 def get_current_session(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
-    x_tenant_db: Optional[str] = Header(None, alias="x-tenant-db"),
+    credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    x_tenant_db: str | None = Header(None, alias="x-tenant-db"),
     settings: Settings = Depends(get_settings),
 ) -> SessionContext:
-
-    # Case 1: Bearer token exists
     if credentials and credentials.scheme.lower() == "bearer":
         payload = decode_access_token(credentials.credentials, settings)
         return SessionContext(
             user_id=payload.id,
             email=payload.email,
             tenant_id=payload.tenant_id,
-            tenant_db_name=x_tenant_db,
+            tenant_db_name=_resolve_tenant_db_name(
+                tenant_slug=payload.tenant_id,
+                x_tenant_db=x_tenant_db,
+                settings=settings,
+            ),
             role=payload.role,
         )
-    else:
-        return SessionContext(
-            user_id=None,
-            email=None,
-            tenant_id=None,
-            tenant_db_name=x_tenant_db,
-            role="guest",
-        )
 
-
-
+    return SessionContext(
+        user_id=None,
+        email=None,
+        tenant_id=None,
+        tenant_db_name=x_tenant_db,
+        role="guest",
+    )

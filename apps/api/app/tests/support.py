@@ -1,16 +1,44 @@
 from fastapi.testclient import TestClient
 
+DEFAULT_PASSWORD = "very-secure-password"
 
-def login(client: TestClient, *, email: str, tenant_slug: str | None = None) -> str:
-    response = client.post(
+
+def _login_response(client: TestClient, *, email: str, tenant_slug: str | None = None):
+    return client.post(
         "/auth/login",
         json={
             "email": email,
-            "password": "very-secure-password",
+            "password": DEFAULT_PASSWORD,
             "tenant_slug": tenant_slug,
         },
     )
-    return response.json()["access_token"]
+
+
+def _ensure_user(client: TestClient, *, email: str, tenant_slug: str | None = None) -> None:
+    response = _login_response(client, email=email, tenant_slug=tenant_slug)
+    if response.status_code == 200 and response.json().get("access_token"):
+        return
+
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": DEFAULT_PASSWORD,
+            "tenant_slug": tenant_slug,
+            "name": "Platform Founder" if email == "founder@kalpzero.com" else "Tenant Operator",
+        },
+    )
+    if register_response.status_code not in (200, 400):
+        raise AssertionError(register_response.text)
+
+
+def login(client: TestClient, *, email: str, tenant_slug: str | None = None) -> str:
+    _ensure_user(client, email=email, tenant_slug=tenant_slug)
+    response = _login_response(client, email=email, tenant_slug=tenant_slug)
+    payload = response.json()
+    if response.status_code != 200 or "access_token" not in payload:
+        raise AssertionError(payload)
+    return payload["access_token"]
 
 
 def provision_tenant(
@@ -29,7 +57,11 @@ def provision_tenant(
 
     if bypass_onboarding_gate:
         from app.core.config import get_settings
-        from app.db.mongo import get_runtime_document_store, provision_runtime_document_store_for_tenant
+        from app.db.mongo import (
+            build_runtime_database_name,
+            get_runtime_document_store,
+            provision_runtime_document_store_for_tenant,
+        )
         from app.db.session import get_session_factory
         from app.repositories import platform as platform_repository
         from app.services import publishing as publishing_service
@@ -57,10 +89,16 @@ def provision_tenant(
                     display_name="Tenant Demo",
                     infra_mode=infra_mode,
                     vertical_pack=vertical_pack,
+                    business_type=vertical_pack,
                     feature_flags=feature_flags or ["custom-domain"],
                     dedicated_profile_id="dedicated-infra-demo" if infra_mode == "dedicated" else None,
+                    mongo_db_name=build_runtime_database_name(settings, tenant_slug=tenant_slug),
                 )
-            provision_runtime_document_store_for_tenant(settings, tenant_slug=tenant.slug)
+            provision_runtime_document_store_for_tenant(
+                settings,
+                tenant_slug=tenant.slug,
+                vertical_pack=tenant.vertical_packs,
+            )
             publishing_service.bootstrap_tenant_runtime_documents(get_runtime_document_store(settings), tenant)
             session.commit()
             return
@@ -90,6 +128,7 @@ def provision_tenant(
             "display_name": "Tenant Demo",
             "infra_mode": infra_mode,
             "vertical_pack": vertical_pack,
+            "business_type": vertical_pack,
             "feature_flags": feature_flags or ["custom-domain"],
             "dedicated_profile_id": "dedicated-infra-demo" if infra_mode == "dedicated" else None,
         },

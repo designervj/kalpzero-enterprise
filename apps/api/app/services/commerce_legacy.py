@@ -2,7 +2,6 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-import bcrypt
 import yaml
 from sqlalchemy.orm import Session
 
@@ -11,19 +10,8 @@ from app.repositories import platform as platform_repository
 from app.services.errors import ConflictError, NotFoundError, ValidationError
 from app.services.platform import get_tenant_or_raise
 
-ATTRIBUTE_VALUE_TYPES = {
-    "text",
-    "long_text",
-    "number",
-    "boolean",
-    "single_select",
-    "multi_select",
-    "color",
-    "date",
-}
 
-ATTRIBUTE_SCOPES = {"product", "variant", "both"}
-ATTRIBUTE_ACTIVE_STATUSES = {"active", "archived"}
+
 COUPON_DISCOUNT_TYPES = {"fixed", "percent"}
 PAYMENT_RECORD_STATUSES = {"authorized", "captured", "failed"}
 WAREHOUSE_ACTIVE_STATUSES = {"active", "inactive"}
@@ -70,10 +58,7 @@ def _dedupe_strings(values: list[str], *, default: list[str] | None = None) -> l
     return list(default or [])
 
 
-def _attribute_value_signature(value: object | None) -> object:
-    if isinstance(value, list):
-        return tuple(_attribute_value_signature(item) for item in value)
-    return value
+
 
 
 def _serialize_category(model) -> dict[str, object]:
@@ -369,43 +354,23 @@ def _serialize_settlement(model, entries_by_settlement: dict[str, list[dict[str,
     }
 
 
-def _serialize_attribute(model) -> dict[str, object]:
-    return {
-        "id": str(model["id"]),
-        "tenant_id": str(model["tenant_id"]),
-        "code": model["code"],
-        "slug": model["slug"],
-        "label": model["label"],
-        "description": model.get("description"),
-        "value_type": model["value_type"],
-        "scope": model["scope"],
-        "options": model.get("options_json", []),
-        "unit_label": model.get("unit_label"),
-        "is_required": model.get("is_required", False),
-        "is_filterable": model.get("is_filterable", False),
-        "is_variation_axis": model.get("is_variation_axis", False),
-        "vertical_bindings": model.get("vertical_bindings", []),
-        "status": model["status"],
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
-    }
+
 
 
 def _serialize_attribute_set(model) -> dict[str, object]:
     return {
         "id": str(model["id"]),
-        "tenant_id": str(model["tenant_id"]),
         "name": model["name"],
-        "slug": model["slug"],
+        "key": model["key"],
         "description": model.get("description"),
-        "attribute_ids": [str(aid) for aid in model.get("attribute_ids", [])],
+        "attributes": model.get("attributes", []),
         "vertical_bindings": model.get("vertical_bindings", []),
         "status": model["status"],
         "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
     }
 
 
-def _serialize_attribute_value(model) -> dict[str, object]:
-    return {"attribute_id": str(model["attribute_id"]), "value": model.get("value_json")}
+
 
 
 def _serialize_variant(model, attribute_values_by_variant: dict[str, list[dict[str, object]]]) -> dict[str, object]:
@@ -417,7 +382,7 @@ def _serialize_variant(model, attribute_values_by_variant: dict[str, list[dict[s
         "price_minor": model.get("price_minor", 0),
         "currency": model.get("currency"),
         "inventory_quantity": model.get("inventory_quantity", 0),
-        "attribute_values": attribute_values_by_variant.get(str(model["id"]), []),
+        "attribute_values": [],
         "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
     }
 
@@ -441,7 +406,7 @@ def _serialize_product(
         "seo_title": model.get("seo_title"),
         "seo_description": model.get("seo_description"),
         "status": model["status"],
-        "product_attributes": product_attribute_values_by_product.get(str(model["id"]), []),
+        "product_attributes": [],
         "variants": variants_by_product.get(str(model["id"]), []),
         "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
     }
@@ -821,38 +786,7 @@ def _recalculate_order_finance(db: Session, order) -> None:
     commerce_repository.update_order(db, tenant_id=order["tenant_id"], order_id=order["id"], data=update_data)
 
 
-def _validate_attribute_definition(
-    *,
-    value_type: str,
-    scope: str,
-    options: list[dict[str, object]],
-    is_variation_axis: bool,
-) -> list[dict[str, object]]:
-    if value_type not in ATTRIBUTE_VALUE_TYPES:
-        raise ValidationError(f"Unsupported attribute value type '{value_type}'.")
-    if scope not in ATTRIBUTE_SCOPES:
-        raise ValidationError(f"Unsupported attribute scope '{scope}'.")
 
-    normalized_options: list[dict[str, object]] = []
-    option_values: set[str] = set()
-    for option in options:
-        raw_value = str(option.get("value", "")).strip()
-        raw_label = str(option.get("label", "")).strip()
-        if not raw_value or not raw_label:
-            raise ValidationError("Attribute options require both value and label.")
-        if raw_value in option_values:
-            raise ValidationError(f"Duplicate attribute option '{raw_value}' is not allowed.")
-        option_values.add(raw_value)
-        normalized_options.append({"value": raw_value, "label": raw_label})
-
-    if value_type in {"single_select", "multi_select"} and not normalized_options:
-        raise ValidationError("Select attributes require at least one option.")
-    if value_type not in {"single_select", "multi_select"} and normalized_options:
-        raise ValidationError("Attribute options are only valid for select attributes.")
-    if is_variation_axis and scope == "product":
-        raise ValidationError("Variation-axis attributes cannot be product-only.")
-
-    return normalized_options
 
 
 def _normalize_tax_rules(rules: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -875,146 +809,7 @@ def _total_tax_basis_points(tax_profile) -> int:
     return sum(int(rule.get("rate_basis_points", 0)) for rule in rules)
 
 
-def _normalize_attribute_value(model, value: object | None, *, owner: str) -> object | None:
-    if value is None:
-        raise ValidationError(f"{owner} attribute '{model['code']}' requires a value.")
 
-    if model["value_type"] in {"text", "long_text", "color", "date"}:
-        if not isinstance(value, str):
-            raise ValidationError(f"{owner} attribute '{model['code']}' expects a string value.")
-        normalized = value.strip()
-        if not normalized:
-            raise ValidationError(f"{owner} attribute '{model['code']}' cannot be empty.")
-        return normalized
-
-    if model["value_type"] == "number":
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ValidationError(f"{owner} attribute '{model['code']}' expects a numeric value.")
-        return value
-
-    if model["value_type"] == "boolean":
-        if not isinstance(value, bool):
-            raise ValidationError(f"{owner} attribute '{model['code']}' expects a boolean value.")
-        return value
-
-    allowed_options = {str(option["value"]) for option in model.get("options_json", [])}
-    if model["value_type"] == "single_select":
-        if not isinstance(value, str):
-            raise ValidationError(f"{owner} attribute '{model['code']}' expects a single option value.")
-        normalized = value.strip()
-        if normalized not in allowed_options:
-            raise ValidationError(
-                f"{owner} attribute '{model['code']}' must use one of the configured options."
-            )
-        return normalized
-
-    if model["value_type"] == "multi_select":
-        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
-            raise ValidationError(f"{owner} attribute '{model['code']}' expects a list of option values.")
-        normalized_values = _dedupe_strings(value)
-        if not normalized_values:
-            raise ValidationError(f"{owner} attribute '{model['code']}' requires at least one option.")
-        invalid = [item for item in normalized_values if item not in allowed_options]
-        if invalid:
-            raise ValidationError(
-                f"{owner} attribute '{model['code']}' contains invalid options: {', '.join(invalid)}."
-            )
-        return normalized_values
-
-    raise ValidationError(f"Unsupported attribute value type '{model['value_type']}'.")
-
-
-def _validate_attribute_payload(
-    *,
-    attribute_lookup: dict[str, Any],
-    values: list[dict[str, object]],
-    allowed_scopes: set[str],
-    owner: str,
-) -> list[dict[str, object]]:
-    seen: set[str] = set()
-    normalized_values: list[dict[str, object]] = []
-
-    for item in values:
-        attribute_id = str(item["attribute_id"])
-        if attribute_id in seen:
-            raise ValidationError(f"Duplicate attribute assignment '{attribute_id}' in {owner}.")
-        seen.add(attribute_id)
-        attribute = attribute_lookup.get(attribute_id)
-        if attribute is None:
-            raise NotFoundError(f"Attribute '{attribute_id}' was not found.")
-        if attribute.get("scope") not in allowed_scopes:
-            raise ValidationError(
-                f"Attribute '{attribute['code']}' cannot be assigned in {owner} due to scope mismatch."
-            )
-        normalized_values.append(
-            {
-                "attribute_id": attribute_id,
-                "value": _normalize_attribute_value(attribute, item.get("value"), owner=owner),
-            }
-        )
-
-    return normalized_values
-
-
-def _validate_required_attributes(
-    *,
-    attribute_lookup: dict[str, Any],
-    attribute_ids: list[str],
-    normalized_product_attributes: list[dict[str, object]],
-    normalized_variant_attributes: list[list[dict[str, object]]],
-) -> None:
-    product_seen = {item["attribute_id"] for item in normalized_product_attributes}
-    variant_seen_per_variant = [{item["attribute_id"] for item in values} for values in normalized_variant_attributes]
-
-    for attribute_id in attribute_ids:
-        attribute = attribute_lookup[attribute_id]
-        if not attribute.get("is_required"):
-            continue
-        scope = attribute.get("scope")
-        if scope in {"product", "both"} and attribute_id not in product_seen:
-            raise ValidationError(f"Required product attribute '{attribute['code']}' is missing.")
-        if scope in {"variant", "both"}:
-            for index, seen in enumerate(variant_seen_per_variant, start=1):
-                if attribute_id not in seen:
-                    raise ValidationError(
-                        f"Required variant attribute '{attribute['code']}' is missing on variant #{index}."
-                    )
-
-
-def _validate_variation_axes(
-    *,
-    attribute_lookup: dict[str, Any],
-    normalized_variant_attributes: list[list[dict[str, object]]],
-) -> None:
-    variation_axis_ids = [
-        attribute_id
-        for attribute_id, attribute in attribute_lookup.items()
-        if attribute.get("is_variation_axis") and attribute.get("scope") in {"variant", "both"}
-    ]
-    if not variation_axis_ids:
-        return
-
-    seen_signatures: set[tuple[tuple[str, object], ...]] = set()
-    for index, values in enumerate(normalized_variant_attributes, start=1):
-        value_map = {item["attribute_id"]: item["value"] for item in values}
-        missing_axis_ids = [attribute_id for attribute_id in variation_axis_ids if attribute_id not in value_map]
-        if missing_axis_ids:
-            missing_codes = [attribute_lookup[attribute_id].code for attribute_id in missing_axis_ids]
-            raise ValidationError(
-                f"Variant #{index} is missing variation-axis values: {', '.join(missing_codes)}."
-            )
-        signature = tuple(
-            sorted(
-                (
-                    attribute_id,
-                    _attribute_value_signature(value_map[attribute_id]),
-                )
-                for attribute_id in variation_axis_ids
-            )
-        )
-        if signature in seen_signatures:
-            raise ValidationError("Variant axis combinations must be unique within a product.")
-        seen_signatures.add(signature)
 
 
 def get_overview(db: Session, *, tenant_slug: str) -> dict[str, object]:
@@ -1028,7 +823,7 @@ def get_overview(db: Session, *, tenant_slug: str) -> dict[str, object]:
     tax_profiles = commerce_repository.list_tax_profiles(db, tenant_id=tenant.id)
     price_lists = commerce_repository.list_price_lists(db, tenant_id=tenant.id)
     coupons = commerce_repository.list_coupons(db, tenant_id=tenant.id)
-    attributes = commerce_repository.list_attributes(db, tenant_id=tenant.id)
+
     attribute_sets = commerce_repository.list_attribute_sets(db, tenant_id=tenant.id)
     products = commerce_repository.list_products(db, tenant_id=tenant.id)
     variants = commerce_repository.list_variants(db, tenant_id=tenant.id)
@@ -1080,7 +875,7 @@ def get_overview(db: Session, *, tenant_slug: str) -> dict[str, object]:
         "tax_profiles": len(tax_profiles),
         "price_lists": len(price_lists),
         "coupons": len(coupons),
-        "attributes": len(attributes),
+        "attributes": 0,
         "attribute_sets": len(attribute_sets),
         "products": len(products),
         "variants": len(variants),
@@ -1147,15 +942,15 @@ def create_brand(
         description=description,
         status=status,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.brand.created",
-        subject_type="commerce_brand",
-        subject_id=str(brand["id"]),
-        metadata={"slug": normalized_slug, "code": normalized_code},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.brand.created",
+        # subject_type="commerce_brand",
+        # subject_id=str(brand["id"]),
+        # metadata={"slug": normalized_slug, "code": normalized_code},
+    # )
     db.commit()
     return _serialize_brand(brand)
 
@@ -1201,15 +996,15 @@ def create_vendor(
         contact_phone=contact_phone,
         status=status,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.vendor.created",
-        subject_type="commerce_vendor",
-        subject_id=str(vendor["id"]),
-        metadata={"slug": normalized_slug, "code": normalized_code},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.vendor.created",
+        # subject_type="commerce_vendor",
+        # subject_id=str(vendor["id"]),
+        # metadata={"slug": normalized_slug, "code": normalized_code},
+    # )
     db.commit()
     return _serialize_vendor(vendor)
 
@@ -1263,15 +1058,15 @@ def create_warehouse(
         status=status,
         is_default=is_default,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.warehouse.created",
-        subject_type="commerce_warehouse",
-        subject_id=str(warehouse["id"]),
-        metadata={"slug": normalized_slug, "code": normalized_code, "is_default": is_default},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.warehouse.created",
+        # subject_type="commerce_warehouse",
+        # subject_id=str(warehouse["id"]),
+        # metadata={"slug": normalized_slug, "code": normalized_code, "is_default": is_default},
+    # )
     db.commit()
     return _serialize_warehouse(warehouse)
 
@@ -1399,21 +1194,21 @@ def adjust_stock(
         recorded_by_user_id=actor_user_id,
     )
     _sync_variant_inventory_from_stocks(db, tenant_id=tenant.id, variant_ids=[variant["id"]])
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.stock.adjusted",
-        subject_type="commerce_warehouse_stock",
-        subject_id=str(stock["id"]),
-        metadata={
-            "warehouse_id": str(warehouse["id"]),
-            "variant_id": str(variant["id"]),
-            "quantity_delta": quantity_delta,
-            "on_hand_quantity": stock["on_hand_quantity"],
-            "reserved_quantity": stock["reserved_quantity"],
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.stock.adjusted",
+        # subject_type="commerce_warehouse_stock",
+        # subject_id=str(stock["id"]),
+        # metadata={
+            # "warehouse_id": str(warehouse["id"]),
+            # "variant_id": str(variant["id"]),
+            # "quantity_delta": quantity_delta,
+            # "on_hand_quantity": stock["on_hand_quantity"],
+            # "reserved_quantity": stock["reserved_quantity"],
+        # },
+    # )
     db.commit()
     return _serialize_warehouse_stock(stock)
 
@@ -1445,15 +1240,15 @@ def create_collection(
         status=status,
         sort_order=sort_order,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.collection.created",
-        subject_type="commerce_collection",
-        subject_id=str(collection["id"]),
-        metadata={"slug": normalized_slug, "sort_order": sort_order},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.collection.created",
+        # subject_type="commerce_collection",
+        # subject_id=str(collection["id"]),
+        # metadata={"slug": normalized_slug, "sort_order": sort_order},
+    # )
     db.commit()
     return _serialize_collection(collection)
 
@@ -1493,15 +1288,15 @@ def create_tax_profile(
         rules_json=normalized_rules,
         status=status,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.tax_profile.created",
-        subject_type="commerce_tax_profile",
-        subject_id=str(tax_profile["id"]),
-        metadata={"code": normalized_code, "rule_count": len(normalized_rules)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.tax_profile.created",
+        # subject_type="commerce_tax_profile",
+        # subject_id=str(tax_profile["id"]),
+        # metadata={"code": normalized_code, "rule_count": len(normalized_rules)},
+    # )
     db.commit()
     return _serialize_tax_profile(tax_profile)
 
@@ -1575,15 +1370,15 @@ def create_price_list(
             )
         )
 
-    _audit(
-        db,
-        tenant_id=tenant.id,
-        actor_user_id=actor_user_id,
-        action="commerce.price_list.created",
-        subject_type="commerce_price_list",
-        subject_id=price_list["id"],
-        metadata={"slug": normalized_slug, "item_count": len(created_items), "currency": normalized_currency},
-    )
+    # _audit(
+        # db,
+        # tenant_id=tenant.id,
+        # actor_user_id=actor_user_id,
+        # action="commerce.price_list.created",
+        # subject_type="commerce_price_list",
+        # subject_id=price_list["id"],
+        # metadata={"slug": normalized_slug, "item_count": len(created_items), "currency": normalized_currency},
+    # )
     db.commit()
     return _serialize_price_list(
         price_list,
@@ -1652,20 +1447,20 @@ def create_coupon(
         applicable_variant_ids=deduped_variant_ids,
         status=status,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.coupon.created",
-        subject_type="commerce_coupon",
-        subject_id=str(coupon["id"]),
-        metadata={
-            "code": normalized_code,
-            "discount_type": discount_type,
-            "category_scope_count": len(deduped_category_ids),
-            "variant_scope_count": len(deduped_variant_ids),
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.coupon.created",
+        # subject_type="commerce_coupon",
+        # subject_id=str(coupon["id"]),
+        # metadata={
+            # "code": normalized_code,
+            # "discount_type": discount_type,
+            # "category_scope_count": len(deduped_category_ids),
+            # "variant_scope_count": len(deduped_variant_ids),
+        # },
+    # )
     db.commit()
     return _serialize_coupon(coupon)
 
@@ -1696,87 +1491,17 @@ def create_category(
         description=description,
         parent_category_id=parent_category_id,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.category.created",
-        subject_type="commerce_category",
-        subject_id=str(category["id"]),
-        metadata={"slug": slug},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.category.created",
+        # subject_type="commerce_category",
+        # subject_id=str(category["id"]),
+        # metadata={"slug": slug},
+    # )
     db.commit()
     return _serialize_category(category)
-
-
-def list_attributes(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
-    tenant = _tenant(db, tenant_slug)
-    return [_serialize_attribute(item) for item in commerce_repository.list_attributes(db, tenant_id=tenant.id)]
-
-
-def create_attribute(
-    db: Session,
-    *,
-    tenant_slug: str,
-    actor_user_id: str,
-    code: str,
-    slug: str,
-    label: str,
-    description: str | None,
-    value_type: str,
-    scope: str,
-    options: list[dict[str, object]],
-    unit_label: str | None,
-    is_required: bool,
-    is_filterable: bool,
-    is_variation_axis: bool,
-    vertical_bindings: list[str],
-    status: str,
-) -> dict[str, object]:
-    tenant = _tenant(db, tenant_slug)
-    normalized_code = code.strip().lower()
-    normalized_slug = slug.strip().lower()
-    normalized_options = _validate_attribute_definition(
-        value_type=value_type,
-        scope=scope,
-        options=options,
-        is_variation_axis=is_variation_axis,
-    )
-    if status not in ATTRIBUTE_ACTIVE_STATUSES:
-        raise ValidationError(f"Unsupported attribute status '{status}'.")
-    if commerce_repository.find_attribute_by_code(db, tenant_id=tenant.id, code=normalized_code):
-        raise ConflictError(f"Commerce attribute code '{normalized_code}' already exists.")
-    if commerce_repository.find_attribute_by_slug(db, tenant_id=tenant.id, slug=normalized_slug):
-        raise ConflictError(f"Commerce attribute slug '{normalized_slug}' already exists.")
-
-    attribute = commerce_repository.create_attribute(
-        db,
-        tenant_id=tenant.id,
-        code=normalized_code,
-        slug=normalized_slug,
-        label=label,
-        description=description,
-        value_type=value_type,
-        scope=scope,
-        options_json=normalized_options,
-        unit_label=unit_label,
-        is_required=is_required,
-        is_filterable=is_filterable,
-        is_variation_axis=is_variation_axis,
-        vertical_bindings=_dedupe_strings(vertical_bindings, default=["commerce"]),
-        status=status,
-    )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.attribute.created",
-        subject_type="commerce_attribute",
-        subject_id=str(attribute["id"]),
-        metadata={"code": normalized_code, "scope": scope, "value_type": value_type},
-    )
-    db.commit()
-    return _serialize_attribute(attribute)
 
 
 def list_attribute_sets(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
@@ -1827,15 +1552,15 @@ def create_attribute_set(
         vertical_bindings=_dedupe_strings(vertical_bindings, default=["commerce"]),
         status=status,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.attribute_set.created",
-        subject_type="commerce_attribute_set",
-        subject_id=str(attribute_set["id"]),
-        metadata={"slug": normalized_slug, "attribute_count": len(deduped_attribute_ids)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.attribute_set.created",
+        # subject_type="commerce_attribute_set",
+        # subject_id=str(attribute_set["id"]),
+        # metadata={"slug": normalized_slug, "attribute_count": len(deduped_attribute_ids)},
+    # )
     db.commit()
     return _serialize_attribute_set(attribute_set)
 
@@ -1848,33 +1573,14 @@ def list_products(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
         tenant_id=tenant.id,
         product_ids=[product["id"] for product in products],
     )
-    product_attribute_values = commerce_repository.list_product_attribute_values_for_products(
-        db,
-        tenant_id=tenant.id,
-        product_ids=[product["id"] for product in products],
-    )
-    variant_attribute_values = commerce_repository.list_variant_attribute_values_for_variants(
-        db,
-        tenant_id=tenant.id,
-        variant_ids=[variant["id"] for variant in variants],
-    )
-
-    product_attribute_values_by_product: dict[str, list[dict[str, object]]] = defaultdict(list)
-    for value in product_attribute_values:
-        product_attribute_values_by_product[value["product_id"]].append(_serialize_attribute_value(value))
-
-    variant_attribute_values_by_variant: dict[str, list[dict[str, object]]] = defaultdict(list)
-    for value in variant_attribute_values:
-        variant_attribute_values_by_variant[value["variant_id"]].append(_serialize_attribute_value(value))
-
     variants_by_product: dict[str, list[dict[str, object]]] = defaultdict(list)
     for variant in variants:
         variants_by_product[variant["product_id"]].append(
-            _serialize_variant(variant, variant_attribute_values_by_variant)
+            _serialize_variant(variant, {})
         )
 
     return [
-        _serialize_product(item, variants_by_product, product_attribute_values_by_product)
+        _serialize_product(item, variants_by_product, {})
         for item in products
     ]
 
@@ -1937,14 +1643,9 @@ def create_product(
         if commerce_repository.find_variant_by_sku(db, tenant_id=tenant.id, sku=str(variant["sku"])):
             raise ConflictError(f"Commerce variant SKU '{variant['sku']}' already exists.")
 
-    attribute_set = None
-    attribute_ids_from_values = [str(item["attribute_id"]) for item in product_attributes]
-    attribute_ids_from_values.extend(
-        str(item["attribute_id"])
-        for variant in variants
-        for item in variant.get("attribute_values", [])
-    )
 
+
+    attribute_set = None
     if attribute_set_id:
         attribute_set = commerce_repository.get_attribute_set(
             db,
@@ -1953,63 +1654,6 @@ def create_product(
         )
         if attribute_set is None:
             raise NotFoundError(f"Attribute set '{attribute_set_id}' was not found.")
-        attribute_ids = _dedupe_strings(attribute_set.attribute_ids + attribute_ids_from_values)
-    else:
-        attribute_ids = _dedupe_strings(attribute_ids_from_values)
-
-    attributes = commerce_repository.list_attributes_by_ids(
-        db,
-        tenant_id=tenant.id,
-        attribute_ids=attribute_ids,
-    )
-    attribute_lookup = {attribute["id"]: attribute for attribute in attributes}
-    missing_attribute_ids = [attribute_id for attribute_id in attribute_ids if attribute_id not in attribute_lookup]
-    if missing_attribute_ids:
-        raise NotFoundError(f"Attribute(s) not found: {', '.join(missing_attribute_ids)}.")
-
-    if attribute_set is not None:
-        allowed_attribute_ids = set(attribute_set.get("attribute_ids", []))
-        payload_attribute_ids = set(attribute_ids_from_values)
-        disallowed_attribute_ids = [attribute_id for attribute_id in payload_attribute_ids if attribute_id not in allowed_attribute_ids]
-        if disallowed_attribute_ids:
-            raise ValidationError("Product payload includes attributes outside the selected attribute set.")
-    else:
-        allowed_attribute_ids = set(attribute_ids)
-
-    normalized_product_attributes = _validate_attribute_payload(
-        attribute_lookup=attribute_lookup,
-        values=product_attributes,
-        allowed_scopes={"product", "both"},
-        owner="product",
-    )
-    normalized_variant_attributes = [
-        _validate_attribute_payload(
-            attribute_lookup=attribute_lookup,
-            values=variant.get("attribute_values", []),
-            allowed_scopes={"variant", "both"},
-            owner=f"variant '{variant['sku']}'",
-        )
-        for variant in variants
-    ]
-
-    required_attribute_ids = attribute_set.get("attribute_ids", []) if attribute_set is not None else attribute_ids
-    if required_attribute_ids:
-        _validate_required_attributes(
-            attribute_lookup=attribute_lookup,
-            attribute_ids=required_attribute_ids,
-            normalized_product_attributes=normalized_product_attributes,
-            normalized_variant_attributes=normalized_variant_attributes,
-        )
-
-    axis_lookup = {
-        attribute_id: attribute
-        for attribute_id, attribute in attribute_lookup.items()
-        if attribute_id in allowed_attribute_ids
-    }
-    _validate_variation_axes(
-        attribute_lookup=axis_lookup,
-        normalized_variant_attributes=normalized_variant_attributes,
-    )
 
     product = commerce_repository.create_product(
         db,
@@ -2027,20 +1671,8 @@ def create_product(
         status=status,
     )
 
-    created_product_attribute_values = [
-        commerce_repository.create_product_attribute_value(
-            db,
-            tenant_id=tenant.id,
-            product_id=product["id"],
-            attribute_id=str(item["attribute_id"]),
-            value_json=item["value"],
-        )
-        for item in normalized_product_attributes
-    ]
-
     created_variants = []
-    created_variant_attribute_values_by_variant: dict[str, list[Any]] = defaultdict(list)
-    for variant_payload, normalized_variant_value_list in zip(variants, normalized_variant_attributes, strict=True):
+    for variant_payload in variants:
         variant = commerce_repository.create_variant(
             db,
             tenant_id=tenant.id,
@@ -2052,53 +1684,27 @@ def create_product(
             inventory_quantity=int(variant_payload["inventory_quantity"]),
         )
         created_variants.append(variant)
-        for value in normalized_variant_value_list:
-            created_value = commerce_repository.create_variant_attribute_value(
-                db,
-                tenant_id=tenant.id,
-                variant_id=variant["id"],
-                attribute_id=str(value["attribute_id"]),
-                value_json=value["value"],
-            )
-            created_variant_attribute_values_by_variant[variant["id"]].append(created_value)
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.product.created",
-        subject_type="commerce_product",
-        subject_id=str(product["id"]),
-        metadata={
-            "slug": normalized_slug,
-            "variant_count": len(created_variants),
-            "attribute_set_id": str(product.get("attribute_set_id")) if product.get("attribute_set_id") else None,
-            "product_attribute_count": len(created_product_attribute_values),
-            "brand_id": str(product.get("brand_id")) if product.get("brand_id") else None,
-            "vendor_id": str(product.get("vendor_id")) if product.get("vendor_id") else None,
-            "collection_count": len(product.get("collection_ids", [])),
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.product.created",
+        # subject_type="commerce_product",
+        # subject_id=str(product["id"]),
+        # metadata={
+            # "slug": normalized_slug,
+            # "variant_count": len(created_variants),
+            # "attribute_set_id": str(product.get("attribute_set_id")) if product.get("attribute_set_id") else None,
+            # "product_attribute_count": len(created_product_attribute_values),
+            # "brand_id": str(product.get("brand_id")) if product.get("brand_id") else None,
+            # "vendor_id": str(product.get("vendor_id")) if product.get("vendor_id") else None,
+            # "collection_count": len(product.get("collection_ids", [])),
+        # },
+    # )
     db.commit()
 
-    serialized_product_attribute_values = {
-        product["id"]: [_serialize_attribute_value(item) for item in created_product_attribute_values]
-    }
-    serialized_variants = {
-        product["id"]: [
-            _serialize_variant(
-                variant,
-                {
-                    variant["id"]: [
-                        _serialize_attribute_value(item)
-                        for item in created_variant_attribute_values_by_variant.get(variant["id"], [])
-                    ]
-                },
-            )
-            for variant in created_variants
-        ]
-    }
-    return _serialize_product(product, serialized_variants, serialized_product_attribute_values)
+    return _serialize_product(product, {product["id"]: [_serialize_variant(v, {}) for v in created_variants]}, {})
 
 
 def list_orders(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
@@ -2699,22 +2305,22 @@ def create_order(
         else:
             _reserve_inventory(db, tenant_id=tenant.id, variants=variant_models, quantities=quantities)
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.order.created",
-        subject_type="commerce_order",
-        subject_id=str(order["id"]),
-        metadata={
-            "customer_id": str(customer_id),
-            "status": status,
-            "subtotal_minor": subtotal_minor,
-            "discount_minor": discount_minor,
-            "tax_minor": tax_minor,
-            "total_minor": total_minor,
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.order.created",
+        # subject_type="commerce_order",
+        # subject_id=str(order["id"]),
+        # metadata={
+            # "customer_id": str(customer_id),
+            # "status": status,
+            # "subtotal_minor": subtotal_minor,
+            # "discount_minor": discount_minor,
+            # "tax_minor": tax_minor,
+            # "total_minor": total_minor,
+        # },
+    # )
     _outbox_order(db, tenant_id=tenant.id, order=order)
     db.commit()
     return _serialize_order(order, {order["id"]: [_serialize_order_line(line) for line in created_lines]})
@@ -2761,15 +2367,15 @@ def record_payment(
         recorded_by_user_id=actor_user_id,
     )
     _recalculate_order_finance(db, order)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.payment.recorded",
-        subject_type="commerce_payment",
-        subject_id=str(payment["id"]),
-        metadata={"order_id": str(order["id"]), "amount_minor": amount_minor, "payment_method": payment_method, "status": status},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.payment.recorded",
+        # subject_type="commerce_payment",
+        # subject_id=str(payment["id"]),
+        # metadata={"order_id": str(order["id"]), "amount_minor": amount_minor, "payment_method": payment_method, "status": status},
+    # )
     db.commit()
     return get_order_finance_detail(db, tenant_slug=tenant_slug, order_id=order_id)
 
@@ -2818,15 +2424,15 @@ def record_refund(
         commerce_repository.update_payment(db, tenant_id=tenant.id, payment_id=payment["id"], data={"status": "refunded"})
     
     _recalculate_order_finance(db, order)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.refund.recorded",
-        subject_type="commerce_refund",
-        subject_id=str(refund["id"]),
-        metadata={"order_id": str(order["id"]), "payment_id": str(payment["id"]), "amount_minor": amount_minor},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.refund.recorded",
+        # subject_type="commerce_refund",
+        # subject_id=str(refund["id"]),
+        # metadata={"order_id": str(order["id"]), "payment_id": str(payment["id"]), "amount_minor": amount_minor},
+    # )
     db.commit()
     return get_order_finance_detail(db, tenant_slug=tenant_slug, order_id=order_id)
 
@@ -2927,19 +2533,19 @@ def create_return(
             )
         )
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.return.created",
-        subject_type="commerce_return",
-        subject_id=str(created_return["id"]),
-        metadata={
-            "order_id": str(order["id"]),
-            "return_number": created_return.get("return_number"),
-            "line_count": len(created_lines),
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.return.created",
+        # subject_type="commerce_return",
+        # subject_id=str(created_return["id"]),
+        # metadata={
+            # "order_id": str(order["id"]),
+            # "return_number": created_return.get("return_number"),
+            # "line_count": len(created_lines),
+        # },
+    # )
     _outbox_return(db, tenant_id=tenant.id, return_request=created_return)
     db.commit()
     return get_return_detail(db, tenant_slug=tenant_slug, return_id=created_return["id"])
@@ -2999,15 +2605,15 @@ def update_return_status(
 
     commerce_repository.update_return(db, tenant_id=tenant.id, return_id=return_id, data=update_data)
     
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.return.updated",
-        subject_type="commerce_return",
-        subject_id=str(return_request["id"]),
-        metadata={"status": normalized_status, "return_number": return_request.return_number},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.return.updated",
+        # subject_type="commerce_return",
+        # subject_id=str(return_request["id"]),
+        # metadata={"status": normalized_status, "return_number": return_request.return_number},
+    # )
     _outbox_return(db, tenant_id=tenant.id, return_request=return_request)
     db.commit()
     return get_return_detail(db, tenant_slug=tenant_slug, return_id=return_id)
@@ -3154,21 +2760,21 @@ def create_settlement(
             notes=None,
         )
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.settlement.created",
-        subject_type="commerce_settlement",
-        subject_id=str(settlement["id"]),
-        metadata={
-            "settlement_number": settlement.get("settlement_number"),
-            "provider": normalized_provider,
-            "payments_minor": payments_minor,
-            "refunds_minor": refunds_minor,
-            "net_minor": net_minor,
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.settlement.created",
+        # subject_type="commerce_settlement",
+        # subject_id=str(settlement["id"]),
+        # metadata={
+            # "settlement_number": settlement.get("settlement_number"),
+            # "provider": normalized_provider,
+            # "payments_minor": payments_minor,
+            # "refunds_minor": refunds_minor,
+            # "net_minor": net_minor,
+        # },
+    # )
     _outbox_settlement(db, tenant_id=tenant.id, settlement=settlement)
     db.commit()
     return get_settlement_detail(db, tenant_slug=tenant_slug, settlement_id=settlement["id"])
@@ -3205,15 +2811,15 @@ def update_settlement_status(
 
     commerce_repository.update_settlement(db, tenant_id=tenant.id, settlement_id=settlement_id, data=update_data)
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.settlement.updated",
-        subject_type="commerce_settlement",
-        subject_id=str(settlement["id"]),
-        metadata={"status": normalized_status, "settlement_number": settlement.get("settlement_number")},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.settlement.updated",
+        # subject_type="commerce_settlement",
+        # subject_id=str(settlement["id"]),
+        # metadata={"status": normalized_status, "settlement_number": settlement.get("settlement_number")},
+    # )
     _outbox_settlement(db, tenant_id=tenant.id, settlement=settlement)
     db.commit()
     return get_settlement_detail(db, tenant_slug=tenant_slug, settlement_id=settlement_id)
@@ -3262,15 +2868,15 @@ def issue_order_invoice(
             "invoice_issued_at": invoice["issued_at"],
         },
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.invoice.issued",
-        subject_type="commerce_order",
-        subject_id=str(order["id"]),
-        metadata={"invoice_number": invoice["invoice_number"], "customer_id": str(order.get("customer_id"))},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.invoice.issued",
+        # subject_type="commerce_order",
+        # subject_id=str(order["id"]),
+        # metadata={"invoice_number": invoice["invoice_number"], "customer_id": str(order.get("customer_id"))},
+    # )
     _outbox_invoice(db, tenant_id=tenant.id, order=order)
     db.commit()
     return get_order_finance_detail(db, tenant_slug=tenant_slug, order_id=order_id)
@@ -3382,19 +2988,19 @@ def create_fulfillment(
         )
         for line, quantity in selected_lines
     ]
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.fulfillment.created",
-        subject_type="commerce_fulfillment",
-        subject_id=str(fulfillment["id"]),
-        metadata={
-            "order_id": str(order["id"]),
-            "warehouse_id": str(fulfillment.get("warehouse_id")) if fulfillment.get("warehouse_id") else None,
-            "line_count": len(created_lines),
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.fulfillment.created",
+        # subject_type="commerce_fulfillment",
+        # subject_id=str(fulfillment["id"]),
+        # metadata={
+            # "order_id": str(order["id"]),
+            # "warehouse_id": str(fulfillment.get("warehouse_id")) if fulfillment.get("warehouse_id") else None,
+            # "line_count": len(created_lines),
+        # },
+    # )
     _outbox_fulfillment(db, tenant_id=tenant.id, fulfillment=fulfillment)
     db.commit()
     return _serialize_fulfillment(
@@ -3433,15 +3039,15 @@ def update_fulfillment_status(
     # Refresh to get updated data for audit and outbox
     fulfillment = _fulfillment_or_raise(db, tenant_id=tenant.id, fulfillment_id=fulfillment_id)
     lines = commerce_repository.list_fulfillment_lines(db, tenant_id=tenant.id, fulfillment_ids=[fulfillment["id"]])
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.fulfillment.updated",
-        subject_type="commerce_fulfillment",
-        subject_id=str(fulfillment["id"]),
-        metadata={"status": fulfillment.get("status")},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.fulfillment.updated",
+        # subject_type="commerce_fulfillment",
+        # subject_id=str(fulfillment["id"]),
+        # metadata={"status": fulfillment.get("status")},
+    # )
     _outbox_fulfillment(db, tenant_id=tenant.id, fulfillment=fulfillment)
     db.commit()
     return _serialize_fulfillment(
@@ -3550,19 +3156,19 @@ def create_shipment(
     fulfillment = _fulfillment_or_raise(db, tenant_id=tenant.id, fulfillment_id=fulfillment["id"])
     
     _mark_order_fulfillment_state(db, tenant_id=tenant.id, order_lines=order_lines, order=order)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.shipment.created",
-        subject_type="commerce_shipment",
-        subject_id=str(shipment["id"]),
-        metadata={
-            "fulfillment_id": str(fulfillment["id"]),
-            "tracking_number": shipment.get("tracking_number"),
-            "carrier": shipment.get("carrier"),
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.shipment.created",
+        # subject_type="commerce_shipment",
+        # subject_id=str(shipment["id"]),
+        # metadata={
+            # "fulfillment_id": str(fulfillment["id"]),
+            # "tracking_number": shipment.get("tracking_number"),
+            # "carrier": shipment.get("carrier"),
+        # },
+    # )
     _outbox_shipment(db, tenant_id=tenant.id, shipment=shipment)
     _outbox_fulfillment(db, tenant_id=tenant.id, fulfillment=fulfillment)
     db.commit()
@@ -3597,15 +3203,15 @@ def update_shipment_status(
     # Refresh fulfillment
     fulfillment = _fulfillment_or_raise(db, tenant_id=tenant.id, fulfillment_id=fid)
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.shipment.updated",
-        subject_type="commerce_shipment",
-        subject_id=str(shipment["id"]),
-        metadata={"status": shipment.get("status"), "tracking_number": shipment.get("tracking_number")},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.shipment.updated",
+        # subject_type="commerce_shipment",
+        # subject_id=str(shipment["id"]),
+        # metadata={"status": shipment.get("status"), "tracking_number": shipment.get("tracking_number")},
+    # )
     _outbox_shipment(db, tenant_id=tenant.id, shipment=shipment)
     _outbox_fulfillment(db, tenant_id=tenant.id, fulfillment=fulfillment)
     db.commit()
@@ -3675,15 +3281,15 @@ def update_order_status(
     
     # Refresh again after finance recalc
     order = _order_or_raise(db, tenant_id=tenant.id, order_id=order_id)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="commerce.order.updated",
-        subject_type="commerce_order",
-        subject_id=str(order["id"]),
-        metadata={"status": status},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="commerce.order.updated",
+        # subject_type="commerce_order",
+        # subject_id=str(order["id"]),
+        # metadata={"status": status},
+    # )
     db.commit()
     return _serialize_order(order, {order["id"]: [_serialize_order_line(line) for line in lines]})
 

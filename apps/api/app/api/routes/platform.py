@@ -128,7 +128,7 @@ def audit_log(
     session: SessionContext = Depends(require_permission("platform.audit.read")),
     db: Session = Depends(get_db_session),
 ):
-    scope_tenant_slug = _resolve_scope_tenant_slug(ctx, tenant_slug)
+    scope_tenant_slug = _resolve_scope_tenant_slug(session, tenant_slug)
     try:
         return {"tenant_id": scope_tenant_slug, "events": list_audit_events_for_scope(db, tenant_slug=scope_tenant_slug)}
     except NotFoundError as exc:
@@ -141,7 +141,7 @@ def outbox(
     session: SessionContext = Depends(require_permission("platform.outbox.read")),
     db: Session = Depends(get_db_session),
 ):
-    scope_tenant_slug = _resolve_scope_tenant_slug(ctx, tenant_slug)
+    scope_tenant_slug = _resolve_scope_tenant_slug(session, tenant_slug)
     try:
         return {"tenant_id": scope_tenant_slug, "events": list_outbox_events_for_scope(db, tenant_slug=scope_tenant_slug)}
     except NotFoundError as exc:
@@ -158,6 +158,7 @@ def storage_topology(
 
 @router.get("/onboarding-readiness")
 def onboarding_readiness(
+    requested_vertical_packs: list[str] = Query(default_factory=list),
     requested_vertical_pack: str | None = Query(default=None),
     infra_mode: str | None = None,
     dedicated_profile_id: str | None = None,
@@ -167,6 +168,7 @@ def onboarding_readiness(
     return get_onboarding_readiness_report(
         settings,
         requested_vertical_pack=requested_vertical_pack,
+        requested_vertical_packs=requested_vertical_packs,
         infra_mode=infra_mode,
         dedicated_profile_id=dedicated_profile_id,
     )
