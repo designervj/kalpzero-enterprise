@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -1708,7 +1709,7 @@ async def create_product(db: Session, *, db_name: str, tenant_slug: str, actor_u
     )
 
     if attribute_set_id:
-        attribute_ids = _dedupe_strings(attribute_set.attribute_ids + attribute_ids_from_values)
+        attribute_ids = _dedupe_strings(attribute_set.get("attribute_ids", []) + attribute_ids_from_values)
     else:
         attribute_ids = _dedupe_strings(attribute_ids_from_values)
 

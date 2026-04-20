@@ -847,7 +847,13 @@ async def hotel_property_profile(
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return get_property_profile(db, store, tenant_slug=session.tenant_id, property_id=property_id)
+        return await get_property_profile(
+            db,
+            store,
+            tenant_slug=session.tenant_id,
+            property_id=property_id,
+            db_name=session.tenant_db_name,
+        )
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -859,12 +865,13 @@ async def hotel_property_profile_upsert(
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return upsert_property_profile(
+        return await upsert_property_profile(
             db,
             store,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
             property_id=payload.property_id,
+            db_name=session.tenant_db_name,
             payload={
                 "brand_name": payload.brand_name,
                 "hero_title": payload.hero_title,
@@ -898,7 +905,13 @@ async def hotel_amenity_catalog(
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return get_amenity_catalog(db, store, tenant_slug=session.tenant_id, property_id=property_id)
+        return await get_amenity_catalog(
+            db,
+            store,
+            tenant_slug=session.tenant_id,
+            property_id=property_id,
+            db_name=session.tenant_db_name,
+        )
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -910,12 +923,13 @@ async def hotel_amenity_catalog_upsert(
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return upsert_amenity_catalog(
+        return await upsert_amenity_catalog(
             db,
             store,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
             property_id=payload.property_id,
+            db_name=session.tenant_db_name,
             payload={"categories": [item.model_dump() for item in payload.categories]},
         )
     except Exception as exc:
@@ -929,7 +943,13 @@ async def hotel_nearby(
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return get_nearby_places(db, store, tenant_slug=session.tenant_id, property_id=property_id)
+        return await get_nearby_places(
+            db,
+            store,
+            tenant_slug=session.tenant_id,
+            property_id=property_id,
+            db_name=session.tenant_db_name,
+        )
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -941,12 +961,13 @@ async def hotel_nearby_upsert(
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return upsert_nearby_places(
+        return await upsert_nearby_places(
             db,
             store,
             tenant_slug=session.tenant_id,
             actor_user_id=session.user_id,
             property_id=payload.property_id,
+            db_name=session.tenant_db_name,
             payload={"places": [item.model_dump() for item in payload.places]},
         )
     except Exception as exc:

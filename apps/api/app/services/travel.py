@@ -53,6 +53,10 @@ async def _lead_or_raise(db_name: str, *, tenant_id: str, lead_id: str):
     return lead
 
 
+def _tenant_record_id(db: Session, tenant_slug: str) -> str:
+    return str(get_tenant_or_raise(db, tenant_slug=tenant_slug).id)
+
+
 def _serialize_itinerary_day(model) -> dict[str, object]:
     # Support both object and dict (models return dicts now)
     if isinstance(model, dict):
@@ -179,7 +183,7 @@ async def get_overview(db: Session, *, db_name: str, tenant_slug: str) -> dict[s
 
     return {
         "tenant_id": tenant.slug,
-        "tenant_record_id": tenant_slug,
+        "tenant_record_id": str(tenant.id),
         "packages": len(packages),
         "package_statuses": dict(package_statuses),
         "departures": dict(departure_statuses),
@@ -205,6 +209,7 @@ async def list_packages(db: Session, *, db_name: str, tenant_slug: str) -> list[
 async def create_package(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, code: str, slug: str, title: str, summary: str | None, origin_city: str, destination_city: str, destination_country: str, duration_days: int, base_price_minor: int, currency: str, status: str, itinerary_days: list[dict[str, object]]) -> dict[str, object]:
 
     db_name = await _db_name(tenant_slug, db_name)
+    tenant_record_id = _tenant_record_id(db, tenant_slug)
     if await travel_repository.find_package_by_code(db_name, code=code):
         raise ConflictError(f"Travel package code '{code}' already exists.")
     if await travel_repository.find_package_by_slug(db_name, slug=slug):
@@ -251,7 +256,7 @@ async def create_package(db: Session, *, db_name: str, tenant_slug: str, actor_u
 
     _audit(
         db,
-        tenant_id=tenant_slug,
+        tenant_id=tenant_record_id,
         actor_user_id=actor_user_id,
         action="travel.package.created",
         subject_type="travel_package",
@@ -275,6 +280,7 @@ async def list_departures(db: Session, *, db_name: str, tenant_slug: str, packag
 async def create_departure(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, package_id: str, departure_date: date, return_date: date, seats_total: int, seats_available: int, price_override_minor: int | None, status: str) -> dict[str, object]:
 
     db_name = await _db_name(tenant_slug, db_name)
+    tenant_record_id = _tenant_record_id(db, tenant_slug)
     await _package_or_raise(db_name, tenant_id=tenant_slug, package_id=package_id)
 
     if return_date <= departure_date:
@@ -294,7 +300,7 @@ async def create_departure(db: Session, *, db_name: str, tenant_slug: str, actor
         status=effective_status)
     _audit(
         db,
-        tenant_id=tenant_slug,
+        tenant_id=tenant_record_id,
         actor_user_id=actor_user_id,
         action="travel.departure.created",
         subject_type="travel_departure",
@@ -307,6 +313,7 @@ async def create_departure(db: Session, *, db_name: str, tenant_slug: str, actor
 async def update_departure_status(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, departure_id: str, status: str) -> dict[str, object]:
 
     db_name = await _db_name(tenant_slug, db_name)
+    tenant_record_id = _tenant_record_id(db, tenant_slug)
     departure = await _departure_or_raise(db_name, tenant_id=tenant_slug, departure_id=departure_id)
     if status == "scheduled" and departure.seats_available == 0:
         raise ConflictError("A departure with zero available seats cannot be scheduled.")
@@ -315,7 +322,7 @@ async def update_departure_status(db: Session, *, db_name: str, tenant_slug: str
     await departure.save()
     _audit(
         db,
-        tenant_id=tenant_slug,
+        tenant_id=tenant_record_id,
         actor_user_id=actor_user_id,
         action="travel.departure.updated",
         subject_type="travel_departure",
@@ -342,6 +349,7 @@ async def list_leads(db: Session, *, db_name: str, tenant_slug: str, status: str
 async def create_lead(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, source: str, interested_package_id: str | None, departure_id: str | None, customer_id: str | None, contact_name: str, contact_phone: str, travelers_count: int, desired_departure_date: date | None, budget_minor: int | None, currency: str, status: str, notes: str | None) -> dict[str, object]:
 
     db_name = await _db_name(tenant_slug, db_name)
+    tenant_record_id = _tenant_record_id(db, tenant_slug)
     package = None
     departure = None
     if interested_package_id:
@@ -367,13 +375,13 @@ async def create_lead(db: Session, *, db_name: str, tenant_slug: str, actor_user
         notes=notes)
     _audit(
         db,
-        tenant_id=tenant_slug,
+        tenant_id=tenant_record_id,
         actor_user_id=actor_user_id,
         action="travel.lead.created",
         subject_type="travel_lead",
         subject_id=str(lead.id),
         metadata={"source": source, "status": status})
-    _outbox_lead(db, tenant_id=tenant_slug, lead=lead)
+    _outbox_lead(db, tenant_id=tenant_record_id, lead=lead)
     db.commit()
     return _serialize_lead(lead)
 
@@ -381,18 +389,19 @@ async def create_lead(db: Session, *, db_name: str, tenant_slug: str, actor_user
 async def update_lead_status(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, lead_id: str, status: str) -> dict[str, object]:
 
     db_name = await _db_name(tenant_slug, db_name)
+    tenant_record_id = _tenant_record_id(db, tenant_slug)
     lead = await _lead_or_raise(db_name, tenant_id=tenant_slug, lead_id=lead_id)
     lead.status = status
     await lead.save()
     _audit(
         db,
-        tenant_id=tenant_slug,
+        tenant_id=tenant_record_id,
         actor_user_id=actor_user_id,
         action="travel.lead.updated",
         subject_type="travel_lead",
         subject_id=str(lead.id),
         metadata={"status": status})
-    _outbox_lead(db, tenant_id=tenant_slug, lead=lead)
+    _outbox_lead(db, tenant_id=tenant_record_id, lead=lead)
     db.commit()
     return _serialize_lead(lead)
 
