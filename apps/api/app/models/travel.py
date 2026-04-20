@@ -1,12 +1,11 @@
 from datetime import date
 from typing import Optional, Any
-from beanie import Indexed
 from app.models.base import TimestampDocument
 
 
 class TravelPackage(TimestampDocument):
-    code: Indexed(str)
-    slug: Indexed(str)
+    code: str
+    slug: str
     title: str
     summary: Optional[str] = None
     origin_city: str
@@ -22,7 +21,7 @@ class TravelPackage(TimestampDocument):
 
 
 class TravelItineraryDay(TimestampDocument):
-    package_id: Indexed(str)
+    package_id: str
     day_number: int
     title: str
     summary: str
@@ -35,7 +34,7 @@ class TravelItineraryDay(TimestampDocument):
 
 
 class TravelDeparture(TimestampDocument):
-    package_id: Indexed(str)
+    package_id: str
     departure_date: date
     return_date: date
     seats_total: int

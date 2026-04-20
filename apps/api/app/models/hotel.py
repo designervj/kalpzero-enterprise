@@ -1,12 +1,11 @@
 from datetime import date
 from typing import Optional, Any
-from beanie import Indexed
 from app.models.base import TimestampDocument
 
 
 class HotelProperty(TimestampDocument):
     name: str
-    code: Indexed(str)
+    code: str
     city: str
     country: str
     timezone: str
@@ -16,7 +15,7 @@ class HotelProperty(TimestampDocument):
 
 
 class HotelRoomType(TimestampDocument):
-    property_id: Indexed(str)
+    property_id: str
     name: str
     code: str
     category: Optional[str] = None
@@ -34,8 +33,8 @@ class HotelRoomType(TimestampDocument):
 
 
 class HotelRoom(TimestampDocument):
-    property_id: Indexed(str)
-    room_type_id: Indexed(str)
+    property_id: str
+    room_type_id: str
     room_number: str
     status: str = "available"
     occupancy_status: str = "vacant"
@@ -52,7 +51,7 @@ class HotelRoom(TimestampDocument):
 
 
 class HotelMealPlan(TimestampDocument):
-    property_id: Indexed(str)
+    property_id: str
     code: str
     name: str
     description: Optional[str] = None
@@ -68,7 +67,7 @@ class HotelMealPlan(TimestampDocument):
 class HotelGuestProfile(TimestampDocument):
     first_name: str
     last_name: str
-    email: Indexed(str)
+    email: str
     phone: str
     nationality: Optional[str] = None
     loyalty_tier: Optional[str] = None
@@ -84,8 +83,8 @@ class HotelGuestProfile(TimestampDocument):
 
 
 class HotelRatePlan(TimestampDocument):
-    property_id: Indexed(str)
-    room_type_id: Indexed(str)
+    property_id: str
+    room_type_id: str
     label: str
     currency: str = "INR"
     weekend_enabled: bool = False
@@ -98,8 +97,8 @@ class HotelRatePlan(TimestampDocument):
 
 
 class HotelAvailabilityRule(TimestampDocument):
-    property_id: Indexed(str)
-    room_type_id: Indexed(str)
+    property_id: str
+    room_type_id: str
     total_units: int
     available_units_snapshot: Optional[int] = None
     minimum_stay_nights: int = 1
@@ -112,13 +111,13 @@ class HotelAvailabilityRule(TimestampDocument):
 
 
 class HotelReservation(TimestampDocument):
-    property_id: Indexed(str)
-    room_type_id: Indexed(str)
+    property_id: str
+    room_type_id: str
     room_id: Optional[str] = None
     meal_plan_id: Optional[str] = None
     booking_reference: Optional[str] = None
     booking_source: Optional[str] = None
-    guest_customer_id: Indexed(str)
+    guest_customer_id: str
     guest_name: Optional[str] = None
     check_in_date: date
     check_out_date: date
@@ -138,11 +137,11 @@ class HotelReservation(TimestampDocument):
 
 
 class HotelStay(TimestampDocument):
-    property_id: Indexed(str)
-    reservation_id: Indexed(str)
-    room_type_id: Indexed(str)
-    room_id: Indexed(str)
-    guest_customer_id: Indexed(str)
+    property_id: str
+    reservation_id: str
+    room_type_id: str
+    room_id: str
+    guest_customer_id: str
     guest_name: Optional[str] = None
     status: str = "in_house"
     checked_in_at: str
@@ -154,11 +153,11 @@ class HotelStay(TimestampDocument):
 
 
 class HotelRoomMove(TimestampDocument):
-    property_id: Indexed(str)
-    stay_id: Indexed(str)
-    reservation_id: Indexed(str)
-    from_room_id: Indexed(str)
-    to_room_id: Indexed(str)
+    property_id: str
+    stay_id: str
+    reservation_id: str
+    from_room_id: str
+    to_room_id: str
     moved_at: str
     reason: str
     moved_by_user_id: str
@@ -168,7 +167,7 @@ class HotelRoomMove(TimestampDocument):
 
 
 class HotelGuestDocument(TimestampDocument):
-    guest_profile_id: Indexed(str)
+    guest_profile_id: str
     document_kind: str
     document_number: str
     issuing_country: Optional[str] = None
@@ -182,9 +181,9 @@ class HotelGuestDocument(TimestampDocument):
 
 
 class HotelFolio(TimestampDocument):
-    property_id: Indexed(str)
-    reservation_id: Indexed(str)
-    guest_customer_id: Indexed(str)
+    property_id: str
+    reservation_id: str
+    guest_customer_id: str
     guest_name: Optional[str] = None
     status: str = "open"
     currency: str = "INR"
@@ -202,8 +201,8 @@ class HotelFolio(TimestampDocument):
 
 
 class HotelFolioCharge(TimestampDocument):
-    folio_id: Indexed(str)
-    reservation_id: Indexed(str)
+    folio_id: str
+    reservation_id: str
     category: str
     label: str
     service_date: date
@@ -219,9 +218,9 @@ class HotelFolioCharge(TimestampDocument):
 
 
 class HotelPayment(TimestampDocument):
-    property_id: Indexed(str)
-    folio_id: Indexed(str)
-    reservation_id: Indexed(str)
+    property_id: str
+    folio_id: str
+    reservation_id: str
     amount_minor: int
     currency: str = "INR"
     payment_method: str
@@ -236,10 +235,10 @@ class HotelPayment(TimestampDocument):
 
 
 class HotelRefund(TimestampDocument):
-    property_id: Indexed(str)
-    folio_id: Indexed(str)
-    payment_id: Indexed(str)
-    reservation_id: Indexed(str)
+    property_id: str
+    folio_id: str
+    payment_id: str
+    reservation_id: str
     amount_minor: int
     currency: str = "INR"
     reason: str
@@ -253,8 +252,8 @@ class HotelRefund(TimestampDocument):
 
 
 class HotelStaffMember(TimestampDocument):
-    property_id: Indexed(str)
-    staff_code: Indexed(str)
+    property_id: str
+    staff_code: str
     first_name: str
     last_name: str
     role: str
@@ -269,8 +268,8 @@ class HotelStaffMember(TimestampDocument):
 
 
 class HotelShift(TimestampDocument):
-    property_id: Indexed(str)
-    staff_member_id: Indexed(str)
+    property_id: str
+    staff_member_id: str
     shift_date: date
     shift_kind: str
     start_time: str
@@ -283,8 +282,8 @@ class HotelShift(TimestampDocument):
 
 
 class HotelNightAudit(TimestampDocument):
-    property_id: Indexed(str)
-    audit_date: Indexed(date)
+    property_id: str
+    audit_date: date
     status: str = "completed"
     report_json: dict[str, Any] = {}
     completed_at: str
@@ -295,8 +294,8 @@ class HotelNightAudit(TimestampDocument):
 
 
 class HotelHousekeepingTask(TimestampDocument):
-    property_id: Indexed(str)
-    room_id: Indexed(str)
+    property_id: str
+    room_id: str
     status: str = "pending"
     priority: str = "medium"
     notes: Optional[str] = None
@@ -308,7 +307,7 @@ class HotelHousekeepingTask(TimestampDocument):
 
 
 class HotelMaintenanceTicket(TimestampDocument):
-    property_id: Indexed(str)
+    property_id: str
     room_id: Optional[str] = None
     title: str
     description: Optional[str] = None

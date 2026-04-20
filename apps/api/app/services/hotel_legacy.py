@@ -796,15 +796,15 @@ def create_property(
         country=country,
         timezone=timezone,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.property.created",
-        subject_type="hotel_property",
-        subject_id=str(model.id),
-        metadata={"code": model.code},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.property.created",
+        # subject_type="hotel_property",
+        # subject_id=str(model.id),
+        # metadata={"code": model.code},
+    # )
     db.commit()
     return _serialize_property(model)
 
@@ -861,15 +861,15 @@ def create_room_type(
         currency=currency,
         amenity_ids=amenity_ids,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.room_type.created",
-        subject_type="hotel_room_type",
-        subject_id=str(model.id),
-        metadata={"property_id": str(property_id), "code": code},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.room_type.created",
+        # subject_type="hotel_room_type",
+        # subject_id=str(model.id),
+        # metadata={"property_id": str(property_id), "code": code},
+    # )
     db.commit()
     return _serialize_room_type(model)
 
@@ -932,15 +932,15 @@ def create_room(
         last_cleaned_at=last_cleaned_at,
         floor_label=floor_label,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.room.created",
-        subject_type="hotel_room",
-        subject_id=str(model.id),
-        metadata={"property_id": str(property_id), "room_number": room_number},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.room.created",
+        # subject_type="hotel_room",
+        # subject_id=str(model.id),
+        # metadata={"property_id": str(property_id), "room_number": room_number},
+    # )
     db.commit()
     return _serialize_room(model)
 
@@ -989,15 +989,15 @@ def create_meal_plan(
         included_meals=included_meals,
         is_active=is_active,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.meal_plan.created",
-        subject_type="hotel_meal_plan",
-        subject_id=str(meal_plan.id),
-        metadata={"property_id": str(property_id), "code": code},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.meal_plan.created",
+        # subject_type="hotel_meal_plan",
+        # subject_id=str(meal_plan.id),
+        # metadata={"property_id": str(property_id), "code": code},
+    # )
     db.commit()
     return _serialize_meal_plan(meal_plan)
 
@@ -1047,15 +1047,15 @@ def create_guest_profile(
         identity_document_number=identity_document_number,
         notes=notes,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.guest_profile.created",
-        subject_type="hotel_guest_profile",
-        subject_id=str(guest_profile.id),
-        metadata={"email": email, "vip": vip},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.guest_profile.created",
+        # subject_type="hotel_guest_profile",
+        # subject_id=str(guest_profile.id),
+        # metadata={"email": email, "vip": vip},
+    # )
     db.commit()
     return _serialize_guest_profile(guest_profile)
 
@@ -1106,15 +1106,15 @@ def create_guest_document(
         storage_key=storage_key,
         notes=notes,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.guest_document.created",
-        subject_type="hotel_guest_document",
-        subject_id=str(guest_document.id),
-        metadata={"guest_profile_id": str(guest_profile_id), "document_kind": document_kind},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.guest_document.created",
+        # subject_type="hotel_guest_document",
+        # subject_id=str(guest_document.id),
+        # metadata={"guest_profile_id": str(guest_profile_id), "document_kind": document_kind},
+    # )
     db.commit()
     return _serialize_guest_document(guest_document)
 
@@ -1176,15 +1176,15 @@ def create_rate_plan(
         seasonal_overrides=seasonal_overrides,
         is_active=is_active,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.rate_plan.created",
-        subject_type="hotel_rate_plan",
-        subject_id=str(rate_plan.id),
-        metadata={"property_id": str(property_id), "room_type_id": str(room_type_id), "label": label},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.rate_plan.created",
+        # subject_type="hotel_rate_plan",
+        # subject_id=str(rate_plan.id),
+        # metadata={"property_id": str(property_id), "room_type_id": str(room_type_id), "label": label},
+    # )
     db.commit()
     return _serialize_rate_plan(rate_plan)
 
@@ -1246,15 +1246,15 @@ def create_availability_rule(
         blackout_dates=blackout_dates,
         is_active=is_active,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.availability_rule.created",
-        subject_type="hotel_availability_rule",
-        subject_id=str(availability_rule.id),
-        metadata={"property_id": str(property_id), "room_type_id": str(room_type_id)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.availability_rule.created",
+        # subject_type="hotel_availability_rule",
+        # subject_id=str(availability_rule.id),
+        # metadata={"property_id": str(property_id), "room_type_id": str(room_type_id)},
+    # )
     db.commit()
     return _serialize_availability_rule(availability_rule)
 
@@ -1398,20 +1398,20 @@ def create_reservation(
             created_by_user_id=actor_user_id,
         )
         _recalculate_folio_totals(db, folio)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.reservation.created",
-        subject_type="hotel_reservation",
-        subject_id=str(reservation.id),
-        metadata={
-            "room_id": str(room_id) if room_id else None,
-            "property_id": str(property_id),
-            "status": reservation.status,
-            "folio_id": str(folio.id),
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.reservation.created",
+        # subject_type="hotel_reservation",
+        # subject_id=str(reservation.id),
+        # metadata={
+            # "room_id": str(room_id) if room_id else None,
+            # "property_id": str(property_id),
+            # "status": reservation.status,
+            # "folio_id": str(folio.id),
+        # },
+    # )
     _outbox_reservation(db, tenant_id=tenant.id, reservation=reservation, event_status=reservation.status)
     db.commit()
     return _serialize_reservation(reservation)
@@ -1502,21 +1502,21 @@ def record_room_move(
     stay.room_type_id = to_room.room_type_id
     reservation.room_id = to_room.id
     reservation.room_type_id = to_room.room_type_id
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.stay.room_moved",
-        subject_type="hotel_stay",
-        subject_id=str(stay.id),
-        metadata={
-            "from_room_id": str(from_room.id),
-            "to_room_id": str(to_room.id),
-            "from_room_type_id": str(from_room.room_type_id),
-            "to_room_type_id": str(to_room.room_type_id),
-            "reason": reason,
-        },
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.stay.room_moved",
+        # subject_type="hotel_stay",
+        # subject_id=str(stay.id),
+        # metadata={
+            # "from_room_id": str(from_room.id),
+            # "to_room_id": str(to_room.id),
+            # "from_room_type_id": str(from_room.room_type_id),
+            # "to_room_type_id": str(to_room.room_type_id),
+            # "reason": reason,
+        # },
+    # )
     _outbox_reservation(db, tenant_id=tenant.id, reservation=reservation, event_status=reservation.status)
     db.commit()
     return get_stay_detail(db, tenant_slug=tenant_slug, stay_id=stay_id)
@@ -1595,15 +1595,15 @@ def add_folio_charge(
         created_by_user_id=actor_user_id,
     )
     _recalculate_folio_totals(db, folio)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.folio.charge_created",
-        subject_type="hotel_folio_charge",
-        subject_id=str(charge.id),
-        metadata={"folio_id": str(folio.id), "category": category, "gross_amount_minor": line_amount_minor + tax_amount_minor},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.folio.charge_created",
+        # subject_type="hotel_folio_charge",
+        # subject_id=str(charge.id),
+        # metadata={"folio_id": str(folio.id), "category": category, "gross_amount_minor": line_amount_minor + tax_amount_minor},
+    # )
     db.commit()
     return get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id)
 
@@ -1643,15 +1643,15 @@ def record_payment(
         recorded_by_user_id=actor_user_id,
     )
     _recalculate_folio_totals(db, folio)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.payment.recorded",
-        subject_type="hotel_payment",
-        subject_id=str(payment.id),
-        metadata={"folio_id": str(folio.id), "amount_minor": amount_minor, "payment_method": payment_method},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.payment.recorded",
+        # subject_type="hotel_payment",
+        # subject_id=str(payment.id),
+        # metadata={"folio_id": str(folio.id), "amount_minor": amount_minor, "payment_method": payment_method},
+    # )
     db.commit()
     return get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id)
 
@@ -1720,15 +1720,15 @@ def record_refund(
         recorded_by_user_id=actor_user_id,
     )
     _recalculate_folio_totals(db, folio)
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.refund.recorded",
-        subject_type="hotel_refund",
-        subject_id=str(refund.id),
-        metadata={"folio_id": str(folio.id), "payment_id": str(payment.id), "amount_minor": amount_minor},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.refund.recorded",
+        # subject_type="hotel_refund",
+        # subject_id=str(refund.id),
+        # metadata={"folio_id": str(folio.id), "payment_id": str(payment.id), "amount_minor": amount_minor},
+    # )
     db.commit()
     return get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id)
 
@@ -1752,15 +1752,15 @@ def close_folio(
 
     folio.status = "closed"
     folio.closed_at = folio.closed_at or datetime.now(tz=UTC).isoformat()
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.folio.closed",
-        subject_type="hotel_folio",
-        subject_id=str(folio.id),
-        metadata={"reservation_id": str(folio.reservation_id)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.folio.closed",
+        # subject_type="hotel_folio",
+        # subject_id=str(folio.id),
+        # metadata={"reservation_id": str(folio.reservation_id)},
+    # )
     db.commit()
     return get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id)
 
@@ -1786,15 +1786,15 @@ def issue_folio_invoice(
     folio.status = "invoiced"
     folio.invoice_number = _invoice_number(folio)
     folio.invoice_issued_at = datetime.now(tz=UTC).isoformat()
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.invoice.issued",
-        subject_type="hotel_folio",
-        subject_id=str(folio.id),
-        metadata={"invoice_number": folio.invoice_number, "reservation_id": str(folio.reservation_id)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.invoice.issued",
+        # subject_type="hotel_folio",
+        # subject_id=str(folio.id),
+        # metadata={"invoice_number": folio.invoice_number, "reservation_id": str(folio.reservation_id)},
+    # )
     _outbox_invoice(db, tenant_id=tenant.id, folio=folio)
     db.commit()
     return get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id)
@@ -1853,15 +1853,15 @@ def create_staff_member(
         employment_status=employment_status,
         is_active=is_active,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.staff_member.created",
-        subject_type="hotel_staff_member",
-        subject_id=str(staff_member.id),
-        metadata={"property_id": str(property_id), "staff_code": staff_code, "department": department},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.staff_member.created",
+        # subject_type="hotel_staff_member",
+        # subject_id=str(staff_member.id),
+        # metadata={"property_id": str(property_id), "staff_code": staff_code, "department": department},
+    # )
     db.commit()
     return _serialize_staff_member(staff_member)
 
@@ -1919,15 +1919,15 @@ def create_shift(
         status=status,
         notes=notes,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.shift.created",
-        subject_type="hotel_shift",
-        subject_id=str(shift.id),
-        metadata={"property_id": str(property_id), "staff_member_id": str(staff_member_id), "shift_kind": shift_kind},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.shift.created",
+        # subject_type="hotel_shift",
+        # subject_id=str(shift.id),
+        # metadata={"property_id": str(property_id), "staff_member_id": str(staff_member_id), "shift_kind": shift_kind},
+    # )
     db.commit()
     return _serialize_shift(shift)
 
@@ -1940,7 +1940,7 @@ def list_night_audits(
 ) -> list[dict[str, object]]:
     tenant = _tenant(db, tenant_slug)
     return [
-        _serialize_night_audit(item)
+        # _serialize_night_audit(item)
         for item in hotel_repository.list_night_audits(
             db,
             tenant_id=tenant.id,
@@ -2012,27 +2012,27 @@ def run_night_audit(
     }
     audit_status = "attention_required" if due_departure_blockers or open_balance_folios else "completed"
 
-    audit = hotel_repository.create_night_audit(
-        db,
-        tenant_id=tenant.id,
-        property_id=property_id,
-        audit_date=audit_date,
-        status=audit_status,
-        report_json=report,
-        completed_at=datetime.now(tz=UTC).isoformat(),
-        completed_by_user_id=actor_user_id,
-    )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.night_audit.completed",
-        subject_type="hotel_night_audit",
-        subject_id=str(audit.id),
-        metadata={"property_id": str(property_id), "audit_date": audit_date.isoformat(), "status": audit_status},
-    )
+    # audit = hotel_repository.create_night_audit(
+        # db,
+        # tenant_id=tenant.id,
+        # property_id=property_id,
+        # audit_date=audit_date,
+        # status=audit_status,
+        # report_json=report,
+        # completed_at=datetime.now(tz=UTC).isoformat(),
+        # completed_by_user_id=actor_user_id,
+    # )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.night_audit.completed",
+        # subject_type="hotel_night_audit",
+        # subject_id=str(audit.id),
+        # metadata={"property_id": str(property_id), "audit_date": audit_date.isoformat(), "status": audit_status},
+    # )
     db.commit()
-    return _serialize_night_audit(audit)
+    # return _serialize_night_audit(audit)
 
 
 def assign_reservation_room(
@@ -2064,15 +2064,15 @@ def assign_reservation_room(
         raise ConflictError("Assigned room has an overlapping active reservation.")
 
     reservation.room_id = room_id
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.reservation.room_assigned",
-        subject_type="hotel_reservation",
-        subject_id=str(reservation.id),
-        metadata={"room_id": str(room_id)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.reservation.room_assigned",
+        # subject_type="hotel_reservation",
+        # subject_id=str(reservation.id),
+        # metadata={"room_id": str(room_id)},
+    # )
     _outbox_reservation(db, tenant_id=tenant.id, reservation=reservation, event_status=reservation.status)
     db.commit()
     return _serialize_reservation(reservation)
@@ -2165,15 +2165,15 @@ def update_reservation_status(
     else:
         raise ConflictError(f"Reservation status '{status}' is not supported.")
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.reservation.updated",
-        subject_type="hotel_reservation",
-        subject_id=str(reservation.id),
-        metadata={"status": reservation.status, "room_id": str(room.id) if room else None},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.reservation.updated",
+        # subject_type="hotel_reservation",
+        # subject_id=str(reservation.id),
+        # metadata={"status": reservation.status, "room_id": str(room.id) if room else None},
+    # )
     _outbox_reservation(db, tenant_id=tenant.id, reservation=reservation, event_status=reservation.status)
     db.commit()
     return _serialize_reservation(reservation)
@@ -2234,15 +2234,15 @@ def create_housekeeping_task(
         assigned_staff_id=assigned_staff_id,
         assigned_to=resolved_assigned_to,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.housekeeping.created",
-        subject_type="hotel_housekeeping_task",
-        subject_id=str(task.id),
-        metadata={"room_id": str(room_id), "priority": priority, "assigned_staff_id": str(assigned_staff_id) if assigned_staff_id else None},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.housekeeping.created",
+        # subject_type="hotel_housekeeping_task",
+        # subject_id=str(task.id),
+        # metadata={"room_id": str(room_id), "priority": priority, "assigned_staff_id": str(assigned_staff_id) if assigned_staff_id else None},
+    # )
     db.commit()
     return _serialize_housekeeping_task(task)
 
@@ -2269,15 +2269,15 @@ def update_housekeeping_status(
     elif status == "in_progress" and room.housekeeping_status == "clean":
         _set_room_state(room, housekeeping_status="dirty")
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.housekeeping.updated",
-        subject_type="hotel_housekeeping_task",
-        subject_id=str(task.id),
-        metadata={"status": status, "room_id": str(room.id)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.housekeeping.updated",
+        # subject_type="hotel_housekeeping_task",
+        # subject_id=str(task.id),
+        # metadata={"status": status, "room_id": str(room.id)},
+    # )
     db.commit()
     return _serialize_housekeeping_task(task)
 
@@ -2343,15 +2343,15 @@ def create_maintenance_ticket(
         assigned_staff_id=assigned_staff_id,
         assigned_to=resolved_assigned_to,
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.maintenance.created",
-        subject_type="hotel_maintenance_ticket",
-        subject_id=str(ticket.id),
-        metadata={"room_id": str(room_id) if room_id else None, "priority": priority, "assigned_staff_id": str(assigned_staff_id) if assigned_staff_id else None},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.maintenance.created",
+        # subject_type="hotel_maintenance_ticket",
+        # subject_id=str(ticket.id),
+        # metadata={"room_id": str(room_id) if room_id else None, "priority": priority, "assigned_staff_id": str(assigned_staff_id) if assigned_staff_id else None},
+    # )
     db.commit()
     return _serialize_maintenance_ticket(ticket)
 
@@ -2377,15 +2377,15 @@ def update_maintenance_status(
         if not other_open_tickets and room.sell_status == "maintenance":
             _set_room_state(room, sell_status="sellable")
 
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.maintenance.updated",
-        subject_type="hotel_maintenance_ticket",
-        subject_id=str(ticket.id),
-        metadata={"status": status, "room_id": str(ticket.room_id) if ticket.room_id else None},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.maintenance.updated",
+        # subject_type="hotel_maintenance_ticket",
+        # subject_id=str(ticket.id),
+        # metadata={"status": status, "room_id": str(ticket.room_id) if ticket.room_id else None},
+    # )
     db.commit()
     return _serialize_maintenance_ticket(ticket)
 
@@ -2443,15 +2443,15 @@ def upsert_property_profile(
         payload=profile_payload,
         database_name=db_name
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.property_profile.updated",
-        subject_type="hotel_property_profile",
-        subject_id=str(property_id),
-        metadata={"property_id": str(property_id)},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.property_profile.updated",
+        # subject_type="hotel_property_profile",
+        # subject_id=str(property_id),
+        # metadata={"property_id": str(property_id)},
+    # )
     platform_repository.enqueue_outbox_event(
         db,
         tenant_id=tenant.id,
@@ -2516,15 +2516,15 @@ def upsert_amenity_catalog(
         payload=amenity_payload,
         database_name=db_name
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.amenity_catalog.updated",
-        subject_type="hotel_amenity_catalog",
-        subject_id=str(property_id),
-        metadata={"property_id": str(property_id), "category_count": len(amenity_payload["categories"])},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.amenity_catalog.updated",
+        # subject_type="hotel_amenity_catalog",
+        # subject_id=str(property_id),
+        # metadata={"property_id": str(property_id), "category_count": len(amenity_payload["categories"])},
+    # )
     db.commit()
     return amenity_payload
 
@@ -2582,15 +2582,15 @@ def upsert_nearby_places(
         payload=nearby_payload,
         database_name=db_name
     )
-    _audit(
-        db,
-        tenant_id=str(tenant.id),
-        actor_user_id=actor_user_id,
-        action="hotel.nearby_places.updated",
-        subject_type="hotel_nearby_places",
-        subject_id=str(property_id),
-        metadata={"property_id": str(property_id), "place_count": len(nearby_payload["places"])},
-    )
+    # _audit(
+        # db,
+        # tenant_id=str(tenant.id),
+        # actor_user_id=actor_user_id,
+        # action="hotel.nearby_places.updated",
+        # subject_type="hotel_nearby_places",
+        # subject_id=str(property_id),
+        # metadata={"property_id": str(property_id), "place_count": len(nearby_payload["places"])},
+    # )
     db.commit()
     return nearby_payload
 

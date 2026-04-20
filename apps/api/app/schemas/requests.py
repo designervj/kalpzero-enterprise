@@ -326,8 +326,25 @@ class HotelMaintenanceStatusRequest(BaseModel):
 class CreateCommerceCategoryRequest(BaseModel):
     name: str = Field(min_length=2, max_length=255)
     slug: str = Field(min_length=2, max_length=120)
+    type: str
+    parentId: str | None = Field(default=None, min_length=3, max_length=36)
+    description: str = ""
+    pageStatus: str = "published"
+    bannerImageUrl: str | None = ""
+    metaTitle: str | None = ""
+    metaDescription: str | None = ""
+
+
+class UpdateCommerceCategoryRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=255)
+    slug: str | None = Field(default=None, min_length=2, max_length=120)
+    type: str | None = None
+    parentId: str | None = Field(default=None, min_length=3, max_length=36)
     description: str | None = None
-    parent_category_id: str | None = Field(default=None, min_length=3, max_length=36)
+    pageStatus: str | None = None
+    bannerImageUrl: str | None = None
+    metaTitle: str | None = None
+    metaDescription: str | None = None
 
 
 class CreateCommerceBrandRequest(BaseModel):
@@ -466,66 +483,103 @@ class CommerceSettlementStatusRequest(BaseModel):
     status: str = Field(pattern="^(draft|reported|reconciled|closed|disputed)$")
 
 
-class CommerceAttributeOptionRequest(BaseModel):
-    value: str = Field(min_length=1, max_length=120)
+
+class CommerceAttributeDeclarationRequest(BaseModel):
+    key: str = Field(min_length=1, max_length=120)
     label: str = Field(min_length=1, max_length=255)
-
-
-class CreateCommerceAttributeRequest(BaseModel):
-    code: str = Field(min_length=2, max_length=120)
-    slug: str = Field(min_length=2, max_length=120)
-    label: str = Field(min_length=2, max_length=255)
-    description: str | None = None
-    value_type: str = Field(
-        pattern="^(text|long_text|number|boolean|single_select|multi_select|color|date)$"
-    )
-    scope: str = Field(default="product", pattern="^(product|variant|both)$")
-    options: list[CommerceAttributeOptionRequest] = Field(default_factory=list)
-    unit_label: str | None = Field(default=None, max_length=64)
-    is_required: bool = False
-    is_filterable: bool = False
-    is_variation_axis: bool = False
-    vertical_bindings: list[str] = Field(default_factory=lambda: ["commerce"])
-    status: str = Field(default="active", pattern="^(active|archived)$")
+    type: str = Field(pattern="^(select|text|number|boolean)$")
+    options: list[str] = Field(default_factory=list)
 
 
 class CreateCommerceAttributeSetRequest(BaseModel):
     name: str = Field(min_length=2, max_length=255)
-    slug: str = Field(min_length=2, max_length=120)
+    key: str = Field(min_length=2, max_length=120)
+    appliesTo: str | None = Field(default="product", max_length=64)
     description: str | None = None
-    attribute_ids: list[str] = Field(min_length=1)
+    attributes: list[CommerceAttributeDeclarationRequest] = Field(default_factory=list)
     vertical_bindings: list[str] = Field(default_factory=lambda: ["commerce"])
-    status: str = Field(default="active", pattern="^(active|archived)$")
 
 
-class CommerceAttributeValueRequest(BaseModel):
-    attribute_id: str = Field(min_length=3, max_length=36)
-    value: object | None = None
+class UpdateCommerceAttributeSetRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=255)
+    key: str | None = Field(default=None, min_length=2, max_length=120)
+    appliesTo: str | None = Field(default="product", max_length=64)
+    description: str | None = None
+    attributes: list[CommerceAttributeDeclarationRequest] | None = None
+    vertical_bindings: list[str] | None = None
+
+
+
+class ProductPricingRequest(BaseModel):
+    price: int = Field(ge=0)
+    compareAtPrice: int | None = Field(default=None, ge=0)
+    costPerItem: int | None = Field(default=None, ge=0)
+    chargeTax: bool = True
+    trackQuantity: bool = True
+
+
+class ProductOptionRequest(BaseModel):
+    attributeSetId: str | None = None
+    values: list[str] = Field(default_factory=list)
+    selectedValues: list[str] = Field(default_factory=list)
+    useForVariants: bool = False
+    label: str
+    key: str
+
+
+class GalleryItemRequest(BaseModel):
+    id: str | None = None
+    url: str
+    alt: str | None = None
+    order: int = 0
 
 
 class CreateCommerceVariantRequest(BaseModel):
+    id: str | None = None
+    title: str
+    optionValues: dict[str, str] = Field(default_factory=dict)
     sku: str = Field(min_length=2, max_length=120)
-    label: str = Field(min_length=2, max_length=255)
-    price_minor: int = Field(ge=0)
-    currency: str = Field(default="INR", min_length=3, max_length=8)
-    inventory_quantity: int = Field(default=0, ge=0)
-    attribute_values: list[CommerceAttributeValueRequest] = Field(default_factory=list)
+    price: int = Field(ge=0)
+    stock: int = Field(default=0, ge=0)
+    status: str = Field(default="active", pattern="^(active|inactive)$")
 
 
 class CreateCommerceProductRequest(BaseModel):
+    type: str = Field(default="physical")
     name: str = Field(min_length=2, max_length=255)
     slug: str = Field(min_length=2, max_length=120)
+    sku: str | None = None
+    price: int | None = None
     description: str | None = None
-    brand_id: str | None = Field(default=None, min_length=3, max_length=36)
-    vendor_id: str | None = Field(default=None, min_length=3, max_length=36)
-    collection_ids: list[str] = Field(default_factory=list)
-    attribute_set_id: str | None = Field(default=None, min_length=3, max_length=36)
-    category_ids: list[str] = Field(min_length=1)
-    seo_title: str | None = Field(default=None, max_length=255)
-    seo_description: str | None = None
     status: str = Field(default="active", pattern="^(draft|active|archived)$")
-    product_attributes: list[CommerceAttributeValueRequest] = Field(default_factory=list)
-    variants: list[CreateCommerceVariantRequest] = Field(min_length=1)
+    categoryIds: list[str] = Field(min_length=1)
+    primaryCategoryId: str | None = None
+    attributeSetIds: list[str] = Field(default_factory=list)
+    pricing: ProductPricingRequest | None = None
+    options: list[ProductOptionRequest] = Field(default_factory=list)
+    gallery: list[GalleryItemRequest] = Field(default_factory=list)
+    primaryImageId: str | None = None
+    relatedProductIds: list[str] = Field(default_factory=list)
+    variants: list[CreateCommerceVariantRequest] = Field(default_factory=list)
+
+
+class UpdateCommerceProductRequest(BaseModel):
+    type: str | None = None
+    name: str | None = None
+    slug: str | None = None
+    sku: str | None = None
+    price: int | None = None
+    description: str | None = None
+    status: str | None = None
+    categoryIds: list[str] | None = None
+    primaryCategoryId: str | None = None
+    attributeSetIds: list[str] | None = None
+    pricing: ProductPricingRequest | None = None
+    options: list[ProductOptionRequest] | None = None
+    gallery: list[GalleryItemRequest] | None = None
+    primaryImageId: str | None = None
+    relatedProductIds: list[str] | None = None
+    variants: list[CreateCommerceVariantRequest] | None = None
 
 
 class CreateCommerceOrderLineRequest(BaseModel):

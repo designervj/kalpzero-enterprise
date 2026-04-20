@@ -36,6 +36,7 @@ def _raise_http_error(exc: Exception) -> None:
     raise exc
 
 
+@router.get("/overview")
 async def travel_overview(
     session: SessionContext = Depends(require_permission("travel.packages.read")),
     db: Session = Depends(get_db_session),
@@ -46,6 +47,7 @@ async def travel_overview(
         _raise_http_error(exc)
 
 
+@router.get("/packages")
 async def travel_packages(
     session: SessionContext = Depends(require_permission("travel.packages.read")),
     db: Session = Depends(get_db_session),
@@ -56,6 +58,7 @@ async def travel_packages(
         _raise_http_error(exc)
 
 
+@router.post("/packages", status_code=status.HTTP_201_CREATED)
 async def travel_packages_create(
     payload: CreateTravelPackageRequest,
     session: SessionContext = Depends(require_permission("travel.packages.manage")),
@@ -83,6 +86,7 @@ async def travel_packages_create(
         _raise_http_error(exc)
 
 
+@router.get("/departures")
 async def travel_departures(
     package_id: str | None = None,
     departure_status: str | None = None,
@@ -103,6 +107,7 @@ async def travel_departures(
         _raise_http_error(exc)
 
 
+@router.post("/departures", status_code=status.HTTP_201_CREATED)
 async def travel_departures_create(
     payload: CreateTravelDepartureRequest,
     session: SessionContext = Depends(require_permission("travel.packages.manage")),
@@ -125,6 +130,7 @@ async def travel_departures_create(
         _raise_http_error(exc)
 
 
+@router.post("/departures/{departure_id}/status")
 async def travel_departures_update_status(
     departure_id: str,
     payload: TravelDepartureStatusRequest,
@@ -143,6 +149,7 @@ async def travel_departures_update_status(
         _raise_http_error(exc)
 
 
+@router.get("/leads")
 async def travel_leads(
     lead_status: str | None = None,
     interested_package_id: str | None = None,
@@ -163,6 +170,7 @@ async def travel_leads(
         _raise_http_error(exc)
 
 
+@router.post("/leads", status_code=status.HTTP_201_CREATED)
 async def travel_leads_create(
     payload: CreateTravelLeadRequest,
     session: SessionContext = Depends(require_permission("travel.leads.manage")),
@@ -190,6 +198,7 @@ async def travel_leads_create(
         _raise_http_error(exc)
 
 
+@router.post("/leads/{lead_id}/status")
 async def travel_leads_update_status(
     lead_id: str,
     payload: TravelLeadStatusRequest,
@@ -208,6 +217,7 @@ async def travel_leads_update_status(
         _raise_http_error(exc)
 
 
+@router.get("/legacy-plan")
 async def travel_legacy_plan(
     _: SessionContext = Depends(require_permission("imports.sources.read")),
 ):

@@ -101,6 +101,7 @@ def _raise_http_error(exc: Exception) -> None:
     raise exc
 
 
+@router.get("/overview")
 async def hotel_overview(
     session: SessionContext = Depends(require_permission("hotel.reservations.read")),
     db: Session = Depends(get_db_session),
@@ -111,6 +112,7 @@ async def hotel_overview(
         _raise_http_error(exc)
 
 
+@router.get("/inventory-summary")
 async def hotel_inventory_summary(
     property_id: str | None = None,
     for_date: date | None = None,
@@ -131,6 +133,7 @@ async def hotel_inventory_summary(
         _raise_http_error(exc)
 
 
+@router.get("/properties")
 async def hotel_properties(
     session: SessionContext = Depends(require_permission("hotel.properties.read")),
     db: Session = Depends(get_db_session),
@@ -141,6 +144,7 @@ async def hotel_properties(
         _raise_http_error(exc)
 
 
+@router.post("/properties", status_code=status.HTTP_201_CREATED)
 async def hotel_properties_create(
     payload: CreateHotelPropertyRequest,
     session: SessionContext = Depends(require_permission("hotel.properties.manage")),
@@ -161,6 +165,7 @@ async def hotel_properties_create(
         _raise_http_error(exc)
 
 
+@router.get("/room-types")
 async def hotel_room_types(
     property_id: str | None = None,
     session: SessionContext = Depends(require_permission("hotel.properties.read")),
@@ -175,6 +180,7 @@ async def hotel_room_types(
         _raise_http_error(exc)
 
 
+@router.post("/room-types", status_code=status.HTTP_201_CREATED)
 async def hotel_room_types_create(
     payload: CreateHotelRoomTypeRequest,
     session: SessionContext = Depends(require_permission("hotel.rooms.manage")),
@@ -202,6 +208,7 @@ async def hotel_room_types_create(
         _raise_http_error(exc)
 
 
+@router.get("/meal-plans")
 async def hotel_meal_plans(
     property_id: str | None = None,
     session: SessionContext = Depends(require_permission("hotel.properties.read")),
@@ -213,6 +220,7 @@ async def hotel_meal_plans(
         _raise_http_error(exc)
 
 
+@router.post("/meal-plans", status_code=status.HTTP_201_CREATED)
 async def hotel_meal_plans_create(
     payload: CreateHotelMealPlanRequest,
     session: SessionContext = Depends(require_permission("hotel.properties.manage")),
@@ -236,6 +244,7 @@ async def hotel_meal_plans_create(
         _raise_http_error(exc)
 
 
+@router.get("/rate-plans")
 async def hotel_rate_plans(
     property_id: str | None = None,
     room_type_id: str | None = None,
@@ -256,6 +265,7 @@ async def hotel_rate_plans(
         _raise_http_error(exc)
 
 
+@router.post("/rate-plans", status_code=status.HTTP_201_CREATED)
 async def hotel_rate_plans_create(
     payload: CreateHotelRatePlanRequest,
     session: SessionContext = Depends(require_permission("hotel.properties.manage")),
@@ -279,6 +289,7 @@ async def hotel_rate_plans_create(
         _raise_http_error(exc)
 
 
+@router.get("/availability-rules")
 async def hotel_availability_rules(
     property_id: str | None = None,
     room_type_id: str | None = None,
@@ -299,6 +310,7 @@ async def hotel_availability_rules(
         _raise_http_error(exc)
 
 
+@router.post("/availability-rules", status_code=status.HTTP_201_CREATED)
 async def hotel_availability_rules_create(
     payload: CreateHotelAvailabilityRuleRequest,
     session: SessionContext = Depends(require_permission("hotel.rooms.manage")),
@@ -322,6 +334,7 @@ async def hotel_availability_rules_create(
         _raise_http_error(exc)
 
 
+@router.get("/rooms")
 async def hotel_rooms(
     property_id: str | None = None,
     session: SessionContext = Depends(require_permission("hotel.rooms.read")),
@@ -333,6 +346,7 @@ async def hotel_rooms(
         _raise_http_error(exc)
 
 
+@router.post("/rooms", status_code=status.HTTP_201_CREATED)
 async def hotel_rooms_create(
     payload: CreateHotelRoomRequest,
     session: SessionContext = Depends(require_permission("hotel.rooms.manage")),
@@ -360,6 +374,7 @@ async def hotel_rooms_create(
         _raise_http_error(exc)
 
 
+@router.get("/guests")
 async def hotel_guests(
     session: SessionContext = Depends(require_permission("hotel.reservations.read")),
     db: Session = Depends(get_db_session),
@@ -370,6 +385,7 @@ async def hotel_guests(
         _raise_http_error(exc)
 
 
+@router.post("/guests", status_code=status.HTTP_201_CREATED)
 async def hotel_guests_create(
     payload: CreateHotelGuestProfileRequest,
     session: SessionContext = Depends(require_permission("hotel.reservations.manage")),
@@ -397,6 +413,7 @@ async def hotel_guests_create(
         _raise_http_error(exc)
 
 
+@router.get("/guests/{guest_profile_id}/documents")
 async def hotel_guest_documents(
     guest_profile_id: str,
     session: SessionContext = Depends(require_permission("hotel.reservations.read")),
@@ -411,6 +428,7 @@ async def hotel_guest_documents(
         _raise_http_error(exc)
 
 
+@router.post("/guests/{guest_profile_id}/documents", status_code=status.HTTP_201_CREATED)
 async def hotel_guest_documents_create(
     guest_profile_id: str,
     payload: CreateHotelGuestDocumentRequest,
@@ -435,6 +453,7 @@ async def hotel_guest_documents_create(
         _raise_http_error(exc)
 
 
+@router.get("/reservations")
 async def hotel_reservations(
     property_id: str | None = None,
     reservation_status: str | None = None,
@@ -455,6 +474,7 @@ async def hotel_reservations(
         _raise_http_error(exc)
 
 
+@router.post("/reservations", status_code=status.HTTP_201_CREATED)
 async def hotel_reservations_create(
     payload: CreateHotelReservationRequest,
     session: SessionContext = Depends(require_permission("hotel.reservations.manage")),
@@ -488,6 +508,7 @@ async def hotel_reservations_create(
         _raise_http_error(exc)
 
 
+@router.post("/reservations/{reservation_id}/assign-room")
 async def hotel_reservations_assign_room(
     reservation_id: str,
     payload: HotelReservationAssignmentRequest,
@@ -506,6 +527,7 @@ async def hotel_reservations_assign_room(
         _raise_http_error(exc)
 
 
+@router.post("/reservations/{reservation_id}/status")
 async def hotel_reservations_update_status(
     reservation_id: str,
     payload: HotelReservationStatusRequest,
@@ -524,6 +546,7 @@ async def hotel_reservations_update_status(
         _raise_http_error(exc)
 
 
+@router.get("/stays")
 async def hotel_stays(
     property_id: str | None = None,
     stay_status: str | None = None,
@@ -544,6 +567,7 @@ async def hotel_stays(
         _raise_http_error(exc)
 
 
+@router.get("/stays/{stay_id}")
 async def hotel_stay_detail(
     stay_id: str,
     session: SessionContext = Depends(require_permission("hotel.reservations.read")),
@@ -555,6 +579,7 @@ async def hotel_stay_detail(
         _raise_http_error(exc)
 
 
+@router.post("/stays/{stay_id}/room-move", status_code=status.HTTP_201_CREATED)
 async def hotel_stay_room_move(
     stay_id: str,
     payload: CreateHotelRoomMoveRequest,
@@ -574,6 +599,7 @@ async def hotel_stay_room_move(
         _raise_http_error(exc)
 
 
+@router.get("/folios")
 async def hotel_folios(
     property_id: str | None = None,
     reservation_id: str | None = None,
@@ -596,6 +622,7 @@ async def hotel_folios(
         _raise_http_error(exc)
 
 
+@router.get("/folios/{folio_id}")
 async def hotel_folio_detail(
     folio_id: str,
     session: SessionContext = Depends(require_permission("hotel.finance.read")),
@@ -607,6 +634,7 @@ async def hotel_folio_detail(
         _raise_http_error(exc)
 
 
+@router.post("/folios/{folio_id}/charges", status_code=status.HTTP_201_CREATED)
 async def hotel_folio_charge_create(
     folio_id: str,
     payload: CreateHotelFolioChargeRequest,
@@ -631,6 +659,7 @@ async def hotel_folio_charge_create(
         _raise_http_error(exc)
 
 
+@router.post("/folios/{folio_id}/payments", status_code=status.HTTP_201_CREATED)
 async def hotel_folio_payment_create(
     folio_id: str,
     payload: CreateHotelPaymentRequest,
@@ -652,6 +681,7 @@ async def hotel_folio_payment_create(
         _raise_http_error(exc)
 
 
+@router.get("/refunds")
 async def hotel_refunds(
     property_id: str | None = None,
     folio_id: str | None = None,
@@ -672,6 +702,7 @@ async def hotel_refunds(
         _raise_http_error(exc)
 
 
+@router.post("/folios/{folio_id}/refunds", status_code=status.HTTP_201_CREATED)
 async def hotel_folio_refund_create(
     folio_id: str,
     payload: CreateHotelRefundRequest,
@@ -693,6 +724,7 @@ async def hotel_folio_refund_create(
         _raise_http_error(exc)
 
 
+@router.post("/folios/{folio_id}/close")
 async def hotel_folio_close(
     folio_id: str,
     session: SessionContext = Depends(require_permission("hotel.finance.manage")),
@@ -709,6 +741,7 @@ async def hotel_folio_close(
         _raise_http_error(exc)
 
 
+@router.post("/folios/{folio_id}/issue-invoice")
 async def hotel_folio_issue_invoice(
     folio_id: str,
     session: SessionContext = Depends(require_permission("hotel.finance.manage")),
@@ -725,6 +758,7 @@ async def hotel_folio_issue_invoice(
         _raise_http_error(exc)
 
 
+@router.get("/staff")
 async def hotel_staff(
     property_id: str | None = None,
     session: SessionContext = Depends(require_permission("hotel.staff.read")),
@@ -739,6 +773,7 @@ async def hotel_staff(
         _raise_http_error(exc)
 
 
+@router.post("/staff", status_code=status.HTTP_201_CREATED)
 async def hotel_staff_create(
     payload: CreateHotelStaffMemberRequest,
     session: SessionContext = Depends(require_permission("hotel.staff.manage")),
@@ -764,6 +799,7 @@ async def hotel_staff_create(
         _raise_http_error(exc)
 
 
+@router.get("/shifts")
 async def hotel_shifts(
     property_id: str | None = None,
     staff_member_id: str | None = None,
@@ -786,6 +822,7 @@ async def hotel_shifts(
         _raise_http_error(exc)
 
 
+@router.post("/shifts", status_code=status.HTTP_201_CREATED)
 async def hotel_shifts_create(
     payload: CreateHotelShiftRequest,
     session: SessionContext = Depends(require_permission("hotel.staff.manage")),
@@ -809,6 +846,7 @@ async def hotel_shifts_create(
         _raise_http_error(exc)
 
 
+@router.get("/night-audits")
 async def hotel_night_audits(
     property_id: str | None = None,
     session: SessionContext = Depends(require_permission("hotel.finance.read")),
@@ -823,6 +861,7 @@ async def hotel_night_audits(
         _raise_http_error(exc)
 
 
+@router.post("/night-audits", status_code=status.HTTP_201_CREATED)
 async def hotel_night_audits_create(
     payload: CreateHotelNightAuditRequest,
     session: SessionContext = Depends(require_permission("hotel.finance.manage")),
@@ -840,6 +879,7 @@ async def hotel_night_audits_create(
         _raise_http_error(exc)
 
 
+@router.get("/properties/{property_id}/profile")
 async def hotel_property_profile(
     property_id: str,
     session: SessionContext = Depends(require_permission("hotel.properties.read")),
@@ -852,6 +892,7 @@ async def hotel_property_profile(
         _raise_http_error(exc)
 
 
+@router.post("/property-profile")
 async def hotel_property_profile_upsert(
     payload: UpsertHotelPropertyProfileRequest,
     session: SessionContext = Depends(require_permission("hotel.properties.manage")),
@@ -891,6 +932,7 @@ async def hotel_property_profile_upsert(
         _raise_http_error(exc)
 
 
+@router.get("/properties/{property_id}/amenities")
 async def hotel_amenity_catalog(
     property_id: str,
     session: SessionContext = Depends(require_permission("hotel.properties.read")),
@@ -903,6 +945,7 @@ async def hotel_amenity_catalog(
         _raise_http_error(exc)
 
 
+@router.post("/amenity-catalog")
 async def hotel_amenity_catalog_upsert(
     payload: UpsertHotelAmenityCatalogRequest,
     session: SessionContext = Depends(require_permission("hotel.properties.manage")),
@@ -922,6 +965,7 @@ async def hotel_amenity_catalog_upsert(
         _raise_http_error(exc)
 
 
+@router.get("/properties/{property_id}/nearby")
 async def hotel_nearby(
     property_id: str,
     session: SessionContext = Depends(require_permission("hotel.properties.read")),
@@ -934,6 +978,7 @@ async def hotel_nearby(
         _raise_http_error(exc)
 
 
+@router.post("/nearby-places")
 async def hotel_nearby_upsert(
     payload: UpsertHotelNearbyPlacesRequest,
     session: SessionContext = Depends(require_permission("hotel.properties.manage")),
@@ -953,6 +998,7 @@ async def hotel_nearby_upsert(
         _raise_http_error(exc)
 
 
+@router.get("/reports/summary")
 async def hotel_report_summary(
     from_date: date,
     to_date: date,
@@ -972,6 +1018,7 @@ async def hotel_report_summary(
         _raise_http_error(exc)
 
 
+@router.get("/housekeeping-tasks")
 async def hotel_housekeeping_tasks(
     property_id: str | None = None,
     task_status: str | None = None,
@@ -992,6 +1039,7 @@ async def hotel_housekeeping_tasks(
         _raise_http_error(exc)
 
 
+@router.post("/housekeeping-tasks", status_code=status.HTTP_201_CREATED)
 async def hotel_housekeeping_tasks_create(
     payload: CreateHotelHousekeepingTaskRequest,
     session: SessionContext = Depends(require_permission("hotel.operations.manage")),
@@ -1013,6 +1061,7 @@ async def hotel_housekeeping_tasks_create(
         _raise_http_error(exc)
 
 
+@router.post("/housekeeping-tasks/{task_id}/status")
 async def hotel_housekeeping_tasks_update_status(
     task_id: str,
     payload: HotelHousekeepingStatusRequest,
@@ -1031,6 +1080,7 @@ async def hotel_housekeeping_tasks_update_status(
         _raise_http_error(exc)
 
 
+@router.get("/maintenance-tickets")
 async def hotel_maintenance_tickets(
     property_id: str | None = None,
     ticket_status: str | None = None,
@@ -1051,6 +1101,7 @@ async def hotel_maintenance_tickets(
         _raise_http_error(exc)
 
 
+@router.post("/maintenance-tickets", status_code=status.HTTP_201_CREATED)
 async def hotel_maintenance_tickets_create(
     payload: CreateHotelMaintenanceTicketRequest,
     session: SessionContext = Depends(require_permission("hotel.operations.manage")),
@@ -1073,6 +1124,7 @@ async def hotel_maintenance_tickets_create(
         _raise_http_error(exc)
 
 
+@router.post("/maintenance-tickets/{ticket_id}/status")
 async def hotel_maintenance_tickets_update_status(
     ticket_id: str,
     payload: HotelMaintenanceStatusRequest,

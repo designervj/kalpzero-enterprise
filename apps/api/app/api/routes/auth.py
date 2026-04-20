@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Response
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from app.core.config import Settings, get_settings
 from app.core.security import SessionContext, create_access_token, get_current_session
 from app.db.session import get_db_session
@@ -14,6 +14,7 @@ from app.services.auth import (
     create_customer,
     create_user,
 )
+from app.db.models import UserModel
 
 router = APIRouter()
 
@@ -102,14 +103,18 @@ def login(
 
 
 @router.get("/me", response_model=SessionResponse)
-def me(session: SessionContext = Depends(get_current_session)) -> SessionResponse:
-    user = db.scalar(select(UserModel).where(UserModel.id == session.id))
+def me(
+    db: Session = Depends(get_db_session),
+    session: SessionContext = Depends(get_current_session),
+) -> SessionResponse:
+
+    user = db.scalar(select(UserModel).where(UserModel.id == session.user_id))
     return SessionResponse(
         email=session.email,
         tenant_id=session.tenant_id,
         role=session.role,
         name=user.name,
-        isTenantOwner=user.isTenantOwner,
+        isTenantOwner=user.istenantowner,
     )
 
 

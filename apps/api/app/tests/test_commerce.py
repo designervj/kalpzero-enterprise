@@ -144,52 +144,12 @@ def test_commerce_import_jobs_support_dry_run_execute_and_idempotent_replay(clie
                             "rules": [{"label": "GST", "rate_basis_points": 1800}],
                         }
                     ],
-                    "attributes": [
-                        {
-                            "code": "material",
-                            "slug": "material",
-                            "label": "Material",
-                            "value_type": "single_select",
-                            "scope": "product",
-                            "options": [
-                                {"value": "mesh", "label": "Mesh"},
-                                {"value": "leather", "label": "Leather"},
-                            ],
-                            "is_required": True,
-                            "is_filterable": True,
-                        },
-                        {
-                            "code": "color",
-                            "slug": "color",
-                            "label": "Color",
-                            "value_type": "single_select",
-                            "scope": "variant",
-                            "options": [
-                                {"value": "black", "label": "Black"},
-                                {"value": "white", "label": "White"},
-                            ],
-                            "is_required": True,
-                            "is_variation_axis": True,
-                        },
-                        {
-                            "code": "size",
-                            "slug": "size",
-                            "label": "Size",
-                            "value_type": "single_select",
-                            "scope": "variant",
-                            "options": [
-                                {"value": "42", "label": "42"},
-                                {"value": "43", "label": "43"},
-                            ],
-                            "is_required": True,
-                            "is_variation_axis": True,
-                        },
-                    ],
+
                     "attribute_sets": [
                         {
                             "name": "Footwear Core",
                             "slug": "footwear-core",
-                            "attribute_codes": ["material", "color", "size"],
+                            "attribute_codes": [],
                         }
                     ],
                     "products": [
@@ -200,13 +160,11 @@ def test_commerce_import_jobs_support_dry_run_execute_and_idempotent_replay(clie
                             "brand_slug": "kalp-athletics",
                             "vendor_slug": "prime-supply",
                             "collection_slugs": ["summer-launch"],
-                            "attribute_set_slug": "footwear-core",
+                            "attribute_set_slug": None,
                             "category_slugs": ["sneakers"],
                             "seo_title": "KalpZero Runner",
                             "seo_description": "Imported commerce product.",
-                            "product_attributes": [
-                                {"attribute_code": "material", "value": "mesh"},
-                            ],
+                            "product_attributes": [],
                             "variants": [
                                 {
                                     "sku": "RUN-42-BLK",
@@ -214,10 +172,7 @@ def test_commerce_import_jobs_support_dry_run_execute_and_idempotent_replay(clie
                                     "price_minor": 349900,
                                     "currency": "INR",
                                     "inventory_quantity": 12,
-                                    "attribute_values": [
-                                        {"attribute_code": "color", "value": "black"},
-                                        {"attribute_code": "size", "value": "42"},
-                                    ],
+                                    "attribute_values": [],
                                     "warehouse_stock": [
                                         {
                                             "warehouse_slug": "central-warehouse",
@@ -232,10 +187,7 @@ def test_commerce_import_jobs_support_dry_run_execute_and_idempotent_replay(clie
                                     "price_minor": 359900,
                                     "currency": "INR",
                                     "inventory_quantity": 8,
-                                    "attribute_values": [
-                                        {"attribute_code": "color", "value": "white"},
-                                        {"attribute_code": "size", "value": "43"},
-                                    ],
+                                    "attribute_values": [],
                                     "warehouse_stock": [
                                         {
                                             "warehouse_slug": "central-warehouse",
@@ -338,257 +290,7 @@ def test_commerce_import_jobs_support_dry_run_execute_and_idempotent_replay(clie
     assert replay_job["report"]["totals"]["skipped_existing"] >= 10
 
 
-def test_commerce_pack_supports_attribute_taxonomy_and_attributed_products(client: TestClient) -> None:
-    provision_tenant(client, tenant_slug="commerce_taxonomy", vertical_packs=["commerce"])
-    tenant_token = login(client, email="ops@tenant.com", tenant_slug="commerce_taxonomy")
-    headers = {"Authorization": f"Bearer {tenant_token}"}
 
-    category_response = client.post(
-        "/commerce/categories",
-        headers=headers,
-        json={
-            "name": "Apparel",
-            "slug": "apparel",
-            "description": "Wearables and clothing.",
-        },
-    )
-    assert category_response.status_code == 201
-    category_id = category_response.json()["id"]
-
-    material_response = client.post(
-        "/commerce/attributes",
-        headers=headers,
-        json={
-            "code": "material",
-            "slug": "material",
-            "label": "Material",
-            "value_type": "single_select",
-            "scope": "product",
-            "options": [
-                {"value": "cotton", "label": "Cotton"},
-                {"value": "linen", "label": "Linen"},
-            ],
-            "is_required": True,
-            "is_filterable": True,
-        },
-    )
-    assert material_response.status_code == 201
-    material_id = material_response.json()["id"]
-
-    color_response = client.post(
-        "/commerce/attributes",
-        headers=headers,
-        json={
-            "code": "color",
-            "slug": "color",
-            "label": "Color",
-            "value_type": "single_select",
-            "scope": "variant",
-            "options": [
-                {"value": "black", "label": "Black"},
-                {"value": "white", "label": "White"},
-            ],
-            "is_required": True,
-            "is_filterable": True,
-            "is_variation_axis": True,
-            "vertical_bindings": ["commerce", "real_estate"],
-        },
-    )
-    assert color_response.status_code == 201
-    color_id = color_response.json()["id"]
-
-    size_response = client.post(
-        "/commerce/attributes",
-        headers=headers,
-        json={
-            "code": "size",
-            "slug": "size",
-            "label": "Size",
-            "value_type": "single_select",
-            "scope": "variant",
-            "options": [
-                {"value": "m", "label": "M"},
-                {"value": "l", "label": "L"},
-            ],
-            "is_required": True,
-            "is_variation_axis": True,
-        },
-    )
-    assert size_response.status_code == 201
-    size_id = size_response.json()["id"]
-
-    attribute_set_response = client.post(
-        "/commerce/attribute-sets",
-        headers=headers,
-        json={
-            "name": "Apparel Core",
-            "slug": "apparel-core",
-            "description": "Reusable attribute set for apparel products.",
-            "attribute_ids": [material_id, color_id, size_id],
-            "vertical_bindings": ["commerce", "travel"],
-        },
-    )
-    assert attribute_set_response.status_code == 201
-    attribute_set_id = attribute_set_response.json()["id"]
-
-    product_response = client.post(
-        "/commerce/products",
-        headers=headers,
-        json={
-            "name": "KalpZero Polo",
-            "slug": "kalpzero-polo",
-            "description": "Structured polo shirt for multi-brand catalogs.",
-            "attribute_set_id": attribute_set_id,
-            "category_ids": [category_id],
-            "seo_title": "KalpZero Polo Shirt",
-            "seo_description": "Reusable attributed apparel product.",
-            "status": "active",
-            "product_attributes": [{"attribute_id": material_id, "value": "cotton"}],
-            "variants": [
-                {
-                    "sku": "POLO-BLK-M",
-                    "label": "Black / M",
-                    "price_minor": 219900,
-                    "currency": "INR",
-                    "inventory_quantity": 8,
-                    "attribute_values": [
-                        {"attribute_id": color_id, "value": "black"},
-                        {"attribute_id": size_id, "value": "m"},
-                    ],
-                },
-                {
-                    "sku": "POLO-WHT-L",
-                    "label": "White / L",
-                    "price_minor": 229900,
-                    "currency": "INR",
-                    "inventory_quantity": 5,
-                    "attribute_values": [
-                        {"attribute_id": color_id, "value": "white"},
-                        {"attribute_id": size_id, "value": "l"},
-                    ],
-                },
-            ],
-        },
-    )
-
-    assert product_response.status_code == 201
-    payload = product_response.json()
-    assert payload["attribute_set_id"] == attribute_set_id
-    assert payload["product_attributes"][0]["attribute_id"] == material_id
-    assert len(payload["variants"]) == 2
-    assert len(payload["variants"][0]["attribute_values"]) == 2
-
-    attributes_response = client.get("/commerce/attributes", headers=headers)
-    attribute_sets_response = client.get("/commerce/attribute-sets", headers=headers)
-    products_response = client.get("/commerce/products", headers=headers)
-    overview_response = client.get("/commerce/overview", headers=headers)
-
-    assert attributes_response.status_code == 200
-    assert attribute_sets_response.status_code == 200
-    assert products_response.status_code == 200
-    assert overview_response.status_code == 200
-    assert len(attributes_response.json()["attributes"]) == 3
-    assert len(attribute_sets_response.json()["attribute_sets"]) == 1
-    assert products_response.json()["products"][0]["attribute_set_id"] == attribute_set_id
-    assert overview_response.json()["attributes"] == 3
-    assert overview_response.json()["attribute_sets"] == 1
-
-
-def test_commerce_attribute_validation_blocks_missing_required_variant_axis(client: TestClient) -> None:
-    provision_tenant(client, tenant_slug="commerce_attr_validation", vertical_packs=["commerce"])
-    tenant_token = login(client, email="ops@tenant.com", tenant_slug="commerce_attr_validation")
-    headers = {"Authorization": f"Bearer {tenant_token}"}
-
-    category_response = client.post(
-        "/commerce/categories",
-        headers=headers,
-        json={
-            "name": "Accessories",
-            "slug": "accessories",
-            "description": "Accessory catalog.",
-        },
-    )
-    assert category_response.status_code == 201
-    category_id = category_response.json()["id"]
-
-    style_response = client.post(
-        "/commerce/attributes",
-        headers=headers,
-        json={
-            "code": "style",
-            "slug": "style",
-            "label": "Style",
-            "value_type": "single_select",
-            "scope": "variant",
-            "options": [
-                {"value": "classic", "label": "Classic"},
-                {"value": "modern", "label": "Modern"},
-            ],
-            "is_required": True,
-            "is_variation_axis": True,
-        },
-    )
-    assert style_response.status_code == 201
-    style_id = style_response.json()["id"]
-
-    finish_response = client.post(
-        "/commerce/attributes",
-        headers=headers,
-        json={
-            "code": "finish",
-            "slug": "finish",
-            "label": "Finish",
-            "value_type": "single_select",
-            "scope": "variant",
-            "options": [
-                {"value": "matte", "label": "Matte"},
-                {"value": "gloss", "label": "Gloss"},
-            ],
-            "is_required": True,
-            "is_variation_axis": True,
-        },
-    )
-    assert finish_response.status_code == 201
-    finish_id = finish_response.json()["id"]
-
-    attribute_set_response = client.post(
-        "/commerce/attribute-sets",
-        headers=headers,
-        json={
-            "name": "Accessory Variant Core",
-            "slug": "accessory-variant-core",
-            "attribute_ids": [style_id, finish_id],
-        },
-    )
-    assert attribute_set_response.status_code == 201
-    attribute_set_id = attribute_set_response.json()["id"]
-
-    bad_product_response = client.post(
-        "/commerce/products",
-        headers=headers,
-        json={
-            "name": "KalpZero Lamp",
-            "slug": "kalpzero-lamp",
-            "category_ids": [category_id],
-            "attribute_set_id": attribute_set_id,
-            "status": "active",
-            "variants": [
-                {
-                    "sku": "LAMP-CLASSIC",
-                    "label": "Classic",
-                    "price_minor": 559900,
-                    "currency": "INR",
-                    "inventory_quantity": 3,
-                    "attribute_values": [
-                        {"attribute_id": style_id, "value": "classic"},
-                    ],
-                }
-            ],
-        },
-    )
-
-    assert bad_product_response.status_code == 400
-    assert "Required variant attribute 'finish' is missing" in bad_product_response.json()["detail"]
 
 
 def test_commerce_pack_supports_brands_vendors_collections_and_product_linkage(client: TestClient) -> None:
