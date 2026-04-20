@@ -1,27 +1,52 @@
-from __future__ import annotations
+from datetime import datetime, UTC
+from uuid import uuid4
+from typing import Any
 
-from datetime import date
+from app.core.config import get_settings
+from app.db.mongo import get_runtime_motor_database
+from app.models.travel import (
+    TravelPackage,
+    TravelItineraryDay,
+    TravelDeparture,
+    TravelLead,
+    TRAVEL_MODELS
+)
 
-from beanie.operators import In
+def _map_id(doc: dict | None) -> dict | None:
+    if doc is None:
+        return None
+    # Support both _id as ObjectId and _id as string
+    doc["id"] = str(doc.pop("_id"))
+    return doc
 
-from app.models.travel import TravelDeparture, TravelItineraryDay, TravelLead, TravelPackage
-
+def _map_ids(docs: list[dict]) -> list[dict]:
+    return [_map_id(doc) for doc in docs]
 
 async def list_packages(db_name: str) -> list[TravelPackage]:
-    return await TravelPackage.find().sort("-created_at").to_list()
-
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    cursor = db["travel_packages"].find().sort("createdAt", -1)
+    packages = await cursor.to_list(length=1000)
+    return [TravelPackage(**_map_id(doc)) for doc in packages]
 
 async def get_package(db_name: str, *, package_id: str) -> TravelPackage | None:
-    return await TravelPackage.find_one(TravelPackage.id == package_id)
-
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    from bson import ObjectId
+    try:
+        oid = ObjectId(package_id)
+        doc = await db["travel_packages"].find_one({"_id": oid})
+    except Exception:
+        doc = await db["travel_packages"].find_one({"_id": package_id})
+    return TravelPackage(**_map_id(doc)) if doc else None
 
 async def find_package_by_code(db_name: str, *, code: str) -> TravelPackage | None:
-    return await TravelPackage.find_one(TravelPackage.code == code)
-
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = await db["travel_packages"].find_one({"code": code})
+    return TravelPackage(**_map_id(doc)) if doc else None
 
 async def find_package_by_slug(db_name: str, *, slug: str) -> TravelPackage | None:
-    return await TravelPackage.find_one(TravelPackage.slug == slug)
-
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = await db["travel_packages"].find_one({"slug": slug})
+    return TravelPackage(**_map_id(doc)) if doc else None
 
 async def create_package(
     db_name: str,
@@ -36,33 +61,36 @@ async def create_package(
     duration_days: int,
     base_price_minor: int,
     currency: str,
-    status: str,
-) -> TravelPackage:
-    model = TravelPackage(
-        code=code,
-        slug=slug,
-        title=title,
-        summary=summary,
-        origin_city=origin_city,
-        destination_city=destination_city,
-        destination_country=destination_country,
-        duration_days=duration_days,
-        base_price_minor=base_price_minor,
-        currency=currency,
-        status=status,
-    )
-    await model.insert()
-    return model
+    status: str) -> TravelPackage:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    pkg_id = str(uuid4())
+    doc = {
+        "_id": pkg_id,
+        "code": code,
+        "slug": slug,
+        "title": title,
+        "summary": summary,
+        "origin_city": origin_city,
+        "destination_city": destination_city,
+        "destination_country": destination_country,
+        "duration_days": duration_days,
+        "base_price_minor": base_price_minor,
+        "currency": currency,
+        "status": status,
+        "createdAt": datetime.now(tz=UTC),
+        "updatedAt": datetime.now(tz=UTC)
+    }
+    await db["travel_packages"].insert_one(doc)
+    return TravelPackage(**_map_id(doc))
 
-
-async def list_itinerary_days(db_name: str, *, package_ids: list[str]) -> list[TravelItineraryDay]:
-    if not package_ids:
-        return []
-    return await TravelItineraryDay.find(In(TravelItineraryDay.package_id, package_ids)).sort(
-        "package_id",
-        "day_number",
-    ).to_list()
-
+async def list_itinerary_days(
+    db_name: str,
+    *,
+    package_ids: list[str]) -> list[TravelItineraryDay]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    cursor = db["travel_itinerary_days"].find({"package_id": {"$in": package_ids}}).sort("day_number", 1)
+    days = await cursor.to_list(length=1000)
+    return [TravelItineraryDay(**_map_id(doc)) for doc in days]
 
 async def create_itinerary_day(
     db_name: str,
@@ -73,89 +101,100 @@ async def create_itinerary_day(
     summary: str,
     hotel_ref_id: str | None,
     activity_ref_ids: list[str],
-    transfer_ref_ids: list[str],
-) -> TravelItineraryDay:
-    model = TravelItineraryDay(
-        package_id=package_id,
-        day_number=day_number,
-        title=title,
-        summary=summary,
-        hotel_ref_id=hotel_ref_id,
-        activity_ref_ids=activity_ref_ids,
-        transfer_ref_ids=transfer_ref_ids,
-    )
-    await model.insert()
-    return model
-
+    transfer_ref_ids: list[str]) -> TravelItineraryDay:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    day_id = str(uuid4())
+    doc = {
+        "_id": day_id,
+        "package_id": package_id,
+        "day_number": day_number,
+        "title": title,
+        "summary": summary,
+        "hotel_ref_id": hotel_ref_id,
+        "activity_ref_ids": activity_ref_ids,
+        "transfer_ref_ids": transfer_ref_ids,
+        "createdAt": datetime.now(tz=UTC),
+        "updatedAt": datetime.now(tz=UTC)
+    }
+    await db["travel_itinerary_days"].insert_one(doc)
+    return TravelItineraryDay(**_map_id(doc))
 
 async def list_departures(
     db_name: str,
     *,
     package_id: str | None = None,
-    status: str | None = None,
-) -> list[TravelDeparture]:
-    query = TravelDeparture.find()
+    status: str | None = None) -> list[TravelDeparture]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    filter_query = {}
     if package_id:
-        query = query.find(TravelDeparture.package_id == package_id)
+        filter_query["package_id"] = package_id
     if status:
-        query = query.find(TravelDeparture.status == status)
-    return await query.sort("departure_date", "created_at").to_list()
-
+        filter_query["status"] = status
+    cursor = db["travel_departures"].find(filter_query).sort("departure_date", 1)
+    departures = await cursor.to_list(length=1000)
+    return [TravelDeparture(**_map_id(doc)) for doc in departures]
 
 async def get_departure(db_name: str, *, departure_id: str) -> TravelDeparture | None:
-    return await TravelDeparture.find_one(TravelDeparture.id == departure_id)
-
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    from bson import ObjectId
+    try:
+        oid = ObjectId(departure_id)
+        doc = await db["travel_departures"].find_one({"_id": oid})
+    except Exception:
+        doc = await db["travel_departures"].find_one({"_id": departure_id})
+    return TravelDeparture(**_map_id(doc)) if doc else None
 
 async def create_departure(
     db_name: str,
     *,
     package_id: str,
-    departure_date: date,
-    return_date: date,
+    departure_date: datetime,
+    return_date: datetime,
     seats_total: int,
     seats_available: int,
     price_override_minor: int | None,
-    status: str,
-) -> TravelDeparture:
-    model = TravelDeparture(
-        package_id=package_id,
-        departure_date=departure_date,
-        return_date=return_date,
-        seats_total=seats_total,
-        seats_available=seats_available,
-        price_override_minor=price_override_minor,
-        status=status,
-    )
-    await model.insert()
-    return model
-
-
-async def update_departure_status(db_name: str, *, departure_id: str, status: str) -> TravelDeparture | None:
-    departure = await get_departure(db_name, departure_id=departure_id)
-    if departure is None:
-        return None
-    departure.status = status
-    await departure.save()
-    return departure
-
+    status: str) -> TravelDeparture:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    dep_id = str(uuid4())
+    doc = {
+        "_id": dep_id,
+        "package_id": package_id,
+        "departure_date": departure_date,
+        "return_date": return_date,
+        "seats_total": seats_total,
+        "seats_available": seats_available,
+        "price_override_minor": price_override_minor,
+        "status": status,
+        "createdAt": datetime.now(tz=UTC),
+        "updatedAt": datetime.now(tz=UTC)
+    }
+    await db["travel_departures"].insert_one(doc)
+    return TravelDeparture(**_map_id(doc))
 
 async def list_leads(
     db_name: str,
     *,
     status: str | None = None,
-    interested_package_id: str | None = None,
-) -> list[TravelLead]:
-    query = TravelLead.find()
+    interested_package_id: str | None = None) -> list[TravelLead]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    filter_query = {}
     if status:
-        query = query.find(TravelLead.status == status)
+        filter_query["status"] = status
     if interested_package_id:
-        query = query.find(TravelLead.interested_package_id == interested_package_id)
-    return await query.sort("-created_at").to_list()
-
+        filter_query["interested_package_id"] = interested_package_id
+    cursor = db["travel_leads"].find(filter_query).sort("createdAt", -1)
+    leads = await cursor.to_list(length=1000)
+    return [TravelLead(**_map_id(doc)) for doc in leads]
 
 async def get_lead(db_name: str, *, lead_id: str) -> TravelLead | None:
-    return await TravelLead.find_one(TravelLead.id == lead_id)
-
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    from bson import ObjectId
+    try:
+        oid = ObjectId(lead_id)
+        doc = await db["travel_leads"].find_one({"_id": oid})
+    except Exception:
+        doc = await db["travel_leads"].find_one({"_id": lead_id})
+    return TravelLead(**_map_id(doc)) if doc else None
 
 async def create_lead(
     db_name: str,
@@ -167,34 +206,29 @@ async def create_lead(
     contact_name: str,
     contact_phone: str,
     travelers_count: int,
-    desired_departure_date: date | None,
+    desired_departure_date: datetime | None,
     budget_minor: int | None,
     currency: str,
     status: str,
-    notes: str | None,
-) -> TravelLead:
-    model = TravelLead(
-        source=source,
-        interested_package_id=interested_package_id,
-        departure_id=departure_id,
-        customer_id=customer_id,
-        contact_name=contact_name,
-        contact_phone=contact_phone,
-        travelers_count=travelers_count,
-        desired_departure_date=desired_departure_date,
-        budget_minor=budget_minor,
-        currency=currency,
-        status=status,
-        notes=notes,
-    )
-    await model.insert()
-    return model
-
-
-async def update_lead_status(db_name: str, *, lead_id: str, status: str) -> TravelLead | None:
-    lead = await get_lead(db_name, lead_id=lead_id)
-    if lead is None:
-        return None
-    lead.status = status
-    await lead.save()
-    return lead
+    notes: str | None) -> TravelLead:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    lead_id = str(uuid4())
+    doc = {
+        "_id": lead_id,
+        "source": source,
+        "interested_package_id": interested_package_id,
+        "departure_id": departure_id,
+        "customer_id": customer_id,
+        "contact_name": contact_name,
+        "contact_phone": contact_phone,
+        "travelers_count": travelers_count,
+        "desired_departure_date": desired_departure_date,
+        "budget_minor": budget_minor,
+        "currency": currency,
+        "status": status,
+        "notes": notes,
+        "createdAt": datetime.now(tz=UTC),
+        "updatedAt": datetime.now(tz=UTC)
+    }
+    await db["travel_leads"].insert_one(doc)
+    return TravelLead(**_map_id(doc))

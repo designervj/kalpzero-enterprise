@@ -16,24 +16,7 @@ HOTEL_AMENITY_COLLECTION = "hotel_amenity_catalogs"
 HOTEL_NEARBY_COLLECTION = "hotel_nearby_places"
 
 
-async def _db_name(tenant_slug: str, db_name: str | None = None) -> str:
-    from app.db.mongo import ensure_tenant_vertical_initialized
-    from app.models.hotel import HOTEL_MODELS
-    from app.core.config import get_settings
-    
-    resolved_db_name = db_name or tenant_slug
-    await ensure_tenant_vertical_initialized(
-        get_settings(),
-        database_name=resolved_db_name,
-        vertical="hotel",
-        document_models=HOTEL_MODELS
-    )
-    return resolved_db_name
-
-
 async def _property_or_raise(db_name: str, *, tenant_id: str, property_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     property_model = await hotel_repository.get_property(db_name, property_id=property_id)
     if property_model is None:
         raise NotFoundError(f"Hotel property '{property_id}' was not found.")
@@ -41,8 +24,6 @@ async def _property_or_raise(db_name: str, *, tenant_id: str, property_id: str):
 
 
 async def _room_type_or_raise(db_name: str, *, tenant_id: str, room_type_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     room_type = await hotel_repository.get_room_type(db_name, room_type_id=room_type_id)
     if room_type is None:
         raise NotFoundError(f"Hotel room type '{room_type_id}' was not found.")
@@ -50,8 +31,6 @@ async def _room_type_or_raise(db_name: str, *, tenant_id: str, room_type_id: str
 
 
 async def _room_or_raise(db_name: str, *, tenant_id: str, room_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     room = await hotel_repository.get_room(db_name, room_id=room_id)
     if room is None:
         raise NotFoundError(f"Hotel room '{room_id}' was not found.")
@@ -59,8 +38,6 @@ async def _room_or_raise(db_name: str, *, tenant_id: str, room_id: str):
 
 
 async def _meal_plan_or_raise(db_name: str, *, tenant_id: str, meal_plan_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     meal_plan = await hotel_repository.get_meal_plan(db_name, meal_plan_id=meal_plan_id)
     if meal_plan is None:
         raise NotFoundError(f"Hotel meal plan '{meal_plan_id}' was not found.")
@@ -68,8 +45,6 @@ async def _meal_plan_or_raise(db_name: str, *, tenant_id: str, meal_plan_id: str
 
 
 async def _guest_profile_or_raise(db_name: str, *, tenant_id: str, guest_profile_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     guest_profile = await hotel_repository.get_guest_profile(db_name, guest_profile_id=guest_profile_id)
     if guest_profile is None:
         raise NotFoundError(f"Hotel guest profile '{guest_profile_id}' was not found.")
@@ -77,8 +52,6 @@ async def _guest_profile_or_raise(db_name: str, *, tenant_id: str, guest_profile
 
 
 async def _reservation_or_raise(db_name: str, *, tenant_id: str, reservation_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     reservation = await hotel_repository.get_reservation(db_name, reservation_id=reservation_id)
     if reservation is None:
         raise NotFoundError(f"Hotel reservation '{reservation_id}' was not found.")
@@ -86,8 +59,6 @@ async def _reservation_or_raise(db_name: str, *, tenant_id: str, reservation_id:
 
 
 async def _stay_or_raise(db_name: str, *, tenant_id: str, stay_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     stay = await hotel_repository.get_stay(db_name, stay_id=stay_id)
     if stay is None:
         raise NotFoundError(f"Hotel stay '{stay_id}' was not found.")
@@ -95,8 +66,6 @@ async def _stay_or_raise(db_name: str, *, tenant_id: str, stay_id: str):
 
 
 async def _folio_or_raise(db_name: str, *, tenant_id: str, folio_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     folio = await hotel_repository.get_folio(db_name, folio_id=folio_id)
     if folio is None:
         raise NotFoundError(f"Hotel folio '{folio_id}' was not found.")
@@ -104,8 +73,6 @@ async def _folio_or_raise(db_name: str, *, tenant_id: str, folio_id: str):
 
 
 async def _payment_or_raise(db_name: str, *, tenant_id: str, payment_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     payment = await hotel_repository.get_payment(db_name, payment_id=payment_id)
     if payment is None:
         raise NotFoundError(f"Hotel payment '{payment_id}' was not found.")
@@ -113,8 +80,6 @@ async def _payment_or_raise(db_name: str, *, tenant_id: str, payment_id: str):
 
 
 async def _staff_member_or_raise(db_name: str, *, tenant_id: str, staff_member_id: str):
-
-    db_name = await _db_name(tenant_id, db_name)
     staff_member = await hotel_repository.get_staff_member(db_name, staff_member_id=staff_member_id)
     if staff_member is None:
         raise NotFoundError(f"Hotel staff member '{staff_member_id}' was not found.")
@@ -442,7 +407,7 @@ def _serialize_shift(model) -> dict[str, object]:
 def _serialize_night_audit(model) -> dict[str, object]:
     return {
         "id": str(model.id),
-                "property_id": str(model.property_id),
+        "property_id": str(model.property_id),
         "audit_date": model.audit_date.isoformat(),
         "status": model.status,
         "report": model.report_json,
@@ -642,8 +607,7 @@ def _default_nearby_places(property_model) -> dict[str, object]:
     }
 
 
-async def get_overview(db: Session, *, tenant_slug: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def get_overview(db: Session, *, tenant_slug: str, db_name: str) -> dict[str, object]:
     properties = await hotel_repository.list_properties(db_name)
     room_types = await hotel_repository.list_room_types(db_name)
     rooms = await hotel_repository.list_rooms(db_name)
@@ -721,8 +685,7 @@ async def get_overview(db: Session, *, tenant_slug: str, db_name: str | None = N
     }
 
 
-async def get_inventory_summary(db: Session, *, tenant_slug: str, property_id: str | None, for_date: date, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def get_inventory_summary(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, for_date: date) -> list[dict[str, object]]:
     room_types = await hotel_repository.list_room_types(db_name, property_id=property_id)
     rooms = await hotel_repository.list_rooms(db_name, property_id=property_id)
     reservations = await hotel_repository.list_reservations(db_name, property_id=property_id)
@@ -757,13 +720,11 @@ async def get_inventory_summary(db: Session, *, tenant_slug: str, property_id: s
     return summary
 
 
-async def list_properties(db: Session, *, tenant_slug: str, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_properties(db: Session, *, tenant_slug: str, db_name: str) -> list[dict[str, object]]:
     return [_serialize_property(item) for item in await hotel_repository.list_properties(db_name)]
 
 
-async def create_property(db: Session, *, tenant_slug: str, actor_user_id: str, name: str, code: str, city: str, country: str, timezone: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_property(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, name: str, code: str, city: str, country: str, timezone: str) -> dict[str, object]:
     if await hotel_repository.find_property_by_code(db_name, code=code):
         raise ConflictError(f"Hotel property code '{code}' already exists.")
 
@@ -774,28 +735,26 @@ async def create_property(db: Session, *, tenant_slug: str, actor_user_id: str, 
         city=city,
         country=country,
         timezone=timezone)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.property.created",
-        subject_type="hotel_property",
-        subject_id=str(model.id),
-        metadata={"code": model.code})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.property.created",
+        # subject_type="hotel_property",
+        # subject_id=str(model.id),
+        # metadata={"code": model.code})
     db.commit()
     return _serialize_property(model)
 
 
-async def list_room_types(db: Session, *, tenant_slug: str, property_id: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_room_types(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None) -> list[dict[str, object]]:
     return [
         _serialize_room_type(item)
         for item in await hotel_repository.list_room_types(db_name, property_id=property_id)
     ]
 
 
-async def create_room_type(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, name: str, code: str, category: str | None, bed_type: str | None, occupancy: int, room_size_sqm: int | None, base_rate_minor: int, extra_bed_price_minor: int, refundable: bool, currency: str, amenity_ids: list[str], db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_room_type(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, name: str, code: str, category: str | None, bed_type: str | None, occupancy: int, room_size_sqm: int | None, base_rate_minor: int, extra_bed_price_minor: int, refundable: bool, currency: str, amenity_ids: list[str]) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     if await hotel_repository.find_room_type_by_code(db_name, property_id=property_id, code=code):
         raise ConflictError(f"Hotel room type code '{code}' already exists for this property.")
@@ -814,25 +773,23 @@ async def create_room_type(db: Session, *, tenant_slug: str, actor_user_id: str,
         refundable=refundable,
         currency=currency,
         amenity_ids=amenity_ids)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.room_type.created",
-        subject_type="hotel_room_type",
-        subject_id=str(model.id),
-        metadata={"property_id": str(property_id), "code": code})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.room_type.created",
+        # subject_type="hotel_room_type",
+        # subject_id=str(model.id),
+        # metadata={"property_id": str(property_id), "code": code})
     db.commit()
     return _serialize_room_type(model)
 
 
-async def list_rooms(db: Session, *, tenant_slug: str, property_id: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_rooms(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None) -> list[dict[str, object]]:
     return [_serialize_room(item) for item in await hotel_repository.list_rooms(db_name, property_id=property_id)]
 
 
-async def create_room(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, room_type_id: str, room_number: str, status: str, occupancy_status: str | None, housekeeping_status: str | None, sell_status: str | None, is_active: bool, feature_tags: list[str], notes: str | None, last_cleaned_at: str | None, floor_label: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_room(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, room_type_id: str, room_number: str, status: str, occupancy_status: str | None, housekeeping_status: str | None, sell_status: str | None, is_active: bool, feature_tags: list[str], notes: str | None, last_cleaned_at: str | None, floor_label: str | None) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     room_type = await _room_type_or_raise(db_name, tenant_id=tenant_slug, room_type_id=room_type_id)
     if room_type.property_id != property_id:
@@ -859,28 +816,26 @@ async def create_room(db: Session, *, tenant_slug: str, actor_user_id: str, prop
         notes=notes,
         last_cleaned_at=last_cleaned_at,
         floor_label=floor_label)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.room.created",
-        subject_type="hotel_room",
-        subject_id=str(model.id),
-        metadata={"property_id": str(property_id), "room_number": room_number})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.room.created",
+        # subject_type="hotel_room",
+        # subject_id=str(model.id),
+        # metadata={"property_id": str(property_id), "room_number": room_number})
     db.commit()
     return _serialize_room(model)
 
 
-async def list_meal_plans(db: Session, *, tenant_slug: str, property_id: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_meal_plans(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None) -> list[dict[str, object]]:
     return [
         _serialize_meal_plan(item)
         for item in await hotel_repository.list_meal_plans(db_name, property_id=property_id)
     ]
 
 
-async def create_meal_plan(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, code: str, name: str, description: str | None, price_per_person_per_night_minor: int, currency: str, included_meals: list[str], is_active: bool, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_meal_plan(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, code: str, name: str, description: str | None, price_per_person_per_night_minor: int, currency: str, included_meals: list[str], is_active: bool) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     if await hotel_repository.find_meal_plan_by_code(db_name, property_id=property_id, code=code):
         raise ConflictError(f"Hotel meal plan code '{code}' already exists for this property.")
@@ -895,25 +850,23 @@ async def create_meal_plan(db: Session, *, tenant_slug: str, actor_user_id: str,
         currency=currency,
         included_meals=included_meals,
         is_active=is_active)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.meal_plan.created",
-        subject_type="hotel_meal_plan",
-        subject_id=str(meal_plan.id),
-        metadata={"property_id": str(property_id), "code": code})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.meal_plan.created",
+        # subject_type="hotel_meal_plan",
+        # subject_id=str(meal_plan.id),
+        # metadata={"property_id": str(property_id), "code": code})
     db.commit()
     return _serialize_meal_plan(meal_plan)
 
 
-async def list_guest_profiles(db: Session, *, tenant_slug: str, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_guest_profiles(db: Session, *, tenant_slug: str, db_name: str) -> list[dict[str, object]]:
     return [_serialize_guest_profile(item) for item in await hotel_repository.list_guest_profiles(db_name)]
 
 
-async def create_guest_profile(db: Session, *, tenant_slug: str, actor_user_id: str, first_name: str, last_name: str, email: str, phone: str, nationality: str | None, loyalty_tier: str | None, vip: bool, preferred_room_type_id: str | None, dietary_preference: str | None, company_name: str | None, identity_document_number: str | None, notes: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_guest_profile(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, first_name: str, last_name: str, email: str, phone: str, nationality: str | None, loyalty_tier: str | None, vip: bool, preferred_room_type_id: str | None, dietary_preference: str | None, company_name: str | None, identity_document_number: str | None, notes: str | None) -> dict[str, object]:
     if await hotel_repository.find_guest_profile_by_email(db_name, email=email):
         raise ConflictError(f"Hotel guest email '{email}' already exists.")
     if preferred_room_type_id:
@@ -933,20 +886,19 @@ async def create_guest_profile(db: Session, *, tenant_slug: str, actor_user_id: 
         company_name=company_name,
         identity_document_number=identity_document_number,
         notes=notes)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.guest_profile.created",
-        subject_type="hotel_guest_profile",
-        subject_id=str(guest_profile.id),
-        metadata={"email": email, "vip": vip})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.guest_profile.created",
+        # subject_type="hotel_guest_profile",
+        # subject_id=str(guest_profile.id),
+        # metadata={"email": email, "vip": vip})
     db.commit()
     return _serialize_guest_profile(guest_profile)
 
 
-async def list_guest_documents(db: Session, *, tenant_slug: str, guest_profile_id: str, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_guest_documents(db: Session, *, tenant_slug: str, db_name: str, guest_profile_id: str) -> list[dict[str, object]]:
     await _guest_profile_or_raise(db_name, tenant_id=tenant_slug, guest_profile_id=guest_profile_id)
     return [
         _serialize_guest_document(item)
@@ -956,8 +908,7 @@ async def list_guest_documents(db: Session, *, tenant_slug: str, guest_profile_i
     ]
 
 
-async def create_guest_document(db: Session, *, tenant_slug: str, actor_user_id: str, guest_profile_id: str, document_kind: str, document_number: str, issuing_country: str | None, expires_on: date | None, verification_status: str, storage_key: str | None, notes: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_guest_document(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, guest_profile_id: str, document_kind: str, document_number: str, issuing_country: str | None, expires_on: date | None, verification_status: str, storage_key: str | None, notes: str | None) -> dict[str, object]:
     await _guest_profile_or_raise(db_name, tenant_id=tenant_slug, guest_profile_id=guest_profile_id)
     guest_document = await hotel_repository.create_guest_document(
         db_name,
@@ -969,20 +920,19 @@ async def create_guest_document(db: Session, *, tenant_slug: str, actor_user_id:
         verification_status=verification_status,
         storage_key=storage_key,
         notes=notes)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.guest_document.created",
-        subject_type="hotel_guest_document",
-        subject_id=str(guest_document.id),
-        metadata={"guest_profile_id": str(guest_profile_id), "document_kind": document_kind})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.guest_document.created",
+        # subject_type="hotel_guest_document",
+        # subject_id=str(guest_document.id),
+        # metadata={"guest_profile_id": str(guest_profile_id), "document_kind": document_kind})
     db.commit()
     return _serialize_guest_document(guest_document)
 
 
-async def list_rate_plans(db: Session, *, tenant_slug: str, property_id: str | None, room_type_id: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_rate_plans(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, room_type_id: str | None) -> list[dict[str, object]]:
     return [
         _serialize_rate_plan(item)
         for item in await hotel_repository.list_rate_plans(
@@ -992,8 +942,7 @@ async def list_rate_plans(db: Session, *, tenant_slug: str, property_id: str | N
     ]
 
 
-async def create_rate_plan(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, room_type_id: str, label: str, currency: str, weekend_enabled: bool, weekend_rate_minor: int | None, seasonal_overrides: list[dict[str, object]], is_active: bool, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_rate_plan(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, room_type_id: str, label: str, currency: str, weekend_enabled: bool, weekend_rate_minor: int | None, seasonal_overrides: list[dict[str, object]], is_active: bool) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     room_type = await _room_type_or_raise(db_name, tenant_id=tenant_slug, room_type_id=room_type_id)
     if room_type.property_id != property_id:
@@ -1015,20 +964,19 @@ async def create_rate_plan(db: Session, *, tenant_slug: str, actor_user_id: str,
         weekend_rate_minor=weekend_rate_minor,
         seasonal_overrides=seasonal_overrides,
         is_active=is_active)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.rate_plan.created",
-        subject_type="hotel_rate_plan",
-        subject_id=str(rate_plan.id),
-        metadata={"property_id": str(property_id), "room_type_id": str(room_type_id), "label": label})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.rate_plan.created",
+        # subject_type="hotel_rate_plan",
+        # subject_id=str(rate_plan.id),
+        # metadata={"property_id": str(property_id), "room_type_id": str(room_type_id), "label": label})
     db.commit()
     return _serialize_rate_plan(rate_plan)
 
 
-async def list_availability_rules(db: Session, *, tenant_slug: str, property_id: str | None, room_type_id: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_availability_rules(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, room_type_id: str | None) -> list[dict[str, object]]:
     return [
         _serialize_availability_rule(item)
         for item in await hotel_repository.list_availability_rules(
@@ -1038,8 +986,7 @@ async def list_availability_rules(db: Session, *, tenant_slug: str, property_id:
     ]
 
 
-async def create_availability_rule(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, room_type_id: str, total_units: int, available_units_snapshot: int | None, minimum_stay_nights: int, maximum_stay_nights: int, blackout_dates: list[str], is_active: bool, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_availability_rule(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, room_type_id: str, total_units: int, available_units_snapshot: int | None, minimum_stay_nights: int, maximum_stay_nights: int, blackout_dates: list[str], is_active: bool) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     room_type = await _room_type_or_raise(db_name, tenant_id=tenant_slug, room_type_id=room_type_id)
     if room_type.property_id != property_id:
@@ -1061,20 +1008,19 @@ async def create_availability_rule(db: Session, *, tenant_slug: str, actor_user_
         maximum_stay_nights=maximum_stay_nights,
         blackout_dates=blackout_dates,
         is_active=is_active)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.availability_rule.created",
-        subject_type="hotel_availability_rule",
-        subject_id=str(availability_rule.id),
-        metadata={"property_id": str(property_id), "room_type_id": str(room_type_id)})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.availability_rule.created",
+        # subject_type="hotel_availability_rule",
+        # subject_id=str(availability_rule.id),
+        # metadata={"property_id": str(property_id), "room_type_id": str(room_type_id)})
     db.commit()
     return _serialize_availability_rule(availability_rule)
 
 
-async def list_reservations(db: Session, *, tenant_slug: str, property_id: str | None, status: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_reservations(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, status: str | None) -> list[dict[str, object]]:
     return [
         _serialize_reservation(item)
         for item in await hotel_repository.list_reservations(
@@ -1084,11 +1030,9 @@ async def list_reservations(db: Session, *, tenant_slug: str, property_id: str |
     ]
 
 
-async def create_reservation(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, room_type_id: str, room_id: str | None, meal_plan_id: str | None, booking_reference: str | None, booking_source: str | None, guest_customer_id: str, guest_name: str | None, check_in_date: date, check_out_date: date, status: str, special_requests: str | None, early_check_in: bool, late_check_out: bool, total_amount_minor: int, currency: str, adults: int, children: int, db_name: str | None = None) -> dict[str, object]:
+async def create_reservation(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, room_type_id: str, room_id: str | None, meal_plan_id: str | None, booking_reference: str | None, booking_source: str | None, guest_customer_id: str, guest_name: str | None, check_in_date: date, check_out_date: date, status: str, special_requests: str | None, early_check_in: bool, late_check_out: bool, total_amount_minor: int, currency: str, adults: int, children: int) -> dict[str, object]:
     if check_in_date >= check_out_date:
         raise ConflictError("Reservation check-out date must be after check-in date.")
-
-    db_name = await _db_name(tenant_slug, db_name)
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     room_type = await _room_type_or_raise(db_name, tenant_id=tenant_slug, room_type_id=room_type_id)
 
@@ -1173,27 +1117,26 @@ async def create_reservation(db: Session, *, tenant_slug: str, actor_user_id: st
             tax_amount_minor=0,
             notes="Auto-generated from reservation quoted total.",
             created_by_user_id=actor_user_id)
-        await _recalculate_folio_totals(db, folio, db_name)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.reservation.created",
-        subject_type="hotel_reservation",
-        subject_id=str(reservation.id),
-        metadata={
-            "room_id": str(room_id) if room_id else None,
-            "property_id": str(property_id),
-            "status": reservation.status,
-            "folio_id": str(folio.id),
-        })
+        await _recalculate_folio_totals(db, folio)
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.reservation.created",
+        # subject_type="hotel_reservation",
+        # subject_id=str(reservation.id),
+        # metadata={
+            # "room_id": str(room_id) if room_id else None,
+            # "property_id": str(property_id),
+            # "status": reservation.status,
+            # "folio_id": str(folio.id),
+        # })
     _outbox_reservation(db, tenant_id=tenant_slug, reservation=reservation, event_status=reservation.status)
     db.commit()
     return _serialize_reservation(reservation)
 
 
-async def list_stays(db: Session, *, tenant_slug: str, property_id: str | None, status: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_stays(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, status: str | None) -> list[dict[str, object]]:
     return [
         _serialize_stay(item)
         for item in await hotel_repository.list_stays(
@@ -1203,15 +1146,13 @@ async def list_stays(db: Session, *, tenant_slug: str, property_id: str | None, 
     ]
 
 
-async def get_stay_detail(db: Session, *, tenant_slug: str, stay_id: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def get_stay_detail(db: Session, *, tenant_slug: str, db_name: str, stay_id: str) -> dict[str, object]:
     stay = await _stay_or_raise(db_name, tenant_id=tenant_slug, stay_id=stay_id)
     room_moves = await hotel_repository.list_room_moves(db_name, stay_id=stay.id)
     return _serialize_stay(stay, room_moves=room_moves)
 
 
-async def record_room_move(db: Session, *, tenant_slug: str, actor_user_id: str, stay_id: str, to_room_id: str, reason: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def record_room_move(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, stay_id: str, to_room_id: str, reason: str) -> dict[str, object]:
     stay = await _stay_or_raise(db_name, tenant_id=tenant_slug, stay_id=stay_id)
     if stay.status != "in_house":
         raise ConflictError("Only in-house stays can be moved.")
@@ -1252,31 +1193,26 @@ async def record_room_move(db: Session, *, tenant_slug: str, actor_user_id: str,
     stay.room_type_id = to_room.room_type_id
     reservation.room_id = to_room.id
     reservation.room_type_id = to_room.room_type_id
-    await from_room.save()
-    await to_room.save()
-    await stay.save()
-    await reservation.save()
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.stay.room_moved",
-        subject_type="hotel_stay",
-        subject_id=str(stay.id),
-        metadata={
-            "from_room_id": str(from_room.id),
-            "to_room_id": str(to_room.id),
-            "from_room_type_id": str(from_room.room_type_id),
-            "to_room_type_id": str(to_room.room_type_id),
-            "reason": reason,
-        })
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.stay.room_moved",
+        # subject_type="hotel_stay",
+        # subject_id=str(stay.id),
+        # metadata={
+            # "from_room_id": str(from_room.id),
+            # "to_room_id": str(to_room.id),
+            # "from_room_type_id": str(from_room.room_type_id),
+            # "to_room_type_id": str(to_room.room_type_id),
+            # "reason": reason,
+        # })
     _outbox_reservation(db, tenant_id=tenant_slug, reservation=reservation, event_status=reservation.status)
     db.commit()
     return await get_stay_detail(db, tenant_slug=tenant_slug, stay_id=stay_id, db_name=db_name)
 
 
-async def list_folios(db: Session, *, tenant_slug: str, property_id: str | None, reservation_id: str | None, status: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_folios(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, reservation_id: str | None, status: str | None) -> list[dict[str, object]]:
     return [
         _serialize_folio(item)
         for item in await hotel_repository.list_folios(
@@ -1287,8 +1223,7 @@ async def list_folios(db: Session, *, tenant_slug: str, property_id: str | None,
     ]
 
 
-async def get_folio_detail(db: Session, *, tenant_slug: str, folio_id: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def get_folio_detail(db: Session, *, tenant_slug: str, db_name: str, folio_id: str) -> dict[str, object]:
     folio = await _folio_or_raise(db_name, tenant_id=tenant_slug, folio_id=folio_id)
     charges = await hotel_repository.list_folio_charges(db_name, folio_id=folio.id)
     payments = await hotel_repository.list_payments(db_name, folio_id=folio.id)
@@ -1298,8 +1233,7 @@ async def get_folio_detail(db: Session, *, tenant_slug: str, folio_id: str, db_n
     return _serialize_folio(folio, charges=charges, payments=payments, refunds=refunds)
 
 
-async def add_folio_charge(db: Session, *, tenant_slug: str, actor_user_id: str, folio_id: str, category: str, label: str, service_date: date, quantity: int, unit_amount_minor: int, tax_amount_minor: int, notes: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def add_folio_charge(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, folio_id: str, category: str, label: str, service_date: date, quantity: int, unit_amount_minor: int, tax_amount_minor: int, notes: str | None) -> dict[str, object]:
     folio = await _folio_or_raise(db_name, tenant_id=tenant_slug, folio_id=folio_id)
     if folio.status == "invoiced":
         raise ConflictError("Cannot add charges after the folio has been invoiced.")
@@ -1318,21 +1252,20 @@ async def add_folio_charge(db: Session, *, tenant_slug: str, actor_user_id: str,
         tax_amount_minor=tax_amount_minor,
         notes=notes,
         created_by_user_id=actor_user_id)
-    await _recalculate_folio_totals(db, folio, db_name)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.folio.charge_created",
-        subject_type="hotel_folio_charge",
-        subject_id=str(charge.id),
-        metadata={"folio_id": str(folio.id), "category": category, "gross_amount_minor": line_amount_minor + tax_amount_minor})
+    await _recalculate_folio_totals(db, folio)
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.folio.charge_created",
+        # subject_type="hotel_folio_charge",
+        # subject_id=str(charge.id),
+        # metadata={"folio_id": str(folio.id), "category": category, "gross_amount_minor": line_amount_minor + tax_amount_minor})
     db.commit()
     return await get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id, db_name=db_name)
 
 
-async def record_payment(db: Session, *, tenant_slug: str, actor_user_id: str, folio_id: str, amount_minor: int, payment_method: str, reference: str | None, notes: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def record_payment(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, folio_id: str, amount_minor: int, payment_method: str, reference: str | None, notes: str | None) -> dict[str, object]:
     folio = await _folio_or_raise(db_name, tenant_id=tenant_slug, folio_id=folio_id)
     if folio.status != "open":
         raise ConflictError("Payments can only be posted to an open folio.")
@@ -1353,21 +1286,20 @@ async def record_payment(db: Session, *, tenant_slug: str, actor_user_id: str, f
         notes=notes,
         received_at=datetime.now(tz=UTC).isoformat(),
         recorded_by_user_id=actor_user_id)
-    await _recalculate_folio_totals(db, folio, db_name)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.payment.recorded",
-        subject_type="hotel_payment",
-        subject_id=str(payment.id),
-        metadata={"folio_id": str(folio.id), "amount_minor": amount_minor, "payment_method": payment_method})
+    await _recalculate_folio_totals(db, folio)
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.payment.recorded",
+        # subject_type="hotel_payment",
+        # subject_id=str(payment.id),
+        # metadata={"folio_id": str(folio.id), "amount_minor": amount_minor, "payment_method": payment_method})
     db.commit()
     return await get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id, db_name=db_name)
 
 
-async def list_refunds(db: Session, *, tenant_slug: str, property_id: str | None, folio_id: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_refunds(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, folio_id: str | None) -> list[dict[str, object]]:
     return [
         _serialize_refund(item)
         for item in await hotel_repository.list_refunds(
@@ -1377,8 +1309,7 @@ async def list_refunds(db: Session, *, tenant_slug: str, property_id: str | None
     ]
 
 
-async def record_refund(db: Session, *, tenant_slug: str, actor_user_id: str, folio_id: str, payment_id: str, amount_minor: int, reason: str, reference: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def record_refund(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, folio_id: str, payment_id: str, amount_minor: int, reason: str, reference: str | None) -> dict[str, object]:
     folio = await _folio_or_raise(db_name, tenant_id=tenant_slug, folio_id=folio_id)
     payment = await _payment_or_raise(db_name, tenant_id=tenant_slug, payment_id=payment_id)
     if folio.status != "open":
@@ -1409,21 +1340,20 @@ async def record_refund(db: Session, *, tenant_slug: str, actor_user_id: str, fo
         status="processed",
         refunded_at=datetime.now(tz=UTC).isoformat(),
         recorded_by_user_id=actor_user_id)
-    await _recalculate_folio_totals(db, folio, db_name)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.refund.recorded",
-        subject_type="hotel_refund",
-        subject_id=str(refund.id),
-        metadata={"folio_id": str(folio.id), "payment_id": str(payment.id), "amount_minor": amount_minor})
+    await _recalculate_folio_totals(db, folio)
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.refund.recorded",
+        # subject_type="hotel_refund",
+        # subject_id=str(refund.id),
+        # metadata={"folio_id": str(folio.id), "payment_id": str(payment.id), "amount_minor": amount_minor})
     db.commit()
     return await get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id, db_name=db_name)
 
 
-async def close_folio(db: Session, *, tenant_slug: str, actor_user_id: str, folio_id: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def close_folio(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, folio_id: str) -> dict[str, object]:
     folio = await _folio_or_raise(db_name, tenant_id=tenant_slug, folio_id=folio_id)
     reservation = await _reservation_or_raise(db_name, tenant_id=tenant_slug, reservation_id=folio.reservation_id)
     await _recalculate_folio_totals(db, folio, db_name)
@@ -1435,21 +1365,19 @@ async def close_folio(db: Session, *, tenant_slug: str, actor_user_id: str, foli
 
     folio.status = "closed"
     folio.closed_at = folio.closed_at or datetime.now(tz=UTC).isoformat()
-    await folio.save()
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.folio.closed",
-        subject_type="hotel_folio",
-        subject_id=str(folio.id),
-        metadata={"reservation_id": str(folio.reservation_id)})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.folio.closed",
+        # subject_type="hotel_folio",
+        # subject_id=str(folio.id),
+        # metadata={"reservation_id": str(folio.reservation_id)})
     db.commit()
     return await get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id, db_name=db_name)
 
 
-async def issue_folio_invoice(db: Session, *, tenant_slug: str, actor_user_id: str, folio_id: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def issue_folio_invoice(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, folio_id: str) -> dict[str, object]:
     folio = await _folio_or_raise(db_name, tenant_id=tenant_slug, folio_id=folio_id)
     reservation = await _reservation_or_raise(db_name, tenant_id=tenant_slug, reservation_id=folio.reservation_id)
     await _recalculate_folio_totals(db, folio, db_name)
@@ -1463,30 +1391,27 @@ async def issue_folio_invoice(db: Session, *, tenant_slug: str, actor_user_id: s
     folio.status = "invoiced"
     folio.invoice_number = _invoice_number(folio)
     folio.invoice_issued_at = datetime.now(tz=UTC).isoformat()
-    await folio.save()
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.invoice.issued",
-        subject_type="hotel_folio",
-        subject_id=str(folio.id),
-        metadata={"invoice_number": folio.invoice_number, "reservation_id": str(folio.reservation_id)})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.invoice.issued",
+        # subject_type="hotel_folio",
+        # subject_id=str(folio.id),
+        # metadata={"invoice_number": folio.invoice_number, "reservation_id": str(folio.reservation_id)})
     _outbox_invoice(db, tenant_id=tenant_slug, folio=folio)
     db.commit()
     return await get_folio_detail(db, tenant_slug=tenant_slug, folio_id=folio_id, db_name=db_name)
 
 
-async def list_staff_members(db: Session, *, tenant_slug: str, property_id: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_staff_members(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None) -> list[dict[str, object]]:
     return [
         _serialize_staff_member(item)
         for item in await hotel_repository.list_staff_members(db_name, property_id=property_id)
     ]
 
 
-async def create_staff_member(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, staff_code: str, first_name: str, last_name: str, role: str, department: str, phone: str | None, email: str | None, employment_status: str, is_active: bool, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_staff_member(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, staff_code: str, first_name: str, last_name: str, role: str, department: str, phone: str | None, email: str | None, employment_status: str, is_active: bool) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     if await hotel_repository.find_staff_member_by_code(
         db_name,
@@ -1506,20 +1431,19 @@ async def create_staff_member(db: Session, *, tenant_slug: str, actor_user_id: s
         email=email,
         employment_status=employment_status,
         is_active=is_active)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.staff_member.created",
-        subject_type="hotel_staff_member",
-        subject_id=str(staff_member.id),
-        metadata={"property_id": str(property_id), "staff_code": staff_code, "department": department})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.staff_member.created",
+        # subject_type="hotel_staff_member",
+        # subject_id=str(staff_member.id),
+        # metadata={"property_id": str(property_id), "staff_code": staff_code, "department": department})
     db.commit()
     return _serialize_staff_member(staff_member)
 
 
-async def list_shifts(db: Session, *, tenant_slug: str, property_id: str | None, staff_member_id: str | None, shift_date: date | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_shifts(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, staff_member_id: str | None, shift_date: date | None) -> list[dict[str, object]]:
     return [
         _serialize_shift(item)
         for item in await hotel_repository.list_shifts(
@@ -1530,8 +1454,7 @@ async def list_shifts(db: Session, *, tenant_slug: str, property_id: str | None,
     ]
 
 
-async def create_shift(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, staff_member_id: str, shift_date: date, shift_kind: str, start_time: str, end_time: str, status: str, notes: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_shift(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, staff_member_id: str, shift_date: date, shift_kind: str, start_time: str, end_time: str, status: str, notes: str | None) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     staff_member = await _staff_member_or_raise(db_name, tenant_id=tenant_slug, staff_member_id=staff_member_id)
     if staff_member.property_id != property_id:
@@ -1547,20 +1470,19 @@ async def create_shift(db: Session, *, tenant_slug: str, actor_user_id: str, pro
         end_time=end_time,
         status=status,
         notes=notes)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.shift.created",
-        subject_type="hotel_shift",
-        subject_id=str(shift.id),
-        metadata={"property_id": str(property_id), "staff_member_id": str(staff_member_id), "shift_kind": shift_kind})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.shift.created",
+        # subject_type="hotel_shift",
+        # subject_id=str(shift.id),
+        # metadata={"property_id": str(property_id), "staff_member_id": str(staff_member_id), "shift_kind": shift_kind})
     db.commit()
     return _serialize_shift(shift)
 
 
-async def list_night_audits(db: Session, *, tenant_slug: str, property_id: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_night_audits(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None) -> list[dict[str, object]]:
     return [
         _serialize_night_audit(item)
         for item in await hotel_repository.list_night_audits(
@@ -1569,8 +1491,7 @@ async def list_night_audits(db: Session, *, tenant_slug: str, property_id: str |
     ]
 
 
-async def run_night_audit(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, audit_date: date, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def run_night_audit(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, audit_date: date) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     if await hotel_repository.find_night_audit_by_date(
         db_name,
@@ -1623,28 +1544,27 @@ async def run_night_audit(db: Session, *, tenant_slug: str, actor_user_id: str, 
     }
     audit_status = "attention_required" if due_departure_blockers or open_balance_folios else "completed"
 
-    audit = await hotel_repository.create_night_audit(
-        db_name,
-        property_id=property_id,
-        audit_date=audit_date,
-        status=audit_status,
-        report_json=report,
-        completed_at=datetime.now(tz=UTC).isoformat(),
-        completed_by_user_id=actor_user_id)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.night_audit.completed",
-        subject_type="hotel_night_audit",
-        subject_id=str(audit.id),
-        metadata={"property_id": str(property_id), "audit_date": audit_date.isoformat(), "status": audit_status})
+    # audit = hotel_repository.create_night_audit(
+        # db,
+        # property_id=property_id,
+        # audit_date=audit_date,
+        # status=audit_status,
+        # report_json=report,
+        # completed_at=datetime.now(tz=UTC).isoformat(),
+        # completed_by_user_id=actor_user_id)
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.night_audit.completed",
+        # subject_type="hotel_night_audit",
+        # subject_id=str(audit.id),
+        # metadata={"property_id": str(property_id), "audit_date": audit_date.isoformat(), "status": audit_status})
     db.commit()
     return _serialize_night_audit(audit)
 
 
-async def assign_reservation_room(db: Session, *, tenant_slug: str, actor_user_id: str, reservation_id: str, room_id: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def assign_reservation_room(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, reservation_id: str, room_id: str) -> dict[str, object]:
     reservation = await _reservation_or_raise(db_name, tenant_id=tenant_slug, reservation_id=reservation_id)
     if reservation.status not in {"pending", "reserved"}:
         raise ConflictError("Only pending or reserved bookings can receive a room assignment.")
@@ -1663,22 +1583,20 @@ async def assign_reservation_room(db: Session, *, tenant_slug: str, actor_user_i
         raise ConflictError("Assigned room has an overlapping active reservation.")
 
     reservation.room_id = room_id
-    await reservation.save()
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.reservation.room_assigned",
-        subject_type="hotel_reservation",
-        subject_id=str(reservation.id),
-        metadata={"room_id": str(room_id)})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.reservation.room_assigned",
+        # subject_type="hotel_reservation",
+        # subject_id=str(reservation.id),
+        # metadata={"room_id": str(room_id)})
     _outbox_reservation(db, tenant_id=tenant_slug, reservation=reservation, event_status=reservation.status)
     db.commit()
     return _serialize_reservation(reservation)
 
 
-async def update_reservation_status(db: Session, *, tenant_slug: str, actor_user_id: str, reservation_id: str, status: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def update_reservation_status(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, reservation_id: str, status: str) -> dict[str, object]:
     reservation = await _reservation_or_raise(db_name, tenant_id=tenant_slug, reservation_id=reservation_id)
     room = await _room_or_raise(db_name, tenant_id=tenant_slug, room_id=reservation.room_id) if reservation.room_id else None
     stay = await hotel_repository.find_stay_by_reservation(db_name, reservation_id=reservation.id)
@@ -1752,26 +1670,20 @@ async def update_reservation_status(db: Session, *, tenant_slug: str, actor_user
     else:
         raise ConflictError(f"Reservation status '{status}' is not supported.")
 
-    await reservation.save()
-    if room is not None:
-        await room.save()
-    if stay is not None:
-        await stay.save()
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.reservation.updated",
-        subject_type="hotel_reservation",
-        subject_id=str(reservation.id),
-        metadata={"status": reservation.status, "room_id": str(room.id) if room else None})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.reservation.updated",
+        # subject_type="hotel_reservation",
+        # subject_id=str(reservation.id),
+        # metadata={"status": reservation.status, "room_id": str(room.id) if room else None})
     _outbox_reservation(db, tenant_id=tenant_slug, reservation=reservation, event_status=reservation.status)
     db.commit()
     return _serialize_reservation(reservation)
 
 
-async def list_housekeeping_tasks(db: Session, *, tenant_slug: str, property_id: str | None, status: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_housekeeping_tasks(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, status: str | None) -> list[dict[str, object]]:
     return [
         _serialize_housekeeping_task(item)
         for item in await hotel_repository.list_housekeeping_tasks(
@@ -1781,8 +1693,7 @@ async def list_housekeeping_tasks(db: Session, *, tenant_slug: str, property_id:
     ]
 
 
-async def create_housekeeping_task(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, room_id: str, priority: str, notes: str | None, assigned_staff_id: str | None, assigned_to: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_housekeeping_task(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, room_id: str, priority: str, notes: str | None, assigned_staff_id: str | None, assigned_to: str | None) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     room = await _room_or_raise(db_name, tenant_id=tenant_slug, room_id=room_id)
     if room.property_id != property_id:
@@ -1804,21 +1715,20 @@ async def create_housekeeping_task(db: Session, *, tenant_slug: str, actor_user_
         notes=notes,
         assigned_staff_id=assigned_staff_id,
         assigned_to=resolved_assigned_to)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.housekeeping.created",
-        subject_type="hotel_housekeeping_task",
-        subject_id=str(task.id),
-        metadata={"room_id": str(room_id), "priority": priority, "assigned_staff_id": str(assigned_staff_id) if assigned_staff_id else None})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.housekeeping.created",
+        # subject_type="hotel_housekeeping_task",
+        # subject_id=str(task.id),
+        # metadata={"room_id": str(room_id), "priority": priority, "assigned_staff_id": str(assigned_staff_id) if assigned_staff_id else None})
     db.commit()
     return _serialize_housekeeping_task(task)
 
 
-async def update_housekeeping_status(db: Session, *, tenant_slug: str, actor_user_id: str, task_id: str, status: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
-    task = await _housekeeping_or_raise(db_name, tenant_id=tenant_slug, task_id=task_id)
+async def update_housekeeping_status(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, task_id: str, status: str) -> dict[str, object]:
+    task = _housekeeping_or_raise(db, tenant_id=tenant_slug, task_id=task_id)
     room = await _room_or_raise(db_name, tenant_id=tenant_slug, room_id=task.room_id)
     task.status = status
 
@@ -1830,22 +1740,19 @@ async def update_housekeeping_status(db: Session, *, tenant_slug: str, actor_use
     elif status == "in_progress" and room.housekeeping_status == "clean":
         _set_room_state(room, housekeeping_status="dirty")
 
-    await task.save()
-    await room.save()
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.housekeeping.updated",
-        subject_type="hotel_housekeeping_task",
-        subject_id=str(task.id),
-        metadata={"status": status, "room_id": str(room.id)})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.housekeeping.updated",
+        # subject_type="hotel_housekeeping_task",
+        # subject_id=str(task.id),
+        # metadata={"status": status, "room_id": str(room.id)})
     db.commit()
     return _serialize_housekeeping_task(task)
 
 
-async def list_maintenance_tickets(db: Session, *, tenant_slug: str, property_id: str | None, status: str | None, db_name: str | None = None) -> list[dict[str, object]]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def list_maintenance_tickets(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, status: str | None) -> list[dict[str, object]]:
     return [
         _serialize_maintenance_ticket(item)
         for item in await hotel_repository.list_maintenance_tickets(
@@ -1855,8 +1762,7 @@ async def list_maintenance_tickets(db: Session, *, tenant_slug: str, property_id
     ]
 
 
-async def create_maintenance_ticket(db: Session, *, tenant_slug: str, actor_user_id: str, property_id: str, room_id: str | None, title: str, description: str | None, priority: str, assigned_staff_id: str | None, assigned_to: str | None, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def create_maintenance_ticket(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, room_id: str | None, title: str, description: str | None, priority: str, assigned_staff_id: str | None, assigned_to: str | None) -> dict[str, object]:
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
 
     room = None
@@ -1884,21 +1790,20 @@ async def create_maintenance_ticket(db: Session, *, tenant_slug: str, actor_user
         priority=priority,
         assigned_staff_id=assigned_staff_id,
         assigned_to=resolved_assigned_to)
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.maintenance.created",
-        subject_type="hotel_maintenance_ticket",
-        subject_id=str(ticket.id),
-        metadata={"room_id": str(room_id) if room_id else None, "priority": priority, "assigned_staff_id": str(assigned_staff_id) if assigned_staff_id else None})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.maintenance.created",
+        # subject_type="hotel_maintenance_ticket",
+        # subject_id=str(ticket.id),
+        # metadata={"room_id": str(room_id) if room_id else None, "priority": priority, "assigned_staff_id": str(assigned_staff_id) if assigned_staff_id else None})
     db.commit()
     return _serialize_maintenance_ticket(ticket)
 
 
-async def update_maintenance_status(db: Session, *, tenant_slug: str, actor_user_id: str, ticket_id: str, status: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
-    ticket = await _maintenance_or_raise(db_name, tenant_id=tenant_slug, ticket_id=ticket_id)
+async def update_maintenance_status(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, ticket_id: str, status: str) -> dict[str, object]:
+    ticket = _maintenance_or_raise(db, tenant_id=tenant_slug, ticket_id=ticket_id)
     ticket.status = status
 
     if ticket.room_id and status == "resolved":
@@ -1911,21 +1816,20 @@ async def update_maintenance_status(db: Session, *, tenant_slug: str, actor_user
             _set_room_state(room, sell_status="sellable")
             await room.save()
 
-    await ticket.save()
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.maintenance.updated",
-        subject_type="hotel_maintenance_ticket",
-        subject_id=str(ticket.id),
-        metadata={"status": status, "room_id": str(ticket.room_id) if ticket.room_id else None})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.maintenance.updated",
+        # subject_type="hotel_maintenance_ticket",
+        # subject_id=str(ticket.id),
+        # metadata={"status": status, "room_id": str(ticket.room_id) if ticket.room_id else None})
     db.commit()
     return _serialize_maintenance_ticket(ticket)
 
 
-async def get_property_profile(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, property_id: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def get_property_profile(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, property_id: str) -> dict[str, object]:
+    db_name = tenant.mongo_db_name
     property_model = await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_PROFILE_COLLECTION,
@@ -1946,8 +1850,8 @@ async def get_property_profile(db: Session, store: RuntimeDocumentStore, *, tena
     return document["payload"]
 
 
-async def upsert_property_profile(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, actor_user_id: str, property_id: str, payload: dict[str, object], db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def upsert_property_profile(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, payload: dict[str, object]) -> dict[str, object]:
+    db_name = tenant.mongo_db_name
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     profile_payload = {
         "property_id": property_id,
@@ -1961,14 +1865,14 @@ async def upsert_property_profile(db: Session, store: RuntimeDocumentStore, *, t
         payload=profile_payload,
         database_name=db_name
     )
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.property_profile.updated",
-        subject_type="hotel_property_profile",
-        subject_id=str(property_id),
-        metadata={"property_id": str(property_id)})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.property_profile.updated",
+        # subject_type="hotel_property_profile",
+        # subject_id=str(property_id),
+        # metadata={"property_id": str(property_id)})
     platform_repository.enqueue_outbox_event(
         db,
         tenant_id=tenant_slug,
@@ -1979,8 +1883,8 @@ async def upsert_property_profile(db: Session, store: RuntimeDocumentStore, *, t
     return profile_payload
 
 
-async def get_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, property_id: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def get_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, property_id: str) -> dict[str, object]:
+    db_name = tenant.mongo_db_name
     property_model = await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_AMENITY_COLLECTION,
@@ -2001,8 +1905,8 @@ async def get_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, tenan
     return document["payload"]
 
 
-async def upsert_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, actor_user_id: str, property_id: str, payload: dict[str, object], db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def upsert_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, payload: dict[str, object]) -> dict[str, object]:
+    db_name = tenant.mongo_db_name
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     amenity_payload = {
         "property_id": property_id,
@@ -2016,20 +1920,20 @@ async def upsert_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, te
         payload=amenity_payload,
         database_name=db_name
     )
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.amenity_catalog.updated",
-        subject_type="hotel_amenity_catalog",
-        subject_id=str(property_id),
-        metadata={"property_id": str(property_id), "category_count": len(amenity_payload.get("categories", []))})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.amenity_catalog.updated",
+        # subject_type="hotel_amenity_catalog",
+        # subject_id=str(property_id),
+        # metadata={"property_id": str(property_id), "category_count": len(amenity_payload.get("categories", []))})
     db.commit()
     return amenity_payload
 
 
-async def get_nearby_places(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, property_id: str, db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def get_nearby_places(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, property_id: str) -> dict[str, object]:
+    db_name = tenant.mongo_db_name
     property_model = await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_NEARBY_COLLECTION,
@@ -2050,8 +1954,8 @@ async def get_nearby_places(db: Session, store: RuntimeDocumentStore, *, tenant_
     return document["payload"]
 
 
-async def upsert_nearby_places(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, actor_user_id: str, property_id: str, payload: dict[str, object], db_name: str | None = None) -> dict[str, object]:
-    db_name = await _db_name(tenant_slug, db_name)
+async def upsert_nearby_places(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, payload: dict[str, object]) -> dict[str, object]:
+    db_name = tenant.mongo_db_name
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     nearby_payload = {
         "property_id": property_id,
@@ -2065,23 +1969,21 @@ async def upsert_nearby_places(db: Session, store: RuntimeDocumentStore, *, tena
         payload=nearby_payload,
         database_name=db_name
     )
-    _audit(
-        db,
-        tenant_id=tenant_slug,
-        actor_user_id=actor_user_id,
-        action="hotel.nearby_places.updated",
-        subject_type="hotel_nearby_places",
-        subject_id=str(property_id),
-        metadata={"property_id": str(property_id), "place_count": len(nearby_payload.get("places", []))})
+    # _audit(
+        # db,
+        # tenant_id=tenant_slug,
+        # actor_user_id=actor_user_id,
+        # action="hotel.nearby_places.updated",
+        # subject_type="hotel_nearby_places",
+        # subject_id=str(property_id),
+        # metadata={"property_id": str(property_id), "place_count": len(nearby_payload.get("places", []))})
     db.commit()
     return nearby_payload
 
 
-async def get_report_summary(db: Session, *, tenant_slug: str, property_id: str | None, from_date: date, to_date: date, db_name: str | None = None) -> dict[str, object]:
+async def get_report_summary(db: Session, *, tenant_slug: str, db_name: str, property_id: str | None, from_date: date, to_date: date) -> dict[str, object]:
     if from_date > to_date:
         raise ConflictError("Report start date cannot be later than end date.")
-
-    db_name = await _db_name(tenant_slug, db_name)
     rooms = await hotel_repository.list_rooms(db_name, property_id=property_id)
     reservations = await hotel_repository.list_reservations(db_name, property_id=property_id)
     stays = await hotel_repository.list_stays(db_name, property_id=property_id)

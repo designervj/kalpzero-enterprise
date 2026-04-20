@@ -55,6 +55,7 @@ PERMISSION_REGISTRY: dict[str, str] = {
 
 ROLE_GRANTS: dict[str, set[str]] = {
     "platform_admin": set(PERMISSION_REGISTRY.keys()),
+    "platform_owner": set(PERMISSION_REGISTRY.keys()),
     "tenant_admin": {
         "platform.registry.read",
         "platform.audit.read",

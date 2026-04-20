@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.core.authz import require_permission
 from app.core.security import SessionContext
 from app.db.session import get_db_session
 from app.schemas.requests import (
-    CreateCommerceAttributeRequest,
     CreateCommerceAttributeSetRequest,
+    UpdateCommerceAttributeSetRequest,
     CreateCommerceBrandRequest,
     CreateCommerceCouponRequest,
     CreateCommerceCollectionRequest,
@@ -26,18 +26,23 @@ from app.schemas.requests import (
     CommerceSettlementStatusRequest,
     CommerceShipmentStatusRequest,
     CreateCommerceCategoryRequest,
+    UpdateCommerceCategoryRequest,
     CreateCommerceOrderRequest,
     CreateCommerceProductRequest,
+    UpdateCommerceProductRequest,
     CreateCommerceVendorRequest,
 )
 from app.services.commerce import (
     adjust_stock,
-    create_attribute,
     create_attribute_set,
+    update_attribute_set,
+    delete_attribute_set,
     create_brand,
     create_category,
     create_coupon,
     create_collection,
+    update_product,
+    delete_product,
     create_fulfillment,
     create_order,
     create_return,
@@ -61,7 +66,6 @@ from app.services.commerce import (
     create_tax_profile,
     create_vendor,
     get_overview,
-    list_attributes,
     list_attribute_sets,
     list_brands,
     list_categories,
@@ -81,6 +85,9 @@ from app.services.commerce import (
     update_return_status,
     update_settlement_status,
     update_shipment_status,
+    update_category,
+    delete_category,
+    get_product_detail,
 )
 from app.services.errors import ConflictError, NotFoundError, ValidationError
 
@@ -114,7 +121,8 @@ async def commerce_categories(
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "categories": await list_categories(db, tenant_slug=session.tenant_id, db_name=session.tenant_db_name)}
+        return {"message": "Categories fetched successfully", "data": await list_categories(db, tenant_slug=session.tenant_id, db_name=session.tenant_db_name)
+        , "tenant_id": session.tenant_id}
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -131,9 +139,50 @@ async def commerce_categories_create(
             tenant_slug=session.tenant_id,
             name=payload.name,
             slug=payload.slug,
+            type=payload.type,
+            parentId=payload.parentId,
             description=payload.description,
-            parent_category_id=payload.parent_category_id,
+            pageStatus=payload.pageStatus,
+            bannerImageUrl=payload.bannerImageUrl,
+            metaTitle=payload.metaTitle,
+            metaDescription=payload.metaDescription,
             db_name=session.tenant_db_name
+        )
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.put("/categories/{category_id}")
+async def commerce_categories_update(
+    category_id: str,
+    payload: UpdateCommerceCategoryRequest,
+    session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        return await update_category(
+            db,
+            db_name=session.tenant_db_name,
+            tenant_slug=session.tenant_id,
+            category_id=category_id,
+            **payload.model_dump(exclude_unset=True)
+        )
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def commerce_categories_delete(
+    category_id: str,
+    session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        await delete_category(
+            db,
+            db_name=session.tenant_db_name,
+            tenant_slug=session.tenant_id,
+            category_id=category_id
         )
     except Exception as exc:
         _raise_http_error(exc)
@@ -439,44 +488,6 @@ async def commerce_coupons_create(
         _raise_http_error(exc)
 
 
-@router.get("/attributes")
-async def commerce_attributes(
-    session: SessionContext = Depends(require_permission("commerce.catalog.read")),
-    db: Session = Depends(get_db_session),
-):
-    try:
-        return {"tenant_id": session.tenant_id, "attributes": await list_attributes(db, tenant_slug=session.tenant_id, db_name=session.tenant_db_name)}
-    except Exception as exc:
-        _raise_http_error(exc)
-
-
-@router.post("/attributes", status_code=status.HTTP_201_CREATED)
-async def commerce_attributes_create(
-    payload: CreateCommerceAttributeRequest,
-    session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
-    db: Session = Depends(get_db_session),
-):
-    try:
-        return await create_attribute(
-            db,
-            tenant_slug=session.tenant_id, db_name=session.tenant_db_name,
-            actor_user_id=session.user_id,
-            code=payload.code,
-            slug=payload.slug,
-            label=payload.label,
-            description=payload.description,
-            value_type=payload.value_type,
-            scope=payload.scope,
-            options=[option.model_dump() for option in payload.options],
-            unit_label=payload.unit_label,
-            is_required=payload.is_required,
-            is_filterable=payload.is_filterable,
-            is_variation_axis=payload.is_variation_axis,
-            vertical_bindings=payload.vertical_bindings,
-            status=payload.status,
-        )
-    except Exception as exc:
-        _raise_http_error(exc)
 
 
 @router.get("/attribute-sets")
@@ -487,7 +498,8 @@ async def commerce_attribute_sets(
     try:
         return {
             "tenant_id": session.tenant_id,
-            "attribute_sets": await list_attribute_sets(db, tenant_slug=session.tenant_id, db_name=session.tenant_db_name),
+            "message": "Attribute sets fetched successfully",
+            "data": await list_attribute_sets(db, tenant_slug=session.tenant_id, db_name=session.tenant_db_name),
         }
     except Exception as exc:
         _raise_http_error(exc)
@@ -500,57 +512,217 @@ async def commerce_attribute_sets_create(
     db: Session = Depends(get_db_session),
 ):
     try:
-        return await create_attribute_set(
+        data = await create_attribute_set(
             db,
             tenant_slug=session.tenant_id, db_name=session.tenant_db_name,
             actor_user_id=session.user_id,
             name=payload.name,
-            slug=payload.slug,
+            key=payload.key,
+            appliesTo=payload.appliesTo,
             description=payload.description,
-            attribute_ids=payload.attribute_ids,
+            attributes=[attr.model_dump() for attr in payload.attributes] if payload.attributes else [],
             vertical_bindings=payload.vertical_bindings,
-            status=payload.status,
         )
+        return {
+            "tenant_id": session.tenant_id,
+            "message": "Attribute set created successfully",
+            "data": data,
+        }
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.put("/attribute-sets/{attribute_set_id}")
+async def commerce_attribute_sets_update(
+    attribute_set_id: str,
+    payload: UpdateCommerceAttributeSetRequest,
+    session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        updates = payload.model_dump(exclude_unset=True)
+        if "attributes" in updates and updates["attributes"] is not None:
+            updates["attributes"] = [attr for attr in updates["attributes"]] 
+        data = await update_attribute_set(
+            db,
+            db_name=session.tenant_db_name,
+            tenant_slug=session.tenant_id,
+            actor_user_id=session.user_id,
+            attribute_set_id=attribute_set_id,
+            **updates
+        )
+        return {
+            "tenant_id": session.tenant_id,
+            "message": "Attribute set updated successfully",
+            "data": data,
+        }
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.delete("/attribute-sets/{attribute_set_id}", status_code=status.HTTP_200_OK)
+async def commerce_attribute_sets_delete(
+    attribute_set_id: str,
+    session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        await delete_attribute_set(
+            db,
+            db_name=session.tenant_db_name,
+            tenant_slug=session.tenant_id,
+            actor_user_id=session.user_id,
+            attribute_set_id=attribute_set_id
+        )
+        return {
+            "tenant_id": session.tenant_id,
+            "data": attribute_set_id,
+            "message": "Attribute set deleted successfully",
+        }
     except Exception as exc:
         _raise_http_error(exc)
 
 
 @router.get("/products")
 async def commerce_products(
+    request: Request,
+    search: str | None = None,
+    category: str | None = None,
+    status: str | None = None,
+    type: str | None = None,
+    page: int = 1,
+    perPage: int = 12,
     session: SessionContext = Depends(require_permission("commerce.catalog.read")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"tenant_id": session.tenant_id, "products": await list_products(db, tenant_slug=session.tenant_id, db_name=session.tenant_db_name)}
+        # Parse f_ prefixed filters
+        variant_filters = []
+        for key, value in request.query_params.items():
+            if key.startswith("f_"):
+                actual_key = key[2:]
+                variant_filters.append({
+                    "options": {
+                        "$elemMatch": {
+                            "key": actual_key,
+                            "selectedValues": {"$in": value.split(",")}
+                        }
+                    }
+                })
+
+        data = await list_products(
+            db,
+            tenant_slug=session.tenant_id,
+            db_name=session.tenant_db_name,
+            search=search,
+            category=category,
+            status=status,
+            product_type=type,
+            variant_filters=variant_filters if variant_filters else None,
+            page=page,
+            per_page=perPage
+        )
+        return {
+            "tenant_id": session.tenant_id,
+            "message": "Products fetched successfully",
+            "data": data["data"],
+            "totalProducts": data["total"],
+            "filters": data["filters"]
+        }
     except Exception as exc:
         _raise_http_error(exc)
 
 
-@router.post("/products", status_code=status.HTTP_201_CREATED)
+@router.get("/products/{product_id}")
+async def commerce_product_detail(
+    product_id: str,
+    session: SessionContext = Depends(require_permission("commerce.catalog.read")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        data = await get_product_detail(
+            db,
+            db_name=session.tenant_db_name,
+            product_id=product_id
+        )
+        return {
+            "tenant_id": session.tenant_id,
+            "message": "Product detail fetched successfully",
+            "data": data
+        }
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
 async def commerce_products_create(
     payload: CreateCommerceProductRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
     db: Session = Depends(get_db_session),
 ):
     try:
-        return await create_product(
+        data = await create_product(
             db,
-            tenant_slug=session.tenant_id, db_name=session.tenant_db_name,
+            tenant_slug=session.tenant_id,
+            db_name=session.tenant_db_name,
             actor_user_id=session.user_id,
-            name=payload.name,
-            slug=payload.slug,
-            description=payload.description,
-            brand_id=payload.brand_id,
-            vendor_id=payload.vendor_id,
-            collection_ids=payload.collection_ids,
-            attribute_set_id=payload.attribute_set_id,
-            category_ids=payload.category_ids,
-            seo_title=payload.seo_title,
-            seo_description=payload.seo_description,
-            status=payload.status,
-            product_attributes=[attribute.model_dump() for attribute in payload.product_attributes],
-            variants=[variant.model_dump() for variant in payload.variants],
+            payload=payload.model_dump()
         )
+        return {
+            "tenant_id": session.tenant_id,
+            "message": "Product created successfully",
+            "data": data
+        }
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.put("/products/{product_id}")
+async def commerce_products_update(
+    product_id: str,
+    payload: UpdateCommerceProductRequest,
+    session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        data = await update_product(
+            db,
+            tenant_slug=session.tenant_id,
+            db_name=session.tenant_db_name,
+            actor_user_id=session.user_id,
+            product_id=product_id,
+            payload=payload.model_dump(exclude_unset=True)
+        )
+        return {
+            "tenant_id": session.tenant_id,
+            "message": "Product updated successfully",
+            "data": data
+        }
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.delete("/products/{product_id}")
+async def commerce_products_delete(
+    product_id: str,
+    session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
+    db: Session = Depends(get_db_session),
+):
+    try:
+        success = await delete_product(
+            db,
+            tenant_slug=session.tenant_id,
+            db_name=session.tenant_db_name,
+            actor_user_id=session.user_id,
+            product_id=product_id
+        )
+        if not success:
+            raise NotFoundError(f"Product '{product_id}' was not found.")
+            
+        return {
+            "tenant_id": session.tenant_id,
+            "success": True,
+            "message": "Product deleted"
+        }
     except Exception as exc:
         _raise_http_error(exc)
 

@@ -1,13 +1,16 @@
-from datetime import datetime
-from uuid import uuid4
-from beanie import Document
-from pydantic import Field
+from datetime import datetime, UTC
+from pydantic import BaseModel, Field, ConfigDict
 
 
-class TimestampDocument(Document):
-    id: str = Field(default_factory=lambda: uuid4().hex, alias="_id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+class TimestampDocument(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
 
-    class Settings:
-        use_revision = True
+    id: str = Field(..., validation_alias="id")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        alias="createdAt"
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        alias="updatedAt"
+    )

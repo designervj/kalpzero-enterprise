@@ -3,7 +3,6 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from app.core.config import Settings, get_settings
 from app.core.security import SessionContext, create_access_token, get_current_session
 from app.db.models import TenantModel, UserModel
@@ -22,6 +21,7 @@ from app.services.auth import (
     create_customer,
     create_user,
 )
+from app.db.models import UserModel
 
 router = APIRouter()
 

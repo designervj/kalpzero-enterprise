@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Any, Optional
-from beanie import Document, Indexed
 from pydantic import Field
 
 from app.models.base import TimestampDocument
@@ -8,9 +7,14 @@ from app.models.base import TimestampDocument
 
 class CommerceCategory(TimestampDocument):
     name: str
-    slug: Indexed(str)
-    description: Optional[str] = None
-    parent_category_id: Optional[str] = None
+    slug: str
+    type: str
+    parentId: Optional[str] = None
+    description: str = ""
+    pageStatus: str = "published"
+    bannerImageUrl: Optional[str] = ""
+    metaTitle: Optional[str] = ""
+    metaDescription: Optional[str] = ""
 
     class Settings:
         name = "commerce_categories"
@@ -18,8 +22,8 @@ class CommerceCategory(TimestampDocument):
 
 class CommerceBrand(TimestampDocument):
     name: str
-    slug: Indexed(str)
-    code: Indexed(str)
+    slug: str
+    code: str
     description: Optional[str] = None
     status: str = "active"
 
@@ -29,8 +33,8 @@ class CommerceBrand(TimestampDocument):
 
 class CommerceVendor(TimestampDocument):
     name: str
-    slug: Indexed(str)
-    code: Indexed(str)
+    slug: str
+    code: str
     description: Optional[str] = None
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None
@@ -43,7 +47,7 @@ class CommerceVendor(TimestampDocument):
 
 class CommerceCollection(TimestampDocument):
     name: str
-    slug: Indexed(str)
+    slug: str
     description: Optional[str] = None
     status: str = "active"
     sort_order: int = 0
@@ -52,28 +56,10 @@ class CommerceCollection(TimestampDocument):
         name = "commerce_collections"
 
 
-class CommerceAttribute(TimestampDocument):
-    code: Indexed(str)
-    slug: Indexed(str)
-    label: str
-    description: Optional[str] = None
-    value_type: str
-    scope: str = "product"
-    options: list[dict[str, Any]] = []
-    unit_label: Optional[str] = None
-    is_required: bool = False
-    is_filterable: bool = False
-    is_variation_axis: bool = False
-    vertical_bindings: list[str] = []
-    status: str = "active"
-
-    class Settings:
-        name = "commerce_attributes"
-
 
 class CommerceAttributeSet(TimestampDocument):
     name: str
-    slug: Indexed(str)
+    slug: str
     description: Optional[str] = None
     attribute_ids: list[str] = []
     vertical_bindings: list[str] = []
@@ -85,7 +71,7 @@ class CommerceAttributeSet(TimestampDocument):
 
 class CommerceProduct(TimestampDocument):
     name: str
-    slug: Indexed(str)
+    slug: str
     description: Optional[str] = None
     brand_id: Optional[str] = None
     vendor_id: Optional[str] = None
@@ -101,8 +87,8 @@ class CommerceProduct(TimestampDocument):
 
 
 class CommerceVariant(TimestampDocument):
-    product_id: Indexed(str)
-    sku: Indexed(str)
+    product_id: str
+    sku: str
     label: str
     price_minor: int
     currency: str = "INR"
@@ -114,8 +100,8 @@ class CommerceVariant(TimestampDocument):
 
 class CommerceWarehouse(TimestampDocument):
     name: str
-    slug: Indexed(str)
-    code: Indexed(str)
+    slug: str
+    code: str
     city: Optional[str] = None
     country: Optional[str] = None
     status: str = "active"
@@ -126,8 +112,8 @@ class CommerceWarehouse(TimestampDocument):
 
 
 class CommerceWarehouseStock(TimestampDocument):
-    warehouse_id: Indexed(str)
-    variant_id: Indexed(str)
+    warehouse_id: str
+    variant_id: str
     on_hand_quantity: int = 0
     reserved_quantity: int = 0
     low_stock_threshold: int = 0
@@ -136,27 +122,11 @@ class CommerceWarehouseStock(TimestampDocument):
         name = "commerce_warehouse_stocks"
 
 
-class CommerceProductAttributeValue(TimestampDocument):
-    product_id: Indexed(str)
-    attribute_id: Indexed(str)
-    value: Any
-
-    class Settings:
-        name = "commerce_product_attribute_values"
-
-
-class CommerceVariantAttributeValue(TimestampDocument):
-    variant_id: Indexed(str)
-    attribute_id: Indexed(str)
-    value: Any
-
-    class Settings:
-        name = "commerce_variant_attribute_values"
 
 
 class CommerceStockLedgerEntry(TimestampDocument):
-    warehouse_id: Indexed(str)
-    variant_id: Indexed(str)
+    warehouse_id: str
+    variant_id: str
     entry_type: str
     quantity_delta: int
     balance_after: int
@@ -172,7 +142,7 @@ class CommerceStockLedgerEntry(TimestampDocument):
 
 class CommerceTaxProfile(TimestampDocument):
     name: str
-    code: Indexed(str)
+    code: str
     description: Optional[str] = None
     prices_include_tax: bool = False
     rules: list[dict[str, Any]] = []
@@ -184,7 +154,7 @@ class CommerceTaxProfile(TimestampDocument):
 
 class CommercePriceList(TimestampDocument):
     name: str
-    slug: Indexed(str)
+    slug: str
     currency: str = "INR"
     customer_segment: Optional[str] = None
     description: Optional[str] = None
@@ -195,8 +165,8 @@ class CommercePriceList(TimestampDocument):
 
 
 class CommercePriceListItem(TimestampDocument):
-    price_list_id: Indexed(str)
-    variant_id: Indexed(str)
+    price_list_id: str
+    variant_id: str
     price_minor: int
 
     class Settings:
@@ -204,7 +174,7 @@ class CommercePriceListItem(TimestampDocument):
 
 
 class CommerceCoupon(TimestampDocument):
-    code: Indexed(str)
+    code: str
     description: Optional[str] = None
     discount_type: str
     discount_value: int
@@ -219,7 +189,7 @@ class CommerceCoupon(TimestampDocument):
 
 
 class CommerceOrder(TimestampDocument):
-    customer_id: Indexed(str)
+    customer_id: str
     price_list_id: Optional[str] = None
     tax_profile_id: Optional[str] = None
     coupon_code: Optional[str] = None
@@ -243,9 +213,9 @@ class CommerceOrder(TimestampDocument):
 
 
 class CommerceOrderLine(TimestampDocument):
-    order_id: Indexed(str)
-    product_id: Indexed(str)
-    variant_id: Indexed(str)
+    order_id: str
+    product_id: str
+    variant_id: str
     allocated_warehouse_id: Optional[str] = None
     quantity: int
     fulfilled_quantity: int = 0
@@ -257,9 +227,9 @@ class CommerceOrderLine(TimestampDocument):
 
 
 class CommerceFulfillment(TimestampDocument):
-    order_id: Indexed(str)
+    order_id: str
     warehouse_id: Optional[str] = None
-    fulfillment_number: Indexed(str)
+    fulfillment_number: str
     status: str = "pending_pick"
     created_by_user_id: str
     packed_at: Optional[str] = None
@@ -271,9 +241,9 @@ class CommerceFulfillment(TimestampDocument):
 
 
 class CommerceFulfillmentLine(TimestampDocument):
-    fulfillment_id: Indexed(str)
-    order_line_id: Indexed(str)
-    variant_id: Indexed(str)
+    fulfillment_id: str
+    order_line_id: str
+    variant_id: str
     quantity: int
 
     class Settings:
@@ -281,10 +251,10 @@ class CommerceFulfillmentLine(TimestampDocument):
 
 
 class CommerceShipment(TimestampDocument):
-    fulfillment_id: Indexed(str)
+    fulfillment_id: str
     carrier: str
     service_level: Optional[str] = None
-    tracking_number: Indexed(str)
+    tracking_number: str
     status: str = "shipped"
     shipped_at: Optional[str] = None
     delivered_at: Optional[str] = None
@@ -295,7 +265,7 @@ class CommerceShipment(TimestampDocument):
 
 
 class CommercePayment(TimestampDocument):
-    order_id: Indexed(str)
+    order_id: str
     amount_minor: int
     currency: str = "INR"
     provider: Optional[str] = None
@@ -311,8 +281,8 @@ class CommercePayment(TimestampDocument):
 
 
 class CommerceRefund(TimestampDocument):
-    order_id: Indexed(str)
-    payment_id: Indexed(str)
+    order_id: str
+    payment_id: str
     amount_minor: int
     currency: str = "INR"
     reason: str
@@ -326,9 +296,9 @@ class CommerceRefund(TimestampDocument):
 
 
 class CommerceInvoice(TimestampDocument):
-    order_id: Indexed(str)
-    customer_id: Indexed(str)
-    invoice_number: Indexed(str)
+    order_id: str
+    customer_id: str
+    invoice_number: str
     status: str = "issued"
     currency: str = "INR"
     subtotal_minor: int = 0
@@ -343,8 +313,8 @@ class CommerceInvoice(TimestampDocument):
 
 
 class CommerceReturn(TimestampDocument):
-    order_id: Indexed(str)
-    return_number: Indexed(str)
+    order_id: str
+    return_number: str
     status: str = "requested"
     reason_summary: Optional[str] = None
     notes: Optional[str] = None
@@ -361,9 +331,9 @@ class CommerceReturn(TimestampDocument):
 
 
 class CommerceReturnLine(TimestampDocument):
-    return_id: Indexed(str)
-    order_line_id: Indexed(str)
-    variant_id: Indexed(str)
+    return_id: str
+    order_line_id: str
+    variant_id: str
     quantity: int
     resolution_type: str
     replacement_variant_id: Optional[str] = None
@@ -376,7 +346,7 @@ class CommerceReturnLine(TimestampDocument):
 
 
 class CommerceSettlement(TimestampDocument):
-    settlement_number: Indexed(str)
+    settlement_number: str
     provider: str
     settlement_reference: Optional[str] = None
     currency: str = "INR"
@@ -398,7 +368,7 @@ class CommerceSettlement(TimestampDocument):
 
 
 class CommerceSettlementEntry(TimestampDocument):
-    settlement_id: Indexed(str)
+    settlement_id: str
     entry_type: str
     payment_id: Optional[str] = None
     refund_id: Optional[str] = None
@@ -414,14 +384,11 @@ COMMERCE_MODELS = [
     CommerceBrand,
     CommerceVendor,
     CommerceCollection,
-    CommerceAttribute,
     CommerceAttributeSet,
     CommerceProduct,
     CommerceVariant,
     CommerceWarehouse,
     CommerceWarehouseStock,
-    CommerceProductAttributeValue,
-    CommerceVariantAttributeValue,
     CommerceStockLedgerEntry,
     CommerceTaxProfile,
     CommercePriceList,
