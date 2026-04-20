@@ -1297,7 +1297,8 @@ async def _update_document(
         CommerceCategory, CommerceBrand, CommerceVendor, CommerceCollection,
         CommerceTaxProfile, CommercePriceList, CommerceCoupon, CommerceAttribute,
         CommerceAttributeSet, CommerceProduct, CommerceVariant, CommerceWarehouse,
-        CommerceWarehouseStock, CommerceOrder, CommerceFulfillment, CommerceShipment,
+        CommerceWarehouseStock, CommerceOrder, CommerceOrderLine,
+        CommerceFulfillment, CommerceShipment, CommercePayment,
         CommerceReturn, CommerceSettlement, CommerceInvoice
     )
     
@@ -1316,8 +1317,10 @@ async def _update_document(
         "commerce_warehouses": CommerceWarehouse,
         "commerce_warehouse_stocks": CommerceWarehouseStock,
         "commerce_orders": CommerceOrder,
+        "commerce_order_lines": CommerceOrderLine,
         "commerce_fulfillments": CommerceFulfillment,
         "commerce_shipments": CommerceShipment,
+        "commerce_payments": CommercePayment,
         "commerce_returns": CommerceReturn,
         "commerce_settlements": CommerceSettlement,
         "commerce_invoices": CommerceInvoice,
@@ -1325,14 +1328,7 @@ async def _update_document(
     
     model_cls = model_map.get(collection_name)
     if not model_cls:
-        # Fallback to direct motor if no beanie model is matched
-        coll = mongo_db[collection_name],
-        update_data = {**data, "updated_at": _now_iso()}
-        doc = await coll.find_one_and_update(
-            {"tenant_id": tenant_id, "id": document_id},
-            {"$set": update_data},
-            return_document=True)
-        return doc
+        raise ValueError(f"Unsupported commerce collection '{collection_name}' for updates.")
 
     doc = await model_cls.find_one(
         model_cls.id == document_id

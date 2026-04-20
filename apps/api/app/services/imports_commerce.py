@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from types import SimpleNamespace
 from typing import Any
 
 from sqlalchemy import select
@@ -507,29 +506,29 @@ async def _build_commerce_import_plan(
             "status": _norm_slug(item.get("status") or "active"),
         }
         synthetic_id = f"import-attribute:{code}"
-        planned_attributes_by_code[code] = SimpleNamespace(
-            id=synthetic_id,
-            code=code,
-            slug=slug,
-            label=label,
-            description=payload["description"],
-            value_type=payload["value_type"],
-            scope=payload["scope"],
-            options_json=options,
-            unit_label=payload["unit_label"],
-            is_required=payload["is_required"],
-            is_filterable=payload["is_filterable"],
-            is_variation_axis=payload["is_variation_axis"],
-            vertical_bindings=payload["vertical_bindings"],
-            status=payload["status"],
-        )
+        planned_attributes_by_code[code] = {
+            "id": synthetic_id,
+            "code": code,
+            "slug": slug,
+            "label": label,
+            "description": payload["description"],
+            "value_type": payload["value_type"],
+            "scope": payload["scope"],
+            "options": options,
+            "unit_label": payload["unit_label"],
+            "is_required": payload["is_required"],
+            "is_filterable": payload["is_filterable"],
+            "is_variation_axis": payload["is_variation_axis"],
+            "vertical_bindings": payload["vertical_bindings"],
+            "status": payload["status"],
+        }
         plan["attributes"].append(payload)
         report["entities"]["attributes"]["create_candidates"] += 1
 
     known_attributes_by_code = {**existing_attributes_by_code, **planned_attributes_by_code}
     known_attributes_by_id = {**existing_attributes_by_id}
     for item in planned_attributes_by_code.values():
-        known_attributes_by_id[item.id] = item
+        known_attributes_by_id[item["id"]] = item
 
     attribute_set_records = _dataset_list(dataset, "attribute_sets", report)
     planned_attribute_sets_by_slug: dict[str, Any] = {}
@@ -559,7 +558,7 @@ async def _build_commerce_import_plan(
                 f"Attribute set '{slug}' references unknown attributes: {', '.join(missing_codes)}.",
             )
             continue
-        attribute_ids = [known_attributes_by_code[code].id for code in attribute_codes]
+        attribute_ids = [known_attributes_by_code[code]["id"] for code in attribute_codes]
         payload = {
             "name": name,
             "slug": slug,
@@ -572,12 +571,12 @@ async def _build_commerce_import_plan(
             "status": _norm_slug(item.get("status") or "active"),
         }
         plan["attribute_sets"].append(payload)
-        planned_attribute_sets_by_slug[slug] = SimpleNamespace(
-            id=f"import-attribute-set:{slug}",
-            slug=slug,
-            attribute_ids=attribute_ids,
-            status=payload["status"],
-        )
+        planned_attribute_sets_by_slug[slug] = {
+            "id": f"import-attribute-set:{slug}",
+            "slug": slug,
+            "attribute_ids": attribute_ids,
+            "status": payload["status"],
+        }
         report["entities"]["attribute_sets"]["create_candidates"] += 1
 
     known_attribute_sets_by_slug = {**existing_attribute_sets_by_slug, **planned_attribute_sets_by_slug}
@@ -666,7 +665,9 @@ async def _build_commerce_import_plan(
                     f"Product '{slug}' references unknown product attribute '{attribute_code}'.",
                 )
                 continue
-            product_attribute_values.append({"attribute_id": attribute.id, "value": attr_item.get("value")})
+            product_attribute_values.append(
+                {"attribute_id": attribute["id"], "value": attr_item.get("value")}
+            )
 
         raw_variants = item.get("variants", [])
         if not isinstance(raw_variants, list) or not raw_variants:
@@ -721,7 +722,9 @@ async def _build_commerce_import_plan(
                     )
                     valid_variants = False
                     continue
-                attribute_values.append({"attribute_id": attribute.id, "value": attr_item.get("value")})
+                attribute_values.append(
+                    {"attribute_id": attribute["id"], "value": attr_item.get("value")}
+                )
 
             warehouse_stock_payloads: list[dict[str, Any]] = []
             raw_warehouse_stocks = variant_item.get("warehouse_stock", [])
@@ -835,8 +838,8 @@ async def _build_commerce_import_plan(
         required_attribute_ids: list[str] = []
         if attribute_set_slug:
             attribute_set = known_attribute_sets_by_slug[attribute_set_slug]
-            required_attribute_ids = list(attribute_set.attribute_ids)
-            allowed_attribute_ids = set(attribute_set.attribute_ids)
+            required_attribute_ids = list(attribute_set["attribute_ids"])
+            allowed_attribute_ids = set(attribute_set["attribute_ids"])
             payload_attribute_ids = {entry["attribute_id"] for entry in normalized_product_attributes}
             payload_attribute_ids.update(
                 entry["attribute_id"] for values in normalized_variant_attributes for entry in values

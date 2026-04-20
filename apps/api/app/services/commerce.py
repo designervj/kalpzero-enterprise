@@ -2477,7 +2477,12 @@ async def record_payment(db: Session, *, db_name: str, tenant_slug: str, actor_u
         subject_id=str(payment["id"]),
         metadata={"order_id": str(order["id"]), "amount_minor": amount_minor, "payment_method": payment_method, "status": status})
     db.commit()
-    return await get_order_finance_detail(db, tenant_slug=tenant_slug, order_id=order_id)
+    return await get_order_finance_detail(
+        db,
+        tenant_slug=tenant_slug,
+        db_name=db_name,
+        order_id=order_id,
+    )
 
 
 async def record_refund(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, order_id: str, payment_id: str, amount_minor: int, reason: str, reference: str | None) -> dict[str, object]:
@@ -2519,7 +2524,12 @@ async def record_refund(db: Session, *, db_name: str, tenant_slug: str, actor_us
         subject_id=str(refund["id"]),
         metadata={"order_id": str(order["id"]), "payment_id": str(payment["id"]), "amount_minor": amount_minor})
     db.commit()
-    return await get_order_finance_detail(db, tenant_slug=tenant_slug, order_id=order_id)
+    return await get_order_finance_detail(
+        db,
+        tenant_slug=tenant_slug,
+        db_name=db_name,
+        order_id=order_id,
+    )
 
 
 async def create_return(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, order_id: str, reason_summary: str, notes: str | None, lines: list[dict[str, object]]) -> dict[str, object]:
@@ -2909,7 +2919,12 @@ async def issue_order_invoice(db: Session, *, db_name: str, tenant_slug: str, ac
         metadata={"invoice_number": invoice["invoice_number"], "customer_id": str(order.get("customer_id"))})
     await _outbox_invoice(db, db_name=db_name, tenant_id=tenant_slug, order=order)
     db.commit()
-    return await get_order_finance_detail(db, tenant_slug=tenant_slug, order_id=order_id)
+    return await get_order_finance_detail(
+        db,
+        tenant_slug=tenant_slug,
+        db_name=db_name,
+        order_id=order_id,
+    )
 
 
 async def create_fulfillment(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, order_id: str, warehouse_id: str | None, lines: list[dict[str, object]]) -> dict[str, object]:
