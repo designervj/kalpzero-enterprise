@@ -636,7 +636,7 @@ async def list_warehouse_stocks(
     if warehouse_id:
         query = query.find(CommerceWarehouseStock.warehouse_id == warehouse_id)
     if variant_id:
-        query = query.find(CommerceWarehouseStock.variant_id == variant_id),
+        query = query.find(CommerceWarehouseStock.variant_id == variant_id)
     stocks = await query.sort("created_at").to_list()
     return [s.model_dump() for s in stocks]
 
@@ -692,7 +692,7 @@ async def list_stock_ledger_entries(
     if warehouse_id:
         query = query.find(CommerceStockLedgerEntry.warehouse_id == warehouse_id)
     if variant_id:
-        query = query.find(CommerceStockLedgerEntry.variant_id == variant_id),
+        query = query.find(CommerceStockLedgerEntry.variant_id == variant_id)
     entries = await query.sort("-created_at").to_list()
     return [e.model_dump() for e in entries]
 
@@ -870,7 +870,7 @@ async def list_fulfillments(db_name: str, *, order_id: str | None = None) -> lis
 
     query = CommerceFulfillment.find()
     if order_id:
-        query = query.find(CommerceFulfillment.order_id == order_id),
+        query = query.find(CommerceFulfillment.order_id == order_id)
     fulfillments = await query.sort("-created_at").to_list()
     return [f.model_dump() for f in fulfillments]
 
@@ -940,7 +940,7 @@ async def list_shipments(
 
     query = CommerceShipment.find()
     if fulfillment_id:
-        query = query.find(CommerceShipment.fulfillment_id == fulfillment_id),
+        query = query.find(CommerceShipment.fulfillment_id == fulfillment_id)
     shipments = await query.sort("-created_at").to_list()
     return [s.model_dump() for s in shipments]
 
@@ -979,7 +979,7 @@ async def list_payments(db_name: str, *, order_id: str | None = None) -> list[di
 
     query = CommercePayment.find()
     if order_id:
-        query = query.find(CommercePayment.order_id == order_id),
+        query = query.find(CommercePayment.order_id == order_id)
     payments = await query.sort("-created_at").to_list()
     return [p.model_dump() for p in payments]
 
@@ -1022,7 +1022,7 @@ async def list_refunds(db_name: str, *, order_id: str | None = None) -> list[dic
 
     query = CommerceRefund.find()
     if order_id:
-        query = query.find(CommerceRefund.order_id == order_id),
+        query = query.find(CommerceRefund.order_id == order_id)
     refunds = await query.sort("-created_at").to_list()
     return [r.model_dump() for r in refunds]
 
@@ -1056,7 +1056,7 @@ async def list_invoices(db_name: str, *, order_id: str | None = None) -> list[di
 
     query = CommerceInvoice.find()
     if order_id:
-        query = query.find(CommerceInvoice.order_id == order_id),
+        query = query.find(CommerceInvoice.order_id == order_id)
     invoices = await query.sort("-created_at").to_list()
     return [i.model_dump() for i in invoices]
 
@@ -1064,7 +1064,7 @@ async def list_returns(db_name: str, *, order_id: str | None = None) -> list[dic
 
     query = CommerceReturn.find()
     if order_id:
-        query = query.find(CommerceReturn.order_id == order_id),
+        query = query.find(CommerceReturn.order_id == order_id)
     returns = await query.sort("-created_at").to_list()
     return [r.model_dump() for r in returns]
 
@@ -1359,11 +1359,17 @@ async def update_warehouse_stock(db_name: str, *, stock_id: str, data: dict[str,
 async def update_order(db_name: str, *, order_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
     return await _update_document(db_name, "commerce_orders", document_id=order_id, data=data)
 
+async def update_order_line(db_name: str, *, line_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db_name, "commerce_order_lines", document_id=line_id, data=data)
+
 async def update_fulfillment(db_name: str, *, fulfillment_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
     return await _update_document(db_name, "commerce_fulfillments", document_id=fulfillment_id, data=data)
 
 async def update_shipment(db_name: str, *, shipment_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
     return await _update_document(db_name, "commerce_shipments", document_id=shipment_id, data=data)
+
+async def update_payment(db_name: str, *, payment_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_document(db_name, "commerce_payments", document_id=payment_id, data=data)
 
 async def update_return(db_name: str, *, return_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
     return await _update_document(db_name, "commerce_returns", document_id=return_id, data=data)
