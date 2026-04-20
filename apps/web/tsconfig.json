@@ -7,6 +7,13 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@engine/*": [
+        "./engine/*/index.ts",
+        "./engine/*"
+      ],
+      "@core/contracts/*": [
+        "./lib/contracts/*"
       ]
     },
     "plugins": [

@@ -1,0 +1,1976 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI AGENTS — The Future of Autonomous Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+@property --gradient-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --glow-opacity {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.5;
+}
+
+:root {
+  --quantum-black: #0D0D0D;
+  --neon-blue: #00FFF0;
+  --carbon-white: #F5F5F5;
+  --deep-space: #080810;
+  --midnight: #0a0a14;
+  --glass-bg: rgba(255,255,255,0.03);
+  --glass-border: rgba(0,255,240,0.12);
+  --section-padding: clamp(5rem, 10vw, 14rem);
+  --container-padding: clamp(1.5rem, 5vw, 8rem);
+  --card-radius: 20px;
+  --font: 'Poppins', sans-serif;
+  --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] {
+  --quantum-black: #F5F5F5;
+  --carbon-white: #0D0D0D;
+  --deep-space: #e8e8f0;
+  --midnight: #f0f0fa;
+  --glass-bg: rgba(0,0,0,0.04);
+  --glass-border: rgba(0,180,170,0.2);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; overflow-x: hidden; }
+
+body {
+  font-family: var(--font);
+  background: var(--quantum-black);
+  color: var(--carbon-white);
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* CUSTOM CURSOR */
+#cursor {
+  position: fixed;
+  width: 12px; height: 12px;
+  background: var(--neon-blue);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  transition: transform 0.1s, width 0.3s, height 0.3s, opacity 0.3s;
+  mix-blend-mode: difference;
+}
+#cursor-follower {
+  position: fixed;
+  width: 40px; height: 40px;
+  border: 1px solid rgba(0,255,240,0.5);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99998;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease, width 0.3s, height 0.3s, opacity 0.3s;
+}
+body:hover #cursor { opacity: 1; }
+
+/* GRAIN OVERLAY */
+#grain {
+  position: fixed;
+  inset: -200%;
+  width: 400%; height: 400%;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.035;
+  mix-blend-mode: difference;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  animation: grain 0.5s steps(2) infinite;
+}
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2%, -2%); }
+  20% { transform: translate(2%, 2%); }
+  30% { transform: translate(-1%, 3%); }
+  40% { transform: translate(3%, -1%); }
+  50% { transform: translate(-3%, 1%); }
+  60% { transform: translate(1%, -3%); }
+  70% { transform: translate(-2%, 2%); }
+  80% { transform: translate(2%, -2%); }
+  90% { transform: translate(-1%, 1%); }
+}
+
+/* PRELOADER */
+#preloader {
+  position: fixed;
+  inset: 0;
+  background: var(--deep-space);
+  z-index: 99997;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  clip-path: circle(150% at 50% 50%);
+  transition: clip-path 1.2s cubic-bezier(0.77, 0, 0.175, 1) 0.3s;
+}
+#preloader.hide { clip-path: circle(0% at 50% 50%); }
+#preloader-logo {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: var(--neon-blue);
+  margin-bottom: 3rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 0.6s ease 0.2s forwards;
+}
+#preloader-bar-wrap {
+  width: clamp(200px, 30vw, 400px);
+  height: 2px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+#preloader-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--neon-blue), #007bff);
+  border-radius: 2px;
+  transition: width 0.05s linear;
+  box-shadow: 0 0 20px var(--neon-blue);
+}
+#preloader-count {
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  color: rgba(245,245,245,0.5);
+  opacity: 0;
+  animation: fadeUp 0.6s ease 0.4s forwards;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--quantum-black); }
+::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 2px; }
+
+/* NAVIGATION */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 1.5rem var(--container-padding);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(8,8,16,0.6);
+  border-bottom: 1px solid rgba(0,255,240,0.06);
+  transition: var(--transition);
+}
+nav.scrolled { padding: 1rem var(--container-padding); }
+.nav-logo {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  background: linear-gradient(135deg, var(--neon-blue), #007bff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  gap: 2.5rem;
+  list-style: none;
+}
+.nav-links a {
+  color: rgba(245,245,245,0.6);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  transition: var(--transition);
+  position: relative;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 0;
+  width: 0; height: 1px;
+  background: var(--neon-blue);
+  transition: width 0.3s ease;
+}
+.nav-links a:hover { color: var(--carbon-white); }
+.nav-links a:hover::after { width: 100%; }
+.nav-actions { display: flex; align-items: center; gap: 1rem; }
+
+/* SEARCH BAR */
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-input {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(0,255,240,0.1);
+  border-radius: 30px;
+  padding: 0.5rem 1rem 0.5rem 2.5rem;
+  color: var(--carbon-white);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  width: 0;
+  opacity: 0;
+  transition: width 0.4s ease, opacity 0.4s ease;
+}
+.search-wrap.active .search-input { width: 180px; opacity: 1; }
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: rgba(0,255,240,0.6);
+  cursor: pointer;
+  font-size: 0.9rem;
+  z-index: 1;
+}
+.search-wrap:not(.active) .search-icon { left: 0; }
+
+/* BUTTONS */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.6rem;
+  border-radius: 50px;
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  border: none;
+  letter-spacing: 0.02em;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--neon-blue), #007bff);
+  color: var(--quantum-black);
+  font-weight: 700;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #fff, var(--neon-blue));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.btn-primary:hover::before { opacity: 0.15; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(0,255,240,0.3); }
+.btn-ghost {
+  background: transparent;
+  color: var(--carbon-white);
+  border: 1px solid rgba(245,245,245,0.2);
+}
+.btn-ghost:hover {
+  border-color: var(--neon-blue);
+  color: var(--neon-blue);
+  background: rgba(0,255,240,0.04);
+}
+.btn-lg { padding: 1rem 2.5rem; font-size: 1rem; }
+
+/* THEME TOGGLE */
+.theme-toggle {
+  width: 44px; height: 24px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(0,255,240,0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+}
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--neon-blue);
+  transition: transform 0.3s ease;
+}
+[data-theme="light"] .theme-toggle::after { transform: translateX(20px); }
+
+/* HAMBURGER */
+.hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
+.hamburger span { width: 24px; height: 2px; background: var(--carbon-white); transition: var(--transition); border-radius: 2px; }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(6rem, 15vw, 16rem) var(--container-padding) clamp(4rem, 8vw, 10rem);
+  position: relative;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 80% at 50% -20%, rgba(0,255,240,0.08) 0%, transparent 60%),
+              radial-gradient(ellipse 60% 60% at 80% 80%, rgba(0,123,255,0.06) 0%, transparent 50%);
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(0,255,240,0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0,255,240,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 80%);
+}
+.hero-content { position: relative; z-index: 1; max-width: 1100px; }
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1.2rem;
+  background: rgba(0,255,240,0.06);
+  border: 1px solid rgba(0,255,240,0.2);
+  border-radius: 30px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--neon-blue);
+  margin-bottom: 2.5rem;
+  animation: fadeUp 0.8s ease 0.5s both;
+}
+.badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--neon-blue);
+  animation: pulse 2s ease infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+
+.hero-title {
+  font-size: clamp(3.5rem, 9vw, 12rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  margin-bottom: 2rem;
+  animation: fadeUp 0.8s ease 0.7s both;
+}
+.hero-title .line1 { display: block; color: var(--carbon-white); }
+.hero-title .line2 {
+  display: block;
+  background: linear-gradient(135deg, var(--neon-blue) 0%, #007bff 50%, var(--neon-blue) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite, fadeUp 0.8s ease 0.9s both;
+}
+@keyframes shimmer { 0% { background-position: 0% 0%; } 100% { background-position: 200% 0%; } }
+
+.hero-subtitle {
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-weight: 300;
+  color: rgba(245,245,245,0.55);
+  max-width: 600px;
+  margin: 0 auto 3.5rem;
+  line-height: 1.7;
+  animation: fadeUp 0.8s ease 1.1s both;
+}
+.hero-ctas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  animation: fadeUp 0.8s ease 1.3s both;
+}
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  gap: clamp(2rem, 5vw, 6rem);
+  margin-top: clamp(4rem, 8vw, 8rem);
+  animation: fadeUp 0.8s ease 1.5s both;
+}
+.stat { text-align: center; }
+.stat-number {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--neon-blue);
+  display: block;
+}
+.stat-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(245,245,245,0.4);
+  font-weight: 400;
+}
+.hero-scroll-indicator {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(245,245,245,0.3);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  animation: fadeUp 1s ease 2s both;
+}
+.scroll-line {
+  width: 1px; height: 50px;
+  background: linear-gradient(to bottom, transparent, var(--neon-blue));
+  animation: scrollDown 2s ease infinite;
+}
+@keyframes scrollDown { 0% { transform: scaleY(0); transform-origin: top; } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform: scaleY(1); transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
+
+/* SECTIONS */
+section { padding: var(--section-padding) var(--container-padding); position: relative; }
+.container { max-width: 1400px; margin: 0 auto; }
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--neon-blue);
+  margin-bottom: 1.5rem;
+}
+.section-label::before {
+  content: '';
+  width: 20px; height: 1px;
+  background: var(--neon-blue);
+}
+.section-title {
+  font-size: clamp(2.5rem, 5vw, 6rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 1.5rem;
+  color: var(--carbon-white);
+}
+.section-subtitle {
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-weight: 300;
+  color: rgba(245,245,245,0.5);
+  max-width: 580px;
+  line-height: 1.7;
+}
+
+/* GLASS CARD */
+.glass-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.5), 0 0 0 0 rgba(0,255,240,0);
+  transition: var(--transition);
+  overflow: hidden;
+}
+.glass-card:hover {
+  border-color: rgba(0,255,240,0.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,240,0.07);
+  transform: translateY(-4px);
+}
+
+/* SCROLL ANIMATIONS */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(60px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* FEATURES */
+.features-section { background: var(--deep-space); }
+.features-intro { max-width: 700px; margin-bottom: clamp(3rem, 6vw, 7rem); }
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+.feature-card {
+  padding: clamp(2rem, 4vw, 3rem);
+}
+.feature-icon {
+  width: 52px; height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,255,240,0.08);
+  border: 1px solid rgba(0,255,240,0.15);
+  border-radius: 14px;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: var(--transition);
+}
+.feature-card:hover .feature-icon {
+  background: rgba(0,255,240,0.15);
+  box-shadow: 0 0 30px rgba(0,255,240,0.2);
+}
+.feature-card h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+  color: var(--carbon-white);
+}
+.feature-card p {
+  font-size: 0.9rem;
+  color: rgba(245,245,245,0.5);
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+/* LIVE DEMO */
+.demo-section {}
+.demo-container { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+.demo-video-wrap {
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 16/9;
+  background: var(--midnight);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 60px rgba(0,255,240,0.05);
+}
+.demo-video-wrap video { width: 100%; height: 100%; object-fit: cover; }
+.demo-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(8,8,16,0.8), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.play-btn {
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  background: rgba(0,255,240,0.15);
+  border: 1px solid rgba(0,255,240,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  backdrop-filter: blur(10px);
+}
+.play-btn:hover { background: rgba(0,255,240,0.25); transform: scale(1.1); }
+.play-btn::before {
+  content: '';
+  border: 0 solid transparent;
+  border-left: 22px solid var(--neon-blue);
+  border-top: 14px solid transparent;
+  border-bottom: 14px solid transparent;
+  margin-left: 5px;
+}
+.demo-text .section-title { font-size: clamp(2rem, 4vw, 4rem); }
+.demo-features-list { list-style: none; margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem; }
+.demo-features-list li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: rgba(245,245,245,0.7);
+}
+.demo-features-list li::before {
+  content: '✓';
+  color: var(--neon-blue);
+  font-weight: 700;
+  font-size: 0.8rem;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,255,240,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* PRICING */
+.pricing-section { background: var(--deep-space); }
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: clamp(3rem, 5vw, 6rem);
+}
+.pricing-card {
+  padding: clamp(2rem, 4vw, 3rem);
+  position: relative;
+}
+.pricing-card.featured {
+  border-color: rgba(0,255,240,0.35);
+  background: linear-gradient(135deg, rgba(0,255,240,0.06), rgba(0,123,255,0.03));
+  box-shadow: inset 0 1px 0 rgba(0,255,240,0.1), 0 30px 80px rgba(0,0,0,0.5), 0 0 60px rgba(0,255,240,0.08);
+}
+.pricing-badge {
+  position: absolute;
+  top: -1px;
+  right: 2rem;
+  padding: 0.4rem 1.2rem;
+  background: linear-gradient(135deg, var(--neon-blue), #007bff);
+  color: var(--quantum-black);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 0 0 10px 10px;
+}
+.pricing-plan { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--neon-blue); margin-bottom: 1rem; }
+.pricing-price {
+  font-size: clamp(3rem, 5vw, 5rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--carbon-white);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+.pricing-price span { font-size: 1.5rem; font-weight: 400; vertical-align: super; }
+.pricing-period { font-size: 0.8rem; color: rgba(245,245,245,0.4); margin-bottom: 2rem; }
+.pricing-desc { font-size: 0.9rem; color: rgba(245,245,245,0.5); line-height: 1.6; margin-bottom: 2rem; font-weight: 300; }
+.pricing-divider { height: 1px; background: var(--glass-border); margin-bottom: 2rem; }
+.pricing-features { list-style: none; display: flex; flex-direction: column; gap: 0.85rem; margin-bottom: 2.5rem; }
+.pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: rgba(245,245,245,0.7);
+}
+.pricing-features li .check { color: var(--neon-blue); font-weight: 700; }
+.pricing-features li .cross { color: rgba(245,245,245,0.2); }
+
+/* TESTIMONIALS */
+.testimonials-track {
+  overflow: hidden;
+  margin-top: clamp(3rem, 5vw, 6rem);
+  position: relative;
+}
+.testimonials-track::before,
+.testimonials-track::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 150px;
+  z-index: 2;
+}
+.testimonials-track::before { left: 0; background: linear-gradient(to right, var(--quantum-black), transparent); }
+.testimonials-track::after { right: 0; background: linear-gradient(to left, var(--quantum-black), transparent); }
+.testimonials-inner {
+  display: flex;
+  gap: 1.5rem;
+  width: max-content;
+  animation: scroll 40s linear infinite;
+}
+.testimonials-inner:hover { animation-play-state: paused; }
+@keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.testimonial-card {
+  width: 380px;
+  padding: 2rem;
+  flex-shrink: 0;
+}
+.testimonial-stars { color: var(--neon-blue); font-size: 0.9rem; margin-bottom: 1rem; letter-spacing: 0.1em; }
+.testimonial-text {
+  font-size: 0.95rem;
+  color: rgba(245,245,245,0.75);
+  line-height: 1.7;
+  font-weight: 300;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+.testimonial-author { display: flex; align-items: center; gap: 0.75rem; }
+.testimonial-avatar {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--glass-border);
+}
+.testimonial-name { font-size: 0.9rem; font-weight: 600; color: var(--carbon-white); }
+.testimonial-role { font-size: 0.75rem; color: rgba(245,245,245,0.4); font-weight: 300; }
+
+/* ABOUT */
+.about-section { background: var(--deep-space); }
+.about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; align-items: center; }
+.about-image-wrap {
+  position: relative;
+  border-radius: var(--card-radius);
+  overflow: visible;
+}
+.about-image {
+  width: 100%;
+  border-radius: var(--card-radius);
+  aspect-ratio: 4/5;
+  object-fit: cover;
+  border: 1px solid var(--glass-border);
+}
+.about-float-card {
+  position: absolute;
+  bottom: -2rem;
+  right: -2rem;
+  padding: 1.5rem;
+  width: 200px;
+}
+.about-float-card .number { font-size: 3rem; font-weight: 900; letter-spacing: -0.05em; color: var(--neon-blue); line-height: 1; }
+.about-float-card .label { font-size: 0.75rem; color: rgba(245,245,245,0.5); font-weight: 300; }
+.about-text p { font-size: 1rem; color: rgba(245,245,245,0.6); line-height: 1.8; font-weight: 300; margin-bottom: 1.5rem; }
+.about-values { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2.5rem; }
+.value-item { padding: 1.25rem; }
+.value-item h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--carbon-white); }
+.value-item p { font-size: 0.8rem; color: rgba(245,245,245,0.45); line-height: 1.6; font-weight: 300; }
+
+/* FAQ */
+.faq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+  gap: 1rem;
+  margin-top: clamp(3rem, 5vw, 6rem);
+}
+.faq-item {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  transition: var(--transition);
+}
+.faq-item:hover { border-color: rgba(0,255,240,0.2); }
+.faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  cursor: pointer;
+  gap: 1rem;
+}
+.faq-question h3 { font-size: 0.95rem; font-weight: 500; color: var(--carbon-white); }
+.faq-toggle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,255,240,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon-blue);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  transition: var(--transition);
+  line-height: 1;
+}
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), padding 0.4s ease;
+}
+.faq-answer p {
+  padding: 0 2rem 1.5rem;
+  font-size: 0.875rem;
+  color: rgba(245,245,245,0.5);
+  line-height: 1.7;
+  font-weight: 300;
+}
+.faq-item.active .faq-toggle { transform: rotate(45deg); background: rgba(0,255,240,0.1); }
+.faq-item.active .faq-answer { max-height: 300px; }
+
+/* API DOCS */
+.api-section { background: var(--deep-space); }
+.api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+.api-code-block {
+  padding: 2rem;
+  position: relative;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 1.5rem;
+}
+.code-dot { width: 12px; height: 12px; border-radius: 50%; }
+.code-dot.red { background: #ff5f56; }
+.code-dot.yellow { background: #ffbd2e; }
+.code-dot.green { background: #27c93f; }
+.code-filename { font-size: 0.75rem; color: rgba(245,245,245,0.3); margin-left: auto; letter-spacing: 0.05em; }
+.code-line { display: block; color: rgba(245,245,245,0.6); }
+.code-line .keyword { color: #ff79c6; }
+.code-line .string { color: #f1fa8c; }
+.code-line .comment { color: rgba(245,245,245,0.25); font-style: italic; }
+.code-line .var { color: var(--neon-blue); }
+.code-line .func { color: #8be9fd; }
+.api-endpoints { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; }
+.endpoint-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+}
+.method-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-family: 'Courier New', monospace;
+  min-width: 50px;
+  text-align: center;
+}
+.method-get { background: rgba(39,201,63,0.15); color: #27c93f; border: 1px solid rgba(39,201,63,0.3); }
+.method-post { background: rgba(0,255,240,0.1); color: var(--neon-blue); border: 1px solid rgba(0,255,240,0.25); }
+.method-delete { background: rgba(255,95,86,0.1); color: #ff5f56; border: 1px solid rgba(255,95,86,0.25); }
+.endpoint-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: rgba(245,245,245,0.7); }
+.endpoint-desc { font-size: 0.8rem; color: rgba(245,245,245,0.35); margin-left: auto; }
+
+/* DISCORD */
+.discord-section {
+  text-align: center;
+}
+.discord-card {
+  max-width: 700px;
+  margin: 0 auto clamp(3rem, 5vw, 6rem);
+  padding: clamp(3rem, 5vw, 5rem);
+  background: linear-gradient(135deg, rgba(88,101,242,0.1), rgba(0,255,240,0.05));
+  border: 1px solid rgba(88,101,242,0.25);
+}
+.discord-icon { font-size: 4rem; margin-bottom: 1.5rem; display: block; }
+.discord-title { font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 800; letter-spacing: -0.04em; margin-bottom: 1rem; }
+.discord-text { font-size: 1rem; color: rgba(245,245,245,0.5); line-height: 1.7; max-width: 500px; margin: 0 auto 2.5rem; font-weight: 300; }
+.discord-btn {
+  background: linear-gradient(135deg, #5865F2, #4752c4);
+  color: white;
+  box-shadow: 0 10px 40px rgba(88,101,242,0.3);
+}
+.discord-btn:hover { transform: translateY(-3px); box-shadow: 0 20px 50px rgba(88,101,242,0.4); }
+.discord-stats { display: flex; justify-content: center; gap: 4rem; }
+.discord-stat .number { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; color: var(--carbon-white); }
+.discord-stat .label { font-size: 0.75rem; color: rgba(245,245,245,0.4); letter-spacing: 0.1em; }
+
+/* SOCIAL FEED */
+.social-section { background: var(--deep-space); }
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: clamp(3rem, 5vw, 6rem);
+}
+.social-card { padding: 1.5rem; }
+.social-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+.social-avatar { width: 38px; height: 38px; border-radius: 50%; background: rgba(0,255,240,0.1); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.social-author { font-size: 0.9rem; font-weight: 600; }
+.social-handle { font-size: 0.75rem; color: rgba(245,245,245,0.4); }
+.social-platform { margin-left: auto; font-size: 1rem; }
+.social-text { font-size: 0.85rem; color: rgba(245,245,245,0.65); line-height: 1.6; font-weight: 300; }
+.social-meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.75rem; color: rgba(245,245,245,0.3); }
+
+/* NEWSLETTER */
+.newsletter-section { text-align: center; }
+.newsletter-inner {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: clamp(3rem, 6vw, 5rem);
+  position: relative;
+  overflow: hidden;
+}
+.newsletter-inner::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle, rgba(0,255,240,0.05) 0%, transparent 60%);
+  animation: rotateBg 20s linear infinite;
+}
+@keyframes rotateBg { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.newsletter-inner > * { position: relative; z-index: 1; }
+.newsletter-form { display: flex; gap: 0.75rem; margin-top: 2.5rem; }
+.newsletter-input {
+  flex: 1;
+  padding: 0.9rem 1.5rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(0,255,240,0.15);
+  border-radius: 50px;
+  color: var(--carbon-white);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  outline: none;
+  transition: var(--transition);
+}
+.newsletter-input:focus { border-color: rgba(0,255,240,0.4); background: rgba(255,255,255,0.07); }
+.newsletter-input::placeholder { color: rgba(245,245,245,0.3); }
+
+/* CONTACT */
+.contact-section { background: var(--deep-space); }
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; }
+.contact-info h2 { font-size: clamp(2rem, 4vw, 4rem); font-weight: 800; letter-spacing: -0.04em; margin-bottom: 1.5rem; }
+.contact-info p { font-size: 1rem; color: rgba(245,245,245,0.5); line-height: 1.7; font-weight: 300; margin-bottom: 3rem; }
+.contact-links { display: flex; flex-direction: column; gap: 1rem; }
+.contact-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  text-decoration: none;
+  color: var(--carbon-white);
+  transition: var(--transition);
+}
+.contact-link:hover { transform: translateX(8px); }
+.contact-link-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: rgba(0,255,240,0.08);
+  border: 1px solid rgba(0,255,240,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+.contact-link-text .label { font-size: 0.75rem; color: rgba(245,245,245,0.4); margin-bottom: 0.1rem; }
+.contact-link-text .value { font-size: 0.9rem; font-weight: 500; }
+.contact-form { display: flex; flex-direction: column; gap: 1.25rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.form-group label { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,245,0.5); }
+.form-input, .form-textarea {
+  padding: 0.9rem 1.25rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(0,255,240,0.12);
+  border-radius: 12px;
+  color: var(--carbon-white);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  outline: none;
+  transition: var(--transition);
+  resize: none;
+}
+.form-input:focus, .form-textarea:focus { border-color: rgba(0,255,240,0.35); background: rgba(255,255,255,0.06); }
+.form-textarea { min-height: 140px; }
+
+/* LIVE CHAT */
+#live-chat-btn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--neon-blue), #007bff);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  z-index: 5000;
+  box-shadow: 0 8px 30px rgba(0,255,240,0.3);
+  transition: var(--transition);
+}
+#live-chat-btn:hover { transform: scale(1.1); box-shadow: 0 15px 40px rgba(0,255,240,0.4); }
+#live-chat-panel {
+  position: fixed;
+  bottom: 6rem;
+  right: 2rem;
+  width: 340px;
+  max-height: 480px;
+  border-radius: 20px;
+  z-index: 4999;
+  overflow: hidden;
+  transform: scale(0.8) translateY(20px);
+  transform-origin: bottom right;
+  opacity: 0;
+  pointer-events: none;
+  transition: var(--transition);
+}
+#live-chat-panel.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }
+.chat-header {
+  background: linear-gradient(135deg, var(--neon-blue), #007bff);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.chat-header-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+.chat-header-info .name { font-size: 0.9rem; font-weight: 700; color: var(--quantum-black); }
+.chat-header-info .status { font-size: 0.7rem; color: rgba(0,0,0,0.6); }
+.chat-close-btn { margin-left: auto; background: none; border: none; cursor: pointer; color: rgba(0,0,0,0.5); font-size: 1.2rem; }
+.chat-messages { padding: 1.25rem; height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background: var(--midnight); }
+.chat-msg { max-width: 80%; }
+.chat-msg.bot { align-self: flex-start; }
+.chat-msg.user { align-self: flex-end; }
+.chat-bubble {
+  padding: 0.7rem 1rem;
+  border-radius: 16px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.chat-msg.bot .chat-bubble { background: rgba(255,255,255,0.07); color: rgba(245,245,245,0.8); border-bottom-left-radius: 4px; }
+.chat-msg.user .chat-bubble { background: linear-gradient(135deg, var(--neon-blue), #007bff); color: var(--quantum-black); font-weight: 600; border-bottom-right-radius: 4px; }
+.chat-input-wrap { display: flex; gap: 0.5rem; padding: 1rem; background: var(--midnight); border-top: 1px solid var(--glass-border); }
+.chat-input {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(0,255,240,0.1);
+  border-radius: 20px;
+  color: var(--carbon-white);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  outline: none;
+}
+.chat-send-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--neon-blue), #007bff);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--quantum-black);
+  font-weight: 700;
+}
+
+/* FOOTER */
+footer {
+  padding: clamp(4rem, 8vw, 8rem) var(--container-padding) clamp(2rem, 4vw, 4rem);
+  border-top: 1px solid rgba(0,255,240,0.06);
+  background: var(--deep-space);
+}
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4rem; margin-bottom: 4rem; }
+.footer-brand .nav-logo { display: inline-block; margin-bottom: 1.25rem; font-size: 1.6rem; }
+.footer-brand p { font-size: 0.85rem; color: rgba(245,245,245,0.4); line-height: 1.7; font-weight: 300; max-width: 280px; margin-bottom: 1.5rem; }
+.footer-socials { display: flex; gap: 0.75rem; }
+.footer-social-link {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(0,255,240,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: var(--transition);
+  color: rgba(245,245,245,0.5);
+}
+.footer-social-link:hover { border-color: var(--neon-blue); color: var(--neon-blue); background: rgba(0,255,240,0.06); }
+.footer-col h4 { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--carbon-white); margin-bottom: 1.5rem; }
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+.footer-col a { font-size: 0.85rem; color: rgba(245,245,245,0.4); text-decoration: none; transition: color 0.3s; font-weight: 300; }
+.footer-col a:hover { color: var(--neon-blue); }
+.footer-bottom { display: flex; align-items: center; justify-content: space-between; padding-top: 2rem; border-top: 1px solid rgba(245,245,245,0.05); }
+.footer-copyright { font-size: 0.8rem; color: rgba(245,245,245,0.3); font-weight: 300; }
+.footer-legal { display: flex; gap: 2rem; }
+.footer-legal a { font-size: 0.8rem; color: rgba(245,245,245,0.3); text-decoration: none; font-weight: 300; }
+.footer-legal a:hover { color: var(--neon-blue); }
+
+/* MOBILE */
+@media (max-width: 1024px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+  .about-grid { grid-template-columns: 1fr; }
+  .demo-container { grid-template-columns: 1fr; }
+  .api-grid { grid-template-columns: 1fr; }
+  .contact-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .hamburger { display: flex; }
+  .nav-links.mobile-open { display: flex; flex-direction: column; position: fixed; inset: 0; top: 60px; background: rgba(8,8,16,0.98); backdrop-filter: blur(30px); padding: 3rem; z-index: 999; gap: 2rem; justify-content: center; align-items: center; }
+  .nav-links.mobile-open a { font-size: 1.5rem; }
+  .features-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .faq-grid { grid-template-columns: 1fr; }
+  .hero-stats { gap: 1.5rem; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .newsletter-form { flex-direction: column; }
+  .footer-bottom { flex-direction: column; gap: 1rem; text-align: center; }
+  .social-grid { grid-template-columns: 1fr; }
+  .about-float-card { right: 1rem; bottom: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- GRAIN OVERLAY -->
+<div id="grain" aria-hidden="true"></div>
+
+<!-- CUSTOM CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-follower"></div>
+
+<!-- PRELOADER -->
+<div id="preloader">
+  <div id="preloader-logo">AI AGENTS</div>
+  <div id="preloader-bar-wrap"><div id="preloader-bar"></div></div>
+  <div id="preloader-count">INITIALIZING — 0%</div>
+</div>
+
+<!-- NAVIGATION -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">⬡ AI AGENTS</a>
+  <ul class="nav-links" id="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#demo">Demo</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#docs">API</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <div class="nav-actions">
+    <div class="search-wrap" id="searchWrap">
+      <span class="search-icon" id="searchIcon" onclick="document.getElementById('searchWrap').classList.toggle('active')">⌕</span>
+      <input type="text" class="search-input" placeholder="Search docs, features…" id="searchInput">
+    </div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme"></button>
+    <a href="#pricing" class="btn btn-primary">Get Started</a>
+    <div class="hamburger" id="hamburger">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge"><span class="badge-dot"></span>Now in Public Beta · v2.0</div>
+    <h1 class="hero-title">
+      <span class="line1">Autonomous</span>
+      <span class="line2">Intelligence.</span>
+    </h1>
+    <p class="hero-subtitle">Deploy, orchestrate, and scale AI agents that think, reason, and execute tasks with superhuman precision — all without writing a single line of code.</p>
+    <div class="hero-ctas">
+      <a href="#demo" class="btn btn-primary btn-lg magnetic-btn">▶ Watch Live Demo</a>
+      <a href="#pricing" class="btn btn-ghost btn-lg">Explore Pricing</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-number">50K+</span>
+        <span class="stat-label">Agents Deployed</span>
+      </div>
+      <div class="stat">
+        <span class="stat-number">99.9%</span>
+        <span class="stat-label">Uptime SLA</span>
+      </div>
+      <div class="stat">
+        <span class="stat-number">180+</span>
+        <span class="stat-label">Integrations</span>
+      </div>
+      <div class="stat">
+        <span class="stat-number">4.9★</span>
+        <span class="stat-label">User Rating</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll-indicator">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="container">
+    <div class="features-intro reveal">
+      <div class="section-label">Core Capabilities</div>
+      <h2 class="section-title">Built for the Age of Autonomy</h2>
+      <p class="section-subtitle">Every feature engineered to give your AI agents the cognitive edge they need to outperform, outlearn, and outdeliver.</p>
+    </div>
+    <div class="features-grid">
+      <div class="glass-card feature-card reveal reveal-delay-1">
+        <div class="feature-icon">🧠</div>
+        <h3>Multi-Model Reasoning</h3>
+        <p>Route tasks intelligently across GPT-4, Claude, Gemini, and open-source models. Our orchestration layer picks the perfect model for each micro-task automatically.</p>
+      </div>
+      <div class="glass-card feature-card reveal reveal-delay-2">
+        <div class="feature-icon">⚡</div>
+        <h3>Real-Time Execution</h3>
+        <p>Sub-100ms task dispatch with globally distributed edge inference nodes. Your agents operate at the speed of thought, not the speed of servers.</p>
+      </div>
+      <div class="glass-card feature-card reveal reveal-delay-3">
+        <div class="feature-icon">🔗</div>
+        <h3>Infinite Tool Calling</h3>
+        <p>Connect your agents to any API, database, browser, or code interpreter. 180+ pre-built integrations and unlimited custom tool registrations.</p>
+      </div>
+      <div class="glass-card feature-card reveal reveal-delay-1">
+        <div class="feature-icon">🔐</div>
+        <h3>Enterprise Security</h3>
+        <p>SOC 2 Type II certified. End-to-end encryption with zero-knowledge architecture. Your data never trains our models. Full audit logs and RBAC controls.</p>
+      </div>
+      <div class="glass-card feature-card reveal reveal-delay-2">
+        <div class="feature-icon">📊</div>
+        <h3>Observability Suite</h3>
+        <p>Trace every agent decision, inspect reasoning chains, replay failed tasks, and optimize prompts with our visual debugger. Total transparency, zero guesswork.</p>
+      </div>
+      <div class="glass-card feature-card reveal reveal-delay-3">
+        <div class="feature-icon">🌐</div>
+        <h3>Multi-Agent Networks</h3>
+        <p>Design hierarchical agent teams where supervisor agents delegate, validate, and synthesize output from specialist sub-agents — all in a visual drag-and-drop canvas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE DEMO -->
+<section class="demo-section" id="demo">
+  <div class="container">
+    <div class="demo-container">
+      <div class="demo-video-wrap reveal">
+        <video id="demoVideo" loop>
+          <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+        </video>
+        <div class="demo-overlay">
+          <div class="play-btn" id="playBtn" onclick="toggleVideo()"></div>
+        </div>
+      </div>
+      <div class="demo-text reveal reveal-delay-2">
+        <div class="section-label">Live Product Demo</div>
+        <h2 class="section-title">See It Think. Watch It Work.</h2>
+        <p class="section-subtitle" style="max-width:100%;">In under 90 seconds, deploy a fully autonomous research agent that scours the web, synthesizes insights, and delivers boardroom-ready reports.</p>
+        <ul class="demo-features-list">
+          <li>Zero-code agent builder with natural language prompts</li>
+          <li>Live task queue with real-time progress streaming</li>
+          <li>Automatic error recovery and retry orchestration</li>
+          <li>One-click deployment to production infrastructure</li>
+          <li>Version control and rollback for all agent configs</li>
+        </ul>
+        <div style="margin-top:2.5rem;display:flex;gap:1rem;flex-wrap:wrap;">
+          <a href="#" class="btn btn-primary magnetic-btn">Start Free Trial</a>
+          <a href="#docs" class="btn btn-ghost">Read the Docs →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="container">
+    <div class="reveal" style="text-align:center;max-width:600px;margin:0 auto;">
+      <div class="section-label">Transparent Pricing</div>
+      <h2 class="section-title">Scale at Your Pace</h2>
+      <p class="section-subtitle" style="margin:0 auto;">No surprise overages. No hidden seats. Just clean, predictable pricing that scales with your ambition.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="glass-card pricing-card reveal reveal-delay-1">
+        <div class="pricing-plan">Starter</div>
+        <div class="pricing-price"><span>$</span>0</div>
+        <div class="pricing-period">Free forever · No card required</div>
+        <div class="pricing-desc">Perfect for exploring the platform and building your first autonomous workflows.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><span class="check">✓</span> 3 Active Agents</li>
+          <li><span class="check">✓</span> 500 Task Runs / month</li>
+          <li><span class="check">✓</span> 10 Integrations</li>
+          <li><span class="check">✓</span> Community Support</li>
+          <li><span class="cross">✗</span> Multi-Agent Networks</li>
+          <li><span class="cross">✗</span> Custom Tool Calling</li>
+          <li><span class="cross">✗</span> Priority Inference</li>
+        </ul>
+        <a href="#" class="btn btn-ghost" style="width:100%;justify-content:center;">Get Started Free</a>
+      </div>
+      <div class="glass-card pricing-card featured reveal reveal-delay-2">
+        <div class="pricing-badge">Most Popular</div>
+        <div class="pricing-plan">Professional</div>
+        <div class="pricing-price"><span>$</span>79</div>
+        <div class="pricing-period">per month · Billed annually</div>
+        <div class="pricing-desc">For teams that move fast and demand the highest quality autonomous execution.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><span class="check">✓</span> Unlimited Active Agents</li>
+          <li><span class="check">✓</span> 50,000 Task Runs / month</li>
+          <li><span class="check">✓</span> All 180+ Integrations</li>
+          <li><span class="check">✓</span> Priority Email Support</li>
+          <li><span class="check">✓</span> Multi-Agent Networks</li>
+          <li><span class="check">✓</span> Custom Tool Calling</li>
+          <li><span class="check">✓</span> Priority Inference Routing</li>
+        </ul>
+        <a href="#" class="btn btn-primary magnetic-btn" style="width:100%;justify-content:center;">Start 14-Day Trial</a>
+      </div>
+      <div class="glass-card pricing-card reveal reveal-delay-3">
+        <div class="pricing-plan">Enterprise</div>
+        <div class="pricing-price" style="font-size:clamp(2rem,3vw,3.5rem);">Custom</div>
+        <div class="pricing-period">Volume pricing · Annual contract</div>
+        <div class="pricing-desc">Mission-critical deployments with dedicated infrastructure and white-glove support.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><span class="check">✓</span> Unlimited Everything</li>
+          <li><span class="check">✓</span> Dedicated Inference Cluster</li>
+          <li><span class="check">✓</span> On-Premise Deployment</li>
+          <li><span class="check">✓</span> 24/7 Dedicated CSM</li>
+          <li><span class="check">✓</span> SLA & Uptime Guarantees</li>
+          <li><span class="check">✓</span> Custom Model Fine-Tuning</li>
+          <li><span class="check">✓</span> SOC 2 + HIPAA Compliance</li>
+        </ul>
+        <a href="#contact" class="btn btn-ghost" style="width:100%;justify-content:center;">Contact Sales →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials" style="padding: var(--section-padding) 0; overflow:hidden; background: var(--quantum-black);">
+  <div class="container" style="padding:0 var(--container-padding);">
+    <div class="reveal" style="text-align:center;max-width:600px;margin:0 auto;">
+      <div class="section-label">Social Proof</div>
+      <h2 class="section-title">Trusted by Builders</h2>
+    </div>
+  </div>
+  <div class="testimonials-track">
+    <div class="testimonials-inner" id="testimonialTrack">
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"AI Agents replaced an entire workflow automation team. We deployed 12 agents in a weekend that now run our entire customer onboarding pipeline, completely untouched."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=1" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Marcus Reid</div><div class="testimonial-role">CTO, Nexus Commerce</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"The multi-agent network feature is genuinely jaw-dropping. We have a supervisor agent managing 8 specialists, and it operates more efficiently than any human team we've had."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=5" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Priya Anand</div><div class="testimonial-role">Head of Engineering, Lattice AI</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"We cut our research cycle from 3 weeks to 4 hours. Our agents now scour regulatory filings, synthesize insights, and produce draft reports — flawlessly."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=8" class="testimonial-avatar" alt=""><div><div class="testimonial-name">James Okafor</div><div class="testimonial-role">Director of Strategy, Meridian Capital</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"The observability tools alone are worth the price. Being able to trace every single decision my agents make and replay failures has transformed how we debug AI workflows."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=12" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Sofia Marchetti</div><div class="testimonial-role">AI Platform Lead, Valo Health</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"Zero to production in under an hour. I am not exaggerating — I deployed a full lead qualification agent with CRM sync, email, and calendar booking with zero code."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=16" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Tyler Brandt</div><div class="testimonial-role">Founder, GrowthOS</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"Enterprise-grade security that actually holds up under scrutiny. Our security team's review passed in record time. The audit logs are comprehensive and the RBAC is superb."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=20" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Helena Voss</div><div class="testimonial-role">CISO, Arcturus Systems</div></div></div></div>
+      <!-- Duplicates for seamless loop -->
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"AI Agents replaced an entire workflow automation team. We deployed 12 agents in a weekend that now run our entire customer onboarding pipeline, completely untouched."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=1" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Marcus Reid</div><div class="testimonial-role">CTO, Nexus Commerce</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"The multi-agent network feature is genuinely jaw-dropping. We have a supervisor agent managing 8 specialists, and it operates more efficiently than any human team we've had."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=5" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Priya Anand</div><div class="testimonial-role">Head of Engineering, Lattice AI</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"We cut our research cycle from 3 weeks to 4 hours. Our agents now scour regulatory filings, synthesize insights, and produce draft reports — flawlessly."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=8" class="testimonial-avatar" alt=""><div><div class="testimonial-name">James Okafor</div><div class="testimonial-role">Director of Strategy, Meridian Capital</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"The observability tools alone are worth the price. Being able to trace every single decision my agents make and replay failures has transformed how we debug AI workflows."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=12" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Sofia Marchetti</div><div class="testimonial-role">AI Platform Lead, Valo Health</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"Zero to production in under an hour. I am not exaggerating — I deployed a full lead qualification agent with CRM sync, email, and calendar booking with zero code."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=16" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Tyler Brandt</div><div class="testimonial-role">Founder, GrowthOS</div></div></div></div>
+      <div class="glass-card testimonial-card"><div class="testimonial-stars">★★★★★</div><p class="testimonial-text">"Enterprise-grade security that actually holds up under scrutiny. Our security team's review passed in record time. The audit logs are comprehensive and the RBAC is superb."</p><div class="testimonial-author"><img src="https://i.pravatar.cc/80?img=20" class="testimonial-avatar" alt=""><div><div class="testimonial-name">Helena Voss</div><div class="testimonial-role">CISO, Arcturus Systems</div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="about-section" id="about">
+  <div class="container">
+    <div class="about-grid">
+      <div class="about-image-wrap reveal">
+        <img src="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=700&q=80" class="about-image" alt="AI Visualization">
+        <div class="glass-card about-float-card">
+          <div class="number">2021</div>
+          <div class="label">Founded with a single mission: make AI work for every team.</div>
+        </div>
+      </div>
+      <div class="about-text reveal reveal-delay-2">
+        <div class="section-label">Our Story</div>
+        <h2 class="section-title">We Build the Infrastructure That AI Runs On</h2>
+        <p>AI Agents was born from a simple frustration: powerful AI models existed, but the infrastructure to put them to work in production was painfully absent. We built the missing layer.</p>
+        <p>Today, our platform powers autonomous workflows for startups disrupting industries and Fortune 500 companies transforming their operations. We believe every team deserves an intelligent, tireless digital workforce.</p>
+        <p>We are a team of 60 engineers, researchers, and designers, distributed across 14 countries — united by the conviction that autonomous intelligence will define the next era of human progress.</p>
+        <div class="about-values">
+          <div class="glass-card value-item"><h4>🎯 Precision First</h4><p>Every feature ships only when it performs flawlessly at enterprise scale.</p></div>
+          <div class="glass-card value-item"><h4>🛡 Trust by Design</h4><p>Security and transparency are not features — they are foundations.</p></div>
+          <div class="glass-card value-item"><h4>⚡ Speed of Thought</h4><p>We optimize relentlessly for the fastest possible time-to-value.</p></div>
+          <div class="glass-card value-item"><h4>🌍 Open by Nature</h4><p>We build bridges — open APIs, open standards, vibrant ecosystem.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="background: var(--quantum-black);">
+  <div class="container">
+    <div class="reveal" style="text-align:center;max-width:600px;margin:0 auto;">
+      <div class="section-label">FAQ</div>
+      <h2 class="section-title">Answers You Need</h2>
+      <p class="section-subtitle" style="margin:0 auto;">Everything you need to know before your first agent goes live.</p>
+    </div>
+    <div class="faq-grid" style="margin-top: clamp(3rem,5vw,6rem);">
+      <div class="faq-item glass-card reveal reveal-delay-1" onclick="toggleFaq(this)">
+        <div class="faq-question"><h3>How quickly can I deploy my first AI agent?</h3><div class="faq-toggle">+</div></div>
+        <div class="faq-answer"><p>Most users deploy their first working agent within 15 minutes of signing up. Our no-code builder lets you describe your agent in plain language, connect your tools, and ship — no engineering required. For complex multi-agent systems, our quickstart templates get you to production in under an hour.</p></div>
+      </div>
+      <div class="faq-item glass-card reveal reveal-delay-2" onclick="toggleFaq(this)">
+        <div class="faq-question"><h3>Which AI models power the agents?</h3><div class="faq-toggle">+</div></div>
+        <div class="faq-answer"><p>Our platform is model-agnostic by design. You can use OpenAI GPT-4o, Anthropic Claude, Google Gemini, Mistral, Llama 3, and over a dozen others. Our smart routing layer can automatically select the best model per task based on cost, speed, and capability requirements.</p></div>
+      </div>
+      <div class="faq-item glass-card reveal reveal-delay-3" onclick="toggleFaq(this)">
+        <div class="faq-question"><h3>Is my data used to train your models?</h3><div class="faq-toggle">+</div></div>
+        <div class="faq-answer"><p>Absolutely not. We operate under a strict zero-training-data policy. Your agent configurations, task inputs, outputs, and conversation logs are never used to train or fine-tune any AI models — ours or third-party providers'. All data is encrypted at rest and in transit.</p></div>
+      </div>
+      <div class="faq-item glass-card reveal reveal-delay-1" onclick="toggleFaq(this)">
+        <div class="faq-question"><h3>Can I run agents on my own infrastructure?</h3><div class="faq-toggle">+</div></div>
+        <div class="faq-answer"><p>Yes — our Enterprise plan includes on-premise and private cloud deployment options. You get the full AI Agents platform running within your own VPC or data center, with complete isolation from our shared infrastructure and full control over your data sovereignty.</p></div>
+      </div>
+      <div class="faq-item glass-card reveal reveal-delay-2" onclick="toggleFaq(this)">
+        <div class="faq-question"><h3>How do I connect my existing tools and APIs?</h3><div class="faq-toggle">+</div></div>
+        <div class="faq-answer"><p>We offer 180+ pre-built integrations for Salesforce, Notion, Slack, GitHub, PostgreSQL, Stripe, and more. For custom tools, you can register any REST or GraphQL API in minutes using our Tool Registry. We also support MCP (Model Context Protocol) for standardized tool calling.</p></div>
+      </div>
+      <div class="faq-item glass-card reveal reveal-delay-3" onclick="toggleFaq(this)">
+        <div class="faq-question"><h3>What happens if an agent fails mid-task?</h3><div class="faq-toggle">+</div></div>
+        <div class="faq-answer"><p>Our execution engine includes automatic error detection, contextual retry strategies, and graceful fallback behaviors. Every failed task is captured in full with a complete trace for debugging. You can configure alert rules, automatic escalation to human-in-the-loop review, and custom recovery workflows.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- API DOCS -->
+<section class="api-section" id="docs">
+  <div class="container">
+    <div class="api-grid">
+      <div class="reveal">
+        <div class="section-label">Developer API</div>
+        <h2 class="section-title">Build on the API</h2>
+        <p class="section-subtitle">A clean, RESTful API with real-time streaming, webhooks, and SDKs for Python, TypeScript, and Go. Integrate AI Agents into any stack in minutes.</p>
+        <div class="api-endpoints" style="margin-top:2.5rem;">
+          <div class="glass-card endpoint-item"><span class="method-badge method-post">POST</span><span class="endpoint-path">/v1/agents</span><span class="endpoint-desc">Create agent</span></div>
+          <div class="glass-card endpoint-item"><span class="method-badge method-post">POST</span><span class="endpoint-path">/v1/agents/{id}/run</span><span class="endpoint-desc">Execute task</span></div>
+          <div class="glass-card endpoint-item"><span class="method-badge method-get">GET</span><span class="endpoint-path">/v1/runs/{id}</span><span class="endpoint-desc">Get run status</span></div>
+          <div class="glass-card endpoint-item"><span class="method-badge method-get">GET</span><span class="endpoint-path">/v1/runs/{id}/trace</span><span class="endpoint-desc">Inspect trace</span></div>
+          <div class="glass-card endpoint-item"><span class="method-badge method-delete">DEL</span><span class="endpoint-path">/v1/agents/{id}</span><span class="endpoint-desc">Delete agent</span></div>
+        </div>
+        <div style="margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap;">
+          <a href="#" class="btn btn-primary magnetic-btn">Full API Reference →</a>
+        </div>
+      </div>
+      <div class="reveal reveal-delay-2">
+        <div class="glass-card api-code-block">
+          <div class="code-header">
+            <div class="code-dot red"></div>
+            <div class="code-dot yellow"></div>
+            <div class="code-dot green"></div>
+            <span class="code-filename">deploy_agent.py</span>
+          </div>
+          <code>
+<span class="code-line"><span class="keyword">import</span> aiagents</span>
+<span class="code-line"></span>
+<span class="code-line"><span class="comment"># Initialize client</span></span>
+<span class="code-line"><span class="var">client</span> = aiagents.<span class="func">Client</span>(</span>
+<span class="code-line">  api_key=<span class="string">"sk-aa_..."</span></span>
+<span class="code-line">)</span>
+<span class="code-line"></span>
+<span class="code-line"><span class="comment"># Define your agent</span></span>
+<span class="code-line"><span class="var">agent</span> = client.agents.<span class="func">create</span>(</span>
+<span class="code-line">  name=<span class="string">"Research Analyst"</span>,</span>
+<span class="code-line">  model=<span class="string">"gpt-4o"</span>,</span>
+<span class="code-line">  tools=[<span class="string">"web_search"</span>, <span class="string">"scraper"</span>],</span>
+<span class="code-line">  instructions=<span class="string">"You are a world-class..."</span></span>
+<span class="code-line">)</span>
+<span class="code-line"></span>
+<span class="code-line"><span class="comment"># Run a task with streaming</span></span>
+<span class="code-line"><span class="var">stream</span> = client.runs.<span class="func">create</span>(</span>
+<span class="code-line">  agent_id=agent.id,</span>
+<span class="code-line">  task=<span class="string">"Analyze Q3 earnings reports"</span>,</span>
+<span class="code-line">  stream=<span class="keyword">True</span></span>
+<span class="code-line">)</span>
+<span class="code-line"></span>
+<span class="code-line"><span class="keyword">for</span> chunk <span class="keyword">in</span> stream:</span>
+<span class="code-line">  <span class="func">print</span>(chunk.delta)</span>
+          </code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DISCORD -->
+<section class="discord-section" id="community" style="background: var(--quantum-black);">
+  <div class="container">
+    <div class="glass-card discord-card reveal">
+      <span class="discord-icon">⬡</span>
+      <h2 class="discord-title">Join the Community</h2>
+      <p class="discord-text">Connect with 28,000+ builders, researchers, and AI practitioners. Share workflows, get help, and stay ahead of the curve in our Discord server.</p>
+      <a href="#" class="btn btn-lg discord-btn magnetic-btn">Join Our Discord Server →</a>
+    </div>
+    <div class="discord-stats reveal">
+      <div class="discord-stat"><div class="number">28K+</div><div class="label">Community Members</div></div>
+      <div class="discord-stat"><div class="number">450+</div><div class="label">Active Daily</div></div>
+      <div class="discord-stat"><div class="number">12K+</div><div class="label">Workflows Shared</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL FEED -->
+<section class="social-section" id="social">
+  <div class="container">
+    <div class="reveal" style="max-width:600px;">
+      <div class="section-label">Community Pulse</div>
+      <h2 class="section-title">What People Are Saying</h2>
+    </div>
+    <div class="social-grid">
+      <div class="glass-card social-card reveal reveal-delay-1">
+        <div class="social-header"><div class="social-avatar">🦋</div><div><div class="social-author">@devlinmorse</div><div class="social-handle">Software Engineer</div></div><div class="social-platform">𝕏</div></div>
+        <p class="social-text">Just deployed an AI agent that monitors our GitHub Issues and automatically drafts PR descriptions. Took 20 minutes with @AIAgents. This is the future.</p>
+        <div class="social-meta"><span>❤️ 847</span><span>🔁 312</span><span>2h ago</span></div>
+      </div>
+      <div class="glass-card social-card reveal reveal-delay-2">
+        <div class="social-header"><div class="social-avatar">🚀</div><div><div class="social-author">sarah_builds</div><div class="social-handle">Product Lead</div></div><div class="social-platform">💼</div></div>
+        <p class="social-text">We replaced a $180k/year SaaS stack with 3 AI Agents. Customer support, lead scoring, and reporting — automated. ROI hit in week two.</p>
+        <div class="social-meta"><span>👍 1.2K</span><span>💬 89</span><span>1d ago</span></div>
+      </div>
+      <div class="glass-card social-card reveal reveal-delay-3">
+        <div class="social-header"><div class="social-avatar">⚡</div><div><div class="social-author">@neural_nomad</div><div class="social-handle">ML Engineer</div></div><div class="social-platform">𝕏</div></div>
+        <p class="social-text">The multi-model routing in AI Agents is genuinely clever. It automatically picks Claude for reasoning, GPT-4o for code gen, and Gemini for long-context. Brilliant.</p>
+        <div class="social-meta"><span>❤️ 2.1K</span><span>🔁 891</span><span>3d ago</span></div>
+      </div>
+      <div class="glass-card social-card reveal reveal-delay-1">
+        <div class="social-header"><div class="social-avatar">🌊</div><div><div class="social-author">tomaszwierzbicki</div><div class="social-handle">Founder & CEO</div></div><div class="social-platform">💼</div></div>
+        <p class="social-text">After evaluating 6 agent platforms, AI Agents won on every dimension: performance, reliability, security, and the quality of the developer experience. Best-in-class.</p>
+        <div class="social-meta"><span>👍 934</span><span>💬 47</span><span>5d ago</span></div>
+      </div>
+      <div class="glass-card social-card reveal reveal-delay-2">
+        <div class="social-header"><div class="social-avatar">🎯</div><div><div class="social-author">@airesearcher_k</div><div class="social-handle">AI Researcher</div></div><div class="social-platform">𝕏</div></div>
+        <p class="social-text">The observability in AI Agents is what every AI platform should have. Full decision traces, token budgets, tool call latency — I can see everything my agent thinks.</p>
+        <div class="social-meta"><span>❤️ 756</span><span>🔁 203</span><span>6d ago</span></div>
+      </div>
+      <div class="glass-card social-card reveal reveal-delay-3">
+        <div class="social-header"><div class="social-avatar">🌟</div><div><div class="social-author">alexcheng_hk</div><div class="social-handle">VC & Advisor</div></div><div class="social-platform">💼</div></div>
+        <p class="social-text">Invested in the AI infrastructure space for 4 years. AI Agents has the clearest product vision, the strongest founding team, and the most impressive customer list I've seen.</p>
+        <div class="social-meta"><span>👍 2.4K</span><span>💬 156</span><span>1w ago</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section class="newsletter-section" id="newsletter" style="background: var(--deep-space);">
+  <div class="container reveal">
+    <div class="glass-card newsletter-inner">
+      <div class="section-label">Stay Ahead</div>
+      <h2 class="section-title" style="font-size:clamp(2rem,4vw,4rem);">The Intelligence Brief</h2>
+      <p class="section-subtitle" style="margin:0 auto;">Weekly dispatches on AI agent breakthroughs, platform updates, and community workflows — curated for practitioners, not tourists.</p>
+      <div class="newsletter-form">
+        <input type="email" class="newsletter-input" placeholder="Enter your work email">
+        <button class="btn btn-primary" onclick="handleNewsletterSubmit(this)">Subscribe →</button>
+      </div>
+      <p style="font-size:0.75rem;color:rgba(245,245,245,0.25);margin-top:1rem;font-weight:300;">No spam. Unsubscribe anytime. Trusted by 22,000+ practitioners.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact-section" id="contact">
+  <div class="container">
+    <div class="contact-grid">
+      <div class="reveal">
+        <div class="section-label">Get in Touch</div>
+        <div class="contact-info">
+          <h2>Let's Build Something Extraordinary</h2>
+          <p>Whether you're evaluating for enterprise, integrating at scale, or just want to talk shop about autonomous AI — our team is here and genuinely excited to connect.</p>
+        </div>
+        <div class="contact-links">
+          <a href="mailto:hello@aiagents.ai" class="glass-card contact-link">
+            <div class="contact-link-icon">✉️</div>
+            <div class="contact-link-text"><div class="label">Email</div><div class="value">hello@aiagents.ai</div></div>
+          </a>
+          <a href="tel:+18005550100" class="glass-card contact-link">
+            <div class="contact-link-icon">📞</div>
+            <div class="contact-link-text"><div class="label">Sales Hotline</div><div class="value">+1 (800) 555-0100</div></div>
+          </a>
+          <div class="glass-card contact-link">
+            <div class="contact-link-icon">📍</div>
+            <div class="contact-link-text"><div class="label">Headquarters</div><div class="value">San Francisco, CA — Remote-First</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="reveal reveal-delay-2">
+        <div class="glass-card" style="padding:clamp(2rem,4vw,3rem);">
+          <h3 style="font-size:1.3rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.5rem;">Send a Message</h3>
+          <p style="font-size:0.85rem;color:rgba(245,245,245,0.4);margin-bottom:2rem;font-weight:300;">We respond within one business day.</p>
+          <div class="contact-form">
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" class="form-input" placeholder="Alex Johnson">
+            </div>
+            <div class="form-group">
+              <label>Work Email</label>
+              <input type="email" class="form-input" placeholder="alex@company.com">
+            </div>
+            <div class="form-group">
+              <label>Company</label>
+              <input type="text" class="form-input" placeholder="Acme Corporation">
+            </div>
+            <div class="form-group">
+              <label>Message</label>
+              <textarea class="form-textarea" placeholder="Tell us about your use case, team size, and timeline…"></textarea>
+            </div>
+            <button class="btn btn-primary magnetic-btn" style="width:100%;justify-content:center;" onclick="handleFormSubmit(this)">Send Message →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#" class="nav-logo">⬡ AI AGENTS</a>
+        <p>The autonomous intelligence platform powering the next generation of AI-native companies. Build, deploy, and scale agents that work while you sleep.</p>
+        <div class="footer-socials">
+          <a href="#" class="footer-social-link" aria-label="Twitter">𝕏</a>
+          <a href="#" class="footer-social-link" aria-label="LinkedIn">in</a>
+          <a href="#" class="footer-social-link" aria-label="GitHub">⌘</a>
+          <a href="#" class="footer-social-link" aria-label="Discord">⬡</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#demo">Live Demo</a></li>
+          <li><a href="#">Changelog</a></li>
+          <li><a href="#">Roadmap</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Developers</h4>
+        <ul>
+          <li><a href="#docs">API Reference</a></li>
+          <li><a href="#">SDK Docs</a></li>
+          <li><a href="#">Quickstart</a></li>
+          <li><a href="#">Status Page</a></li>
+          <li><a href="#">Open Source</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#about">About Us</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Press</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copyright">© 2025 AI Agents, Inc. All rights reserved.</div>
+      <div class="footer-legal">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Security</a>
+        <a href="#">Cookie Policy</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- LIVE CHAT -->
+<button id="live-chat-btn" aria-label="Open live chat" onclick="toggleChat()">💬</button>
+<div class="glass-card" id="live-chat-panel">
+  <div class="chat-header">
+    <div class="chat-header-avatar">🤖</div>
+    <div class="chat-header-info">
+      <div class="name">Aria · AI Support</div>
+      <div class="status">● Online · Typically replies instantly</div>
+    </div>
+    <button class="chat-close-btn" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg bot"><div class="chat-bubble">Hello! 👋 I'm Aria, your AI Agents assistant. How can I help you today?</div></div>
+    <div class="chat-msg bot"><div class="chat-bubble">I can help with pricing, demos, integrations, or anything technical. What's on your mind?</div></div>
+  </div>
+  <div class="chat-input-wrap">
+    <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything…" onkeydown="if(event.key==='Enter')sendChatMsg()">
+    <button class="chat-send-btn" onclick="sendChatMsg()">↑</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// PRELOADER
+// ============================================================
+(function() {
+  const bar = document.getElementById('preloader-bar');
+  const count = document.getElementById('preloader-count');
+  const loader = document.getElementById('preloader');
+  let progress = 0;
+  const interval = setInterval(() => {
+    progress += Math.random() * 3 + 0.5;
+    if (progress > 100) progress = 100;
+    bar.style.width = progress + '%';
+    count.textContent = 'INITIALIZING — ' + Math.floor(progress) + '%';
+    if (progress >= 100) {
+      clearInterval(interval);
+      setTimeout(() => {
+        loader.classList.add('hide');
+        loader.addEventListener('transitionend', () => loader.remove(), { once: true });
+      }, 400);
+    }
+  }, 30);
+})();
+
+// ============================================================
+// CUSTOM CURSOR
+// ============================================================
+const cursor = document.getElementById('cursor');
+const follower = document.getElementById('cursor-follower');
+let mouseX = 0, mouseY = 0, followerX = 0, followerY = 0;
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY;
+  cursor.style.left = mouseX + 'px';
+  cursor.style.top = mouseY + 'px';
+});
+function animateFollower() {
+  followerX += (mouseX - followerX) * 0.12;
+  followerY += (mouseY - followerY) * 0.12;
+  follower.style.left = followerX + 'px';
+  follower.style.top = followerY + 'px';
+  requestAnimationFrame(animateFollower);
+}
+animateFollower();
+document.querySelectorAll('a, button, .btn, .faq-question, .glass-card').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursor.style.width = '20px'; cursor.style.height = '20px';
+    follower.style.width = '60px'; follower.style.height = '60px';
+    follower.style.borderColor = 'rgba(0,255,240,0.8)';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursor.style.width = '12px'; cursor.style.height = '12px';
+    follower.style.width = '40px'; follower.style.height = '40px';
+    follower.style.borderColor = 'rgba(0,255,240,0.5)';
+  });
+});
+
+// ============================================================
+// MAGNETIC BUTTONS
+// ============================================================
+document.querySelectorAll('.magnetic-btn').forEach(btn => {
+  btn.addEventListener('mousemove', e => {
+    const rect = btn.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    btn.style.transform = `translate(${x * 0.25}px, ${y * 0.3}px)`;
+  });
+  btn.addEventListener('mouseleave', () => {
+    btn.style.transform = '';
+  });
+});
+
+// ============================================================
+// NAVBAR SCROLL
+// ============================================================
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// ============================================================
+// THEME TOGGLE
+// ============================================================
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const html = document.documentElement;
+  html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+// ============================================================
+// HAMBURGER
+// ============================================================
+document.getElementById('hamburger').addEventListener('click', function() {
+  document.getElementById('nav-links').classList.toggle('mobile-open');
+  const spans = this.querySelectorAll('span');
+  this.classList.toggle('active');
+});
+
+// ============================================================
+// SCROLL REVEAL
+// ============================================================
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// ============================================================
+// FAQ TOGGLE
+// ============================================================
+function toggleFaq(item) {
+  const wasActive = item.classList.contains('active');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('active'));
+  if (!wasActive) item.classList.add('active');
+}
+
+// ============================================================
+// VIDEO PLAYER
+// ============================================================
+const demoVideo = document.getElementById('demoVideo');
+const playBtn = document.getElementById('playBtn');
+let isPlaying = false;
+function toggleVideo() {
+  if (isPlaying) {
+    demoVideo.pause();
+    document.querySelector('.demo-overlay').style.opacity = '1';
+  } else {
+    demoVideo.play();
+    document.querySelector('.demo-overlay').style.opacity = '0';
+  }
+  isPlaying = !isPlaying;
+}
+demoVideo.addEventListener('click', toggleVideo);
+document.querySelector('.demo-overlay').style.transition = 'opacity 0.3s ease';
+
+// ============================================================
+// LIVE CHAT
+// ============================================================
+let chatOpen = false;
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('live-chat-panel').classList.toggle('open', chatOpen);
+  if (chatOpen) setTimeout(() => document.getElementById('chatInput').focus(), 400);
+}
+
+const chatReplies = [
+  "Great question! Let me pull that info for you. 😊",
+  "AI Agents supports GPT-4o, Claude 3.5, Gemini 1.5, and 15+ other models.",
+  "Our Pro plan starts at $79/month with a 14-day free trial — no card required.",
+  "You can connect any REST API using our Tool Registry in about 5 minutes!",
+  "Want me to schedule a live demo with our team? I can get that set up right away.",
+  "Our average deployment time for first-time users is under 20 minutes. 🚀"
+];
+let replyIndex = 0;
+
+function sendChatMsg() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const messages = document.getElementById('chatMessages');
+  const userMsg = document.createElement('div');
+  userMsg.className = 'chat-msg user';
+  userMsg.innerHTML = `<div class="chat-bubble">${msg}</div>`;
+  messages.appendChild(userMsg);
+  input.value = '';
+  messages.scrollTop = messages.scrollHeight;
+  setTimeout(() => {
+    const botMsg = document.createElement('div');
+    botMsg.className = 'chat-msg bot';
+    botMsg.innerHTML = `<div class="chat-bubble">${chatReplies[replyIndex % chatReplies.length]}</div>`;
+    messages.appendChild(botMsg);
+    messages.scrollTop = messages.scrollHeight;
+    replyIndex++;
+  }, 800);
+}
+
+// ============================================================
+// NEWSLETTER + FORM SUBMIT
+// ============================================================
+function handleNewsletterSubmit(btn) {
+  btn.textContent = '✓ Subscribed!';
+  btn.style.background = 'linear-gradient(135deg,#27c93f,#1aa832)';
+  setTimeout(() => { btn.textContent = 'Subscribe →'; btn.style.background = ''; }, 3000);
+}
+
+function handleFormSubmit(btn) {
+  btn.textContent = '✓ Message Sent!';
+  btn.style.background = 'linear-gradient(135deg,#27c93f,#1aa832)';
+  setTimeout(() => { btn.textContent = 'Send Message →'; btn.style.background = ''; }, 3000);
+}
+
+// ============================================================
+// SEARCH CLOSE ON OUTSIDE CLICK
+// ============================================================
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('searchWrap');
+  if (!wrap.contains(e.target)) wrap.classList.remove('active');
+});
+
+// ============================================================
+// COUNTER ANIMATION FOR STATS
+// ============================================================
+function animateCounter(el, target, suffix) {
+  let start = 0;
+  const duration = 2000;
+  const step = duration / 60;
+  const increment = target / (duration / step);
+  const timer = setInterval(() => {
+    start += increment;
+    if (start >= target) { start = target; clearInterval(timer); }
+    el.textContent = (target >= 1000 ? (start / 1000).toFixed(0) + 'K+' : Math.floor(start) + suffix);
+  }, step);
+}
+
+const statsObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      statsObserver.unobserve(entry.target);
+      const stats = entry.target.querySelectorAll('.stat-number');
+      const data = [
+        { target: 50, suffix: 'K+' },
+        { target: 99.9, suffix: '%' },
+        { target: 180, suffix: '+' },
+        { target: 4.9, suffix: '★' }
+      ];
+      stats.forEach((stat, i) => {
+        let val = 0;
+        const d = data[i];
+        const duration = 2000;
+        const fps = 60;
+        const totalFrames = fps * (duration / 1000);
+        const inc = d.target / totalFrames;
+        const timer = setInterval(() => {
+          val += inc;
+          if (val >= d.target) { val = d.target; clearInterval(timer); }
+          if (d.target >= 100) stat.textContent = val.toFixed(0) + (d.suffix.includes('K') ? 'K+' : d.suffix);
+          else stat.textContent = val.toFixed(1) + d.suffix;
+        }, 1000 / fps);
+      });
+    }
+  });
+}, { threshold: 0.5 });
+
+const heroSection = document.querySelector('.hero-stats');
+if (heroSection) statsObserver.observe(heroSection);
+
+// ============================================================
+// CARD SIBLING BLUR ON HOVER
+// ============================================================
+document.querySelectorAll('.features-grid').forEach(grid => {
+  const cards = grid.querySelectorAll('.glass-card');
+  cards.forEach(card => {
+    card.addEventListener('mouseenter', () => {
+      cards.forEach(c => { if (c !== card) c.style.opacity = '0.4'; });
+    });
+    card.addEventListener('mouseleave', () => {
+      cards.forEach(c => c.style.opacity = '');
+    });
+  });
+});
+
+document.querySelectorAll('.pricing-grid').forEach(grid => {
+  const cards = grid.querySelectorAll('.glass-card');
+  cards.forEach(card => {
+    card.addEventListener('mouseenter', () => {
+      cards.forEach(c => { if (c !== card) c.style.opacity = '0.4'; });
+    });
+    card.addEventListener('mouseleave', () => {
+      cards.forEach(c => c.style.opacity = '');
+    });
+  });
+});
+</script>
+</body>
+</html>

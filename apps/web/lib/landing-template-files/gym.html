@@ -1,0 +1,1225 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Performance | Corporate Fitness Solutions</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #1a1a1a;
+            --dark-brown: #3E2723;
+            --medium-brown: #5D4037;
+            --light-brown: #8D6E63;
+            --beige: #EFEBE9;
+            --light-beige: #F5F1ED;
+            --white: #FFFFFF;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            color: var(--black);
+            line-height: 1.6;
+            background-color: var(--white);
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            padding: 15px 0;
+            transition: var(--transition);
+        }
+
+        nav.scrolled {
+            padding: 10px 0;
+            background-color: var(--white);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--medium-brown);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--dark-brown);
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+
+        .nav-links li {
+            margin-left: 35px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--black);
+            font-weight: 500;
+            font-size: 16px;
+            transition: var(--transition);
+            position: relative;
+            padding: 5px 0;
+        }
+
+        .nav-links a:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--medium-brown);
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover:after {
+            width: 100%;
+        }
+
+        .nav-links a:hover {
+            color: var(--medium-brown);
+        }
+
+        .nav-cta {
+            background-color: var(--medium-brown);
+            color: var(--white);
+            border: none;
+            padding: 10px 25px;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-left: 20px;
+        }
+
+        .nav-cta:hover {
+            background-color: var(--dark-brown);
+            transform: translateY(-2px);
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--black);
+            cursor: pointer;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://placehold.co/1920x1080/EFEBE9/5D4037?text=Elite+Performance&font=roboto');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--white);
+            padding-top: 70px;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero p {
+            font-size: 22px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 14px 36px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 18px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-block;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary {
+            background-color: var(--white);
+            color: var(--medium-brown);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--beige);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--white);
+            border-color: var(--white);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-3px);
+        }
+
+        /* Section Styling */
+        section {
+            padding: 100px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 70px;
+        }
+
+        .section-header h2 {
+            font-size: 42px;
+            color: var(--dark-brown);
+            margin-bottom: 20px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-header h2:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 4px;
+            background-color: var(--medium-brown);
+        }
+
+        .section-header p {
+            font-size: 18px;
+            color: var(--light-brown);
+            margin-top: 30px;
+        }
+
+        /* Features Section */
+        .features {
+            background-color: var(--light-beige);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        .feature-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .feature-icon {
+            height: 100px;
+            background: linear-gradient(135deg, var(--beige), var(--light-beige));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+        }
+
+        .feature-content {
+            padding: 25px;
+        }
+
+        .feature-content h3 {
+            font-size: 24px;
+            color: var(--dark-brown);
+            margin-bottom: 15px;
+        }
+
+        /* Programs Section */
+        .programs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 35px;
+            margin-top: 50px;
+        }
+
+        .program-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .program-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .program-image {
+            height: 200px;
+            background-color: var(--beige);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .program-content {
+            padding: 25px;
+        }
+
+        .program-content h3 {
+            font-size: 26px;
+            color: var(--dark-brown);
+            margin-bottom: 10px;
+        }
+
+        .program-meta {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            color: var(--medium-brown);
+            font-weight: 500;
+        }
+
+        .program-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--beige);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--medium-brown);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--light-brown);
+        }
+
+        /* Trainers Section */
+        .trainers {
+            background-color: var(--beige);
+        }
+
+        .trainers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        .trainer-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .trainer-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .trainer-image {
+            height: 320px;
+            background-color: var(--light-beige);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .trainer-content {
+            padding: 25px;
+        }
+
+        .trainer-content h3 {
+            font-size: 26px;
+            color: var(--dark-brown);
+            margin-bottom: 5px;
+        }
+
+        .trainer-title {
+            color: var(--medium-brown);
+            font-weight: 500;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .trainer-bio {
+            color: var(--light-brown);
+            margin-bottom: 20px;
+        }
+
+        .certifications {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .cert-badge {
+            background-color: var(--beige);
+            color: var(--medium-brown);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Stats Section */
+        .stats {
+            background: linear-gradient(rgba(62, 39, 35, 0.9), rgba(62, 39, 35, 0.9)), url('https://placehold.co/1920x600/3E2723/EFEBE9?text=Evidence-Based+Results&font=roboto');
+            background-size: cover;
+            background-position: center;
+            color: var(--white);
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        .stat-card {
+            padding: 30px;
+        }
+
+        .stat-card .number {
+            font-size: 52px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--beige);
+        }
+
+        .stat-card .label {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+
+        /* Testimonials */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 35px;
+            margin-top: 50px;
+        }
+
+        .testimonial-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            padding: 35px;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .testimonial-card:before {
+            content: '"';
+            position: absolute;
+            top: 20px;
+            left: 25px;
+            font-size: 80px;
+            color: var(--beige);
+            font-family: Georgia, serif;
+            line-height: 1;
+        }
+
+        .testimonial-content {
+            margin-top: 20px;
+            font-style: italic;
+            color: var(--light-brown);
+            position: relative;
+            z-index: 1;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--beige);
+        }
+
+        .author-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--beige);
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .author-info h4 {
+            color: var(--dark-brown);
+            font-size: 18px;
+        }
+
+        .author-info p {
+            color: var(--medium-brown);
+            font-size: 15px;
+        }
+
+        /* CTA Section */
+        .cta {
+            background: linear-gradient(rgba(93, 64, 55, 0.9), rgba(93, 64, 55, 0.9)), url('https://placehold.co/1920x600/5D4037/EFEBE9?text=Corporate+Wellness&font=roboto');
+            background-size: cover;
+            background-position: center;
+            text-align: center;
+            color: var(--white);
+            padding: 100px 0;
+        }
+
+        .cta h2 {
+            font-size: 48px;
+            margin-bottom: 25px;
+        }
+
+        .cta p {
+            font-size: 22px;
+            max-width: 700px;
+            margin: 0 auto 40px;
+            opacity: 0.95;
+        }
+
+        .btn-cta {
+            background-color: var(--beige);
+            color: var(--dark-brown);
+            padding: 16px 45px;
+            font-size: 20px;
+            font-weight: 500;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-cta:hover {
+            background-color: var(--light-beige);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--black);
+            color: var(--beige);
+            padding: 80px 0 30px;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+        }
+
+        .footer-col h3 {
+            color: var(--white);
+            font-size: 22px;
+            margin-bottom: 25px;
+            position: relative;
+            padding-bottom: 10px;
+        }
+
+        .footer-col h3:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 3px;
+            background-color: var(--medium-brown);
+        }
+
+        .footer-links {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links a {
+            color: var(--beige);
+            text-decoration: none;
+            transition: var(--transition);
+            display: block;
+            padding: 5px 0;
+        }
+
+        .footer-links a:hover {
+            color: var(--white);
+            transform: translateX(5px);
+        }
+
+        .contact-info {
+            margin-top: 20px;
+        }
+
+        .contact-info p {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .contact-info i {
+            margin-right: 12px;
+            font-size: 18px;
+            color: var(--medium-brown);
+            min-width: 20px;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .social-links a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--white);
+            transition: var(--transition);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .social-links a:hover {
+            background-color: var(--medium-brown);
+            transform: translateY(-3px);
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 40px;
+            margin-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 15px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .hero h1 {
+                font-size: 46px;
+            }
+            
+            .hero p {
+                font-size: 20px;
+            }
+            
+            section {
+                padding: 80px 0;
+            }
+            
+            .section-header h2 {
+                font-size: 38px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block;
+            }
+            
+            .nav-links {
+                position: fixed;
+                top: 80px;
+                right: -100%;
+                flex-direction: column;
+                background-color: var(--white);
+                width: 100%;
+                text-align: center;
+                transition: var(--transition);
+                box-shadow: 0 10px 10px rgba(0, 0, 0, 0.1);
+                padding: 30px 0;
+            }
+            
+            .nav-links.active {
+                right: 0;
+            }
+            
+            .nav-links li {
+                margin: 15px 0;
+            }
+            
+            .nav-cta {
+                margin-top: 20px;
+                width: 80%;
+            }
+            
+            .hero h1 {
+                font-size: 38px;
+            }
+            
+            .hero p {
+                font-size: 18px;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+                padding: 14px;
+            }
+            
+            .section-header h2 {
+                font-size: 34px;
+            }
+            
+            .section-header p {
+                font-size: 17px;
+            }
+            
+            section {
+                padding: 70px 0;
+            }
+            
+            .stats-grid, .features-grid, .programs-grid, .trainers-grid, .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .program-stats {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 34px;
+            }
+            
+            .section-header h2 {
+                font-size: 30px;
+            }
+            
+            .stat-card .number {
+                font-size: 42px;
+            }
+            
+            .cta h2 {
+                font-size: 38px;
+            }
+            
+            .cta p {
+                font-size: 19px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="container nav-container">
+            <a href="#" class="logo">ELITE<span>PERFORMANCE</span></a>
+            <button class="menu-toggle" id="menuToggle">☰</button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#programs">Programs</a></li>
+                <li><a href="#trainers">Trainers</a></li>
+                <li><a href="#results">Results</a></li>
+                <li><a href="#testimonials">Testimonials</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><button class="nav-cta">Schedule Consultation</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-content">
+            <h1>Evidence-Based Corporate Fitness Solutions</h1>
+            <p>Scientifically designed wellness programs that enhance employee performance, reduce healthcare costs, and foster a culture of health in your organization.</p>
+            <div class="hero-buttons">
+                <a href="#programs" class="btn btn-primary">Explore Programs</a>
+                <a href="#contact" class="btn btn-secondary">Request Proposal</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Corporate Wellness Advantage</h2>
+                <p>Our comprehensive approach integrates physical training, nutritional guidance, and mental resilience strategies to deliver measurable business outcomes.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-content">
+                        <h3>Data-Driven Results</h3>
+                        <p>Comprehensive biometric tracking and quarterly reporting with clear ROI metrics for HR and executive leadership.</p>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <div class="feature-content">
+                        <h3>Executive Coaching</h3>
+                        <p>Personalized training programs for leadership teams with confidential health assessments and priority scheduling.</p>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <div class="feature-content">
+                        <h3>Productivity Optimization</h3>
+                        <p>Programs scientifically designed to enhance cognitive function, reduce absenteeism, and improve workplace engagement.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Programs Section -->
+    <section class="programs" id="programs">
+        <div class="container">
+            <div class="section-header">
+                <h2>Signature Corporate Programs</h2>
+                <p>Customizable wellness solutions designed for organizations of all sizes with measurable impact on employee health and business performance.</p>
+            </div>
+            <div class="programs-grid">
+                <div class="program-card">
+                    <div class="program-image" style="background-image: url('https://placehold.co/600x400/EFEBE9/5D4037?text=Executive+Performance&font=roboto')"></div>
+                    <div class="program-content">
+                        <h3>Executive Performance</h3>
+                        <p>Comprehensive wellness solution for C-suite and senior leadership with personalized coaching and confidential health analytics.</p>
+                        <div class="program-meta">
+                            <span>Duration: 12 weeks</span>
+                            <span>ROI: 280%</span>
+                        </div>
+                        <div class="program-stats">
+                            <div class="stat-item">
+                                <div class="stat-number">94%</div>
+                                <div class="stat-label">Retention Rate</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">42%</div>
+                                <div class="stat-label">Stress Reduction</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="program-card">
+                    <div class="program-image" style="background-image: url('https://placehold.co/600x400/EFEBE9/5D4037?text=Team+Resilience&font=roboto')"></div>
+                    <div class="program-content">
+                        <h3>Team Resilience</h3>
+                        <p>Department-focused program building physical and mental resilience through team-based challenges and collaborative wellness goals.</p>
+                        <div class="program-meta">
+                            <span>Duration: 8 weeks</span>
+                            <span>ROI: 195%</span>
+                        </div>
+                        <div class="program-stats">
+                            <div class="stat-item">
+                                <div class="stat-number">87%</div>
+                                <div class="stat-label">Team Cohesion</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">31%</div>
+                                <div class="stat-label">Productivity Gain</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="program-card">
+                    <div class="program-image" style="background-image: url('https://placehold.co/600x400/EFEBE9/5D4037?text=Wellness+Essentials&font=roboto')"></div>
+                    <div class="program-content">
+                        <h3>Wellness Essentials</h3>
+                        <p>Scalable organization-wide program with on-demand resources, health screenings, and flexible participation options for all employees.</p>
+                        <div class="program-meta">
+                            <span>Duration: Ongoing</span>
+                            <span>ROI: 150%</span>
+                        </div>
+                        <div class="program-stats">
+                            <div class="stat-item">
+                                <div class="stat-number">76%</div>
+                                <div class="stat-label">Participation Rate</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">28%</div>
+                                <div class="stat-label">Healthcare Savings</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trainers Section -->
+    <section class="trainers" id="trainers">
+        <div class="container">
+            <div class="section-header">
+                <h2>Expert Training Team</h2>
+                <p>Our certified specialists bring extensive experience in corporate wellness, sports science, and executive coaching to deliver exceptional results.</p>
+            </div>
+            <div class="trainers-grid">
+                <div class="trainer-card">
+                    <div class="trainer-image" style="background-image: url('https://placehold.co/400x400/D7CCC8/5D4037?text=Dr.+Sarah+Chen&font=roboto')"></div>
+                    <div class="trainer-content">
+                        <h3>Dr. Sarah Chen</h3>
+                        <span class="trainer-title">PhD, Exercise Physiology</span>
+                        <p class="trainer-bio">Former research director at National Institute of Health with 15+ years developing corporate wellness protocols for Fortune 500 companies.</p>
+                        <div class="certifications">
+                            <span class="cert-badge">PhD</span>
+                            <span class="cert-badge">CSCS</span>
+                            <span class="cert-badge">ACSM-EP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="trainer-card">
+                    <div class="trainer-image" style="background-image: url('https://placehold.co/400x400/D7CCC8/5D4037?text=Michael+Rodriguez&font=roboto')"></div>
+                    <div class="trainer-content">
+                        <h3>Michael Rodriguez</h3>
+                        <span class="trainer-title">MS, Corporate Wellness</span>
+                        <p class="trainer-bio">Specializes in executive coaching and leadership development programs. Previously designed wellness initiatives for global financial institutions.</p>
+                        <div class="certifications">
+                            <span class="cert-badge">MS</span>
+                            <span class="cert-badge">CWP</span>
+                            <span class="cert-badge">NBC-HWC</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="trainer-card">
+                    <div class="trainer-image" style="background-image: url('https://placehold.co/400x400/D7CCC8/5D4037?text=Dr.+James+Wilson&font=roboto')"></div>
+                    <div class="trainer-content">
+                        <h3>Dr. James Wilson</h3>
+                        <span class="trainer-title">MD, Sports Medicine</span>
+                        <p class="trainer-bio">Board-certified sports medicine physician focused on injury prevention and sustainable performance optimization for corporate professionals.</p>
+                        <div class="certifications">
+                            <span class="cert-badge">MD</span>
+                            <span class="cert-badge">CAQSM</span>
+                            <span class="cert-badge">FACSM</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats" id="results">
+        <div class="container">
+            <div class="section-header">
+                <h2 style="color: white;">Measurable Business Impact</h2>
+                <p style="color: var(--beige); opacity: 0.9;">Quantifiable results from our corporate wellness partnerships over the past 24 months</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="number" id="clientCount">0</div>
+                    <div class="label">Corporate Clients</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="employeeCount">0</div>
+                    <div class="label">Employees Served</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="satisfactionRate">0</div>
+                    <div class="label">Satisfaction Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="roi">0</div>
+                    <div class="label">Average ROI</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <div class="section-header">
+                <h2>Client Success Stories</h2>
+                <p>Real results from organizations that have transformed their workplace culture and business outcomes through our partnership.</p>
+            </div>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <p class="testimonial-content">Implementing Elite Performance's wellness program reduced our healthcare costs by 28% in the first year while increasing employee satisfaction scores by 37%. The data-driven approach gave our leadership team confidence in the investment.</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar"></div>
+                        <div class="author-info">
+                            <h4>Jennifer Morris</h4>
+                            <p>Chief Human Resources Officer, Global Innovations Inc.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-content">The Executive Performance program transformed our leadership team's approach to work-life integration. Absenteeism decreased by 42% among participants, and we've seen measurable improvements in decision-making capacity during high-pressure periods.</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar"></div>
+                        <div class="author-info">
+                            <h4>David Chen</h4>
+                            <p>CEO, TechForward Solutions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-content">What sets Elite Performance apart is their ability to customize programs for different departments while maintaining consistent quality. Our engineering team's productivity metrics improved by 31% after completing the Team Resilience program.</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar"></div>
+                        <div class="author-info">
+                            <h4>Robert Johnson</h4>
+                            <p>VP of Operations, Nexus Enterprises</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <h2>Transform Your Corporate Wellness Strategy</h2>
+            <p>Schedule a complimentary consultation with our corporate wellness specialists to design a customized program that delivers measurable ROI for your organization.</p>
+            <button class="btn-cta">Request Custom Proposal</button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h3>Elite Performance</h3>
+                    <p style="margin-top: 20px; color: var(--beige); line-height: 1.7;">Evidence-based corporate fitness solutions that enhance employee performance, reduce healthcare costs, and foster a culture of health.</p>
+                    <div class="social-links">
+                        <a href="#">in</a>
+                        <a href="#">f</a>
+                        <a href="#">ig</a>
+                        <a href="#">yt</a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h3>Quick Links</h3>
+                    <ul class="footer-links">
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#programs">Corporate Programs</a></li>
+                        <li><a href="#trainers">Our Experts</a></li>
+                        <li><a href="#results">Measurable Results</a></li>
+                        <li><a href="#testimonials">Client Success</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>Contact Us</h3>
+                    <div class="contact-info">
+                        <p><span style="margin-right: 12px;">📍</span> 350 Park Avenue, New York, NY 10022</p>
+                        <p><span style="margin-right: 12px;">✉️</span> solutions@eliteperformance.com</p>
+                        <p><span style="margin-right: 12px;">📞</span> +1 (212) 555-7890</p>
+                        <p><span style="margin-right: 12px;">🕒</span> Corporate Office: Mon-Fri 8:30AM - 5:30PM</p>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h3>Business Hours</h3>
+                    <ul class="footer-links">
+                        <li>Monday - Friday: 5:30AM - 9:00PM</li>
+                        <li>Saturday: 7:00AM - 8:00PM</li>
+                        <li>Sunday: 8:00AM - 6:00PM</li>
+                        <li style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <span style="display: block; margin-bottom: 8px; font-weight: 500;">Corporate Consultations:</span>
+                            By appointment only
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2026 Elite Performance Corporate Wellness. All rights reserved. | Privacy Policy | Terms of Service</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile Menu Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const navLinks = document.getElementById('navLinks');
+        
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            menuToggle.textContent = navLinks.classList.contains('active') ? '✕' : '☰';
+        });
+        
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+                menuToggle.textContent = '☰';
+            });
+        });
+        
+        // Navbar scroll effect
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+        
+        // Statistics counter animation
+        function animateCounter(element, target, duration) {
+            let start = 0;
+            const increment = target / (duration / 16);
+            const timer = setInterval(() => {
+                start += increment;
+                if (start >= target) {
+                    element.textContent = target.toLocaleString();
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.floor(start).toLocaleString();
+                }
+            }, 16);
+        }
+        
+        // Initialize counters when in view
+        const counters = [
+            { id: 'clientCount', target: 185, duration: 2000 },
+            { id: 'employeeCount', target: 42000, duration: 2500 },
+            { id: 'satisfactionRate', target: 98, duration: 1800 },
+            { id: 'roi', target: 235, duration: 2200 }
+        ];
+        
+        const observerOptions = {
+            threshold: 0.1
+        };
+        
+        const counterObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const counter = counters.find(c => c.id === entry.target.id);
+                    if (counter) {
+                        animateCounter(entry.target, counter.target, counter.duration);
+                        if (counter.id === 'satisfactionRate' || counter.id === 'roi') {
+                            entry.target.textContent += '%';
+                        }
+                    }
+                    counterObserver.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+        
+        // Observe each counter element
+        counters.forEach(counter => {
+            const element = document.getElementById(counter.id);
+            if (element) {
+                counterObserver.observe(element);
+            }
+        });
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // CTA button scroll
+        document.querySelector('.btn-cta').addEventListener('click', () => {
+            document.querySelector('#contact').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
+        
+        // Initialize navbar state
+        if (window.scrollY > 50) {
+            navbar.classList.add('scrolled');
+        }
+    </script>
+</body>
+</html>

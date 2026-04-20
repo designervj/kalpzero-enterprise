@@ -1,0 +1,2089 @@
+{
+  "version": "2026-03-08.custom",
+  "industries": [
+    {
+      "key": "real_estate",
+      "industry": "Real Estate & Property",
+      "businessTypes": [
+        {
+          "key": "property_listing_brokerage",
+          "name": "Property Listing & Brokerage",
+          "description": "Covers listing and brokerage services for Residential, Commercial, and Land & Plot properties",
+          "subTypes": [
+            {
+              "key": "residential_listing",
+              "name": "Residential Listing",
+              "description": "Apartments, Villas, Independent Houses, Row Houses, Penthouses",
+              "attributeSets": [
+                {
+                  "key": "residential_property_identity",
+                  "name": "Property Identity",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "property_category",
+                      "label": "Property Category",
+                      "type": "static",
+                      "value": "Residential"
+                    },
+                    {
+                      "key": "transaction_type",
+                      "label": "Transaction Type",
+                      "type": "select",
+                      "options": [
+                        "Sale",
+                        "Rent",
+                        "Lease"
+                      ]
+                    },
+                    {
+                      "key": "property_subtype",
+                      "label": "Property Subtype",
+                      "type": "select",
+                      "options": [
+                        "Apartment",
+                        "Villa",
+                        "Independent House",
+                        "Row House",
+                        "Penthouse",
+                        "Studio"
+                      ]
+                    },
+                    {
+                      "key": "bhk_configuration",
+                      "label": "BHK Configuration",
+                      "type": "select",
+                      "options": [
+                        "Studio",
+                        "1 BHK",
+                        "2 BHK",
+                        "3 BHK",
+                        "4 BHK",
+                        "4+ BHK"
+                      ]
+                    },
+                    {
+                      "key": "furnishing_status",
+                      "label": "Furnishing Status",
+                      "type": "select",
+                      "options": [
+                        "Unfurnished",
+                        "Semi-Furnished",
+                        "Fully Furnished"
+                      ]
+                    },
+                    {
+                      "key": "property_age",
+                      "label": "Property Age",
+                      "type": "select",
+                      "options": [
+                        "New",
+                        "Under Construction",
+                        "0–5 Yrs",
+                        "5–10 Yrs",
+                        "10+ Yrs"
+                      ]
+                    },
+                    {
+                      "key": "possession_status",
+                      "label": "Possession Status",
+                      "type": "select",
+                      "options": [
+                        "Ready to Move",
+                        "Under Construction"
+                      ]
+                    },
+                    {
+                      "key": "availability_date",
+                      "label": "Availability Date",
+                      "type": "select",
+                      "options": [
+                        "Immediate",
+                        "Custom Date (DD-MM-YYYY)"
+                      ]
+                    },
+                    {
+                      "key": "facing_direction",
+                      "label": "Facing Direction",
+                      "type": "select",
+                      "options": [
+                        "East",
+                        "West",
+                        "North",
+                        "South",
+                        "North-East",
+                        "North-West"
+                      ]
+                    },
+                    {
+                      "key": "floor_number",
+                      "label": "Floor Number",
+                      "type": "select",
+                      "options": [
+                        "Ground",
+                        "1st",
+                        "2nd",
+                        "3rd",
+                        "High Floor",
+                        "Penthouse"
+                      ]
+                    },
+                    {
+                      "key": "total_floors",
+                      "label": "Total Floors in Building",
+                      "type": "select",
+                      "options": [
+                        "1–5",
+                        "5–10",
+                        "10–20",
+                        "20+"
+                      ]
+                    },
+                    {
+                      "key": "corner_unit",
+                      "label": "Corner Unit",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "residential_size_layout",
+                  "name": "Size & Layout",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "builtup_area",
+                      "label": "Built-up Area",
+                      "type": "number",
+                      "unit": "sq ft / sq m"
+                    },
+                    {
+                      "key": "carpet_area",
+                      "label": "Carpet Area",
+                      "type": "number",
+                      "unit": "sq ft / sq m"
+                    },
+                    {
+                      "key": "super_builtup_area",
+                      "label": "Super Built-up Area",
+                      "type": "number",
+                      "unit": "sq ft / sq m"
+                    },
+                    {
+                      "key": "bedrooms",
+                      "label": "No. of Bedrooms",
+                      "type": "select",
+                      "options": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "4+"
+                      ]
+                    },
+                    {
+                      "key": "bathrooms",
+                      "label": "No. of Bathrooms",
+                      "type": "select",
+                      "options": [
+                        "1",
+                        "2",
+                        "3",
+                        "4+"
+                      ]
+                    },
+                    {
+                      "key": "balconies",
+                      "label": "No. of Balconies",
+                      "type": "select",
+                      "options": [
+                        "0",
+                        "1",
+                        "2",
+                        "3+"
+                      ]
+                    },
+                    {
+                      "key": "ceiling_height",
+                      "label": "Ceiling Height",
+                      "type": "select",
+                      "options": [
+                        "8 ft",
+                        "9 ft",
+                        "10 ft",
+                        "12 ft"
+                      ]
+                    },
+                    {
+                      "key": "servant_room",
+                      "label": "Servant Room",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "study_room",
+                      "label": "Study Room",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "parking_availability",
+                      "label": "Parking Availability",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "parking_type",
+                      "label": "Parking Type",
+                      "type": "select",
+                      "options": [
+                        "Covered",
+                        "Open",
+                        "Reserved",
+                        "Stacked"
+                      ]
+                    },
+                    {
+                      "key": "parking_slots",
+                      "label": "No. of Parking Slots",
+                      "type": "select",
+                      "options": [
+                        "0",
+                        "1",
+                        "2",
+                        "2+"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "residential_pricing",
+                  "name": "Pricing & Financials",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "listed_price",
+                      "label": "Listed Price",
+                      "type": "number",
+                      "unit": "INR"
+                    },
+                    {
+                      "key": "price_type",
+                      "label": "Price Type",
+                      "type": "select",
+                      "options": [
+                        "Total",
+                        "Per Sq Ft",
+                        "Monthly Rent"
+                      ]
+                    },
+                    {
+                      "key": "price_per_sqft",
+                      "label": "Price per Sq Ft",
+                      "type": "number",
+                      "unit": "INR/sq ft"
+                    },
+                    {
+                      "key": "security_deposit",
+                      "label": "Security Deposit",
+                      "type": "select",
+                      "options": [
+                        "1 Month Rent",
+                        "2 Months Rent",
+                        "3 Months Rent"
+                      ]
+                    },
+                    {
+                      "key": "maintenance_charges",
+                      "label": "Maintenance Charges",
+                      "type": "select",
+                      "options": [
+                        "Monthly",
+                        "Quarterly",
+                        "Included in Rent",
+                        "Separate"
+                      ]
+                    },
+                    {
+                      "key": "maintenance_amount",
+                      "label": "Maintenance Amount",
+                      "type": "number",
+                      "unit": "INR/month"
+                    },
+                    {
+                      "key": "brokerage_fee",
+                      "label": "Brokerage Fee",
+                      "type": "select",
+                      "options": [
+                        "0%",
+                        "0.5%",
+                        "1%",
+                        "2%",
+                        "Negotiable"
+                      ]
+                    },
+                    {
+                      "key": "token_amount",
+                      "label": "Token Amount",
+                      "type": "select",
+                      "options": [
+                        "Refundable",
+                        "Non-refundable",
+                        "As per agreement"
+                      ]
+                    },
+                    {
+                      "key": "stamp_duty",
+                      "label": "Stamp Duty",
+                      "type": "text",
+                      "placeholder": "As per state (~5–7%)"
+                    },
+                    {
+                      "key": "registration_charges",
+                      "label": "Registration Charges",
+                      "type": "text",
+                      "placeholder": "As per state (~1%)"
+                    },
+                    {
+                      "key": "gst_applicable",
+                      "label": "GST Applicable",
+                      "type": "select",
+                      "options": [
+                        "Yes (Under Construction)",
+                        "No (Ready to Move)"
+                      ]
+                    },
+                    {
+                      "key": "home_loan_assistance",
+                      "label": "Home Loan Assistance",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "residential_features",
+                  "name": "Features & Amenities",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "society_amenities",
+                      "label": "Society Amenities",
+                      "type": "multi_select",
+                      "options": [
+                        "Swimming Pool",
+                        "Gym",
+                        "Clubhouse",
+                        "Garden",
+                        "Jogging Track",
+                        "Kids Play Area"
+                      ]
+                    },
+                    {
+                      "key": "lift",
+                      "label": "Lift",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "power_backup",
+                      "label": "Power Backup",
+                      "type": "select",
+                      "options": [
+                        "Full",
+                        "Partial",
+                        "None"
+                      ]
+                    },
+                    {
+                      "key": "water_supply",
+                      "label": "Water Supply",
+                      "type": "select",
+                      "options": [
+                        "24×7",
+                        "Scheduled",
+                        "Borewell",
+                        "Municipal",
+                        "Tanker"
+                      ]
+                    },
+                    {
+                      "key": "gas_connection",
+                      "label": "Gas Connection",
+                      "type": "select",
+                      "options": [
+                        "Pipeline",
+                        "Cylinder",
+                        "None"
+                      ]
+                    },
+                    {
+                      "key": "internet",
+                      "label": "Internet / Broadband",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available",
+                        "Fibre Ready"
+                      ]
+                    },
+                    {
+                      "key": "security",
+                      "label": "Security",
+                      "type": "multi_select",
+                      "options": [
+                        "24×7 Security",
+                        "CCTV",
+                        "Intercom",
+                        "Video Door Phone"
+                      ]
+                    },
+                    {
+                      "key": "vastu_compliant",
+                      "label": "Vastu Compliant",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Partially"
+                      ]
+                    },
+                    {
+                      "key": "pet_friendly",
+                      "label": "Pet Friendly",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "gated_community",
+                      "label": "Gated Community",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "smart_home",
+                      "label": "Smart Home Features",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "green_building",
+                      "label": "Green Building",
+                      "type": "select",
+                      "options": [
+                        "Yes (LEED Certified)",
+                        "Yes (IGBC Certified)",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "wheelchair_accessible",
+                      "label": "Wheelchair Accessible",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "residential_legal",
+                  "name": "Legal & Ownership",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "ownership_type",
+                      "label": "Ownership Type",
+                      "type": "select",
+                      "options": [
+                        "Freehold",
+                        "Leasehold",
+                        "Cooperative Society"
+                      ]
+                    },
+                    {
+                      "key": "rera_registered",
+                      "label": "RERA Registered",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Exempted"
+                      ]
+                    },
+                    {
+                      "key": "rera_id",
+                      "label": "RERA ID",
+                      "type": "text",
+                      "placeholder": "Enter RERA registration number"
+                    },
+                    {
+                      "key": "title_clearance",
+                      "label": "Title Clearance",
+                      "type": "select",
+                      "options": [
+                        "Clear",
+                        "Under Litigation"
+                      ]
+                    },
+                    {
+                      "key": "encumbrance_status",
+                      "label": "Encumbrance Status",
+                      "type": "select",
+                      "options": [
+                        "Encumbrance Free",
+                        "Mortgaged"
+                      ]
+                    },
+                    {
+                      "key": "occupancy_certificate",
+                      "label": "Occupancy Certificate",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Applied",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "completion_certificate",
+                      "label": "Completion Certificate",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "property_tax_status",
+                      "label": "Property Tax Status",
+                      "type": "select",
+                      "options": [
+                        "Paid Up-to-Date",
+                        "Pending"
+                      ]
+                    },
+                    {
+                      "key": "society_registration",
+                      "label": "Society Registration",
+                      "type": "select",
+                      "options": [
+                        "Registered",
+                        "Unregistered",
+                        "Under Process"
+                      ]
+                    },
+                    {
+                      "key": "bank_loan_approved",
+                      "label": "Bank Loan Approved",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "legal_documentation",
+                      "label": "Legal Documentation",
+                      "type": "select",
+                      "options": [
+                        "Agreement to Sale",
+                        "Sale Deed",
+                        "Lease Deed"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "residential_brokerage",
+                  "name": "Brokerage & Policy",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "listed_by",
+                      "label": "Listed By",
+                      "type": "select",
+                      "options": [
+                        "Owner",
+                        "Builder",
+                        "Broker",
+                        "Agent"
+                      ]
+                    },
+                    {
+                      "key": "broker_agency_name",
+                      "label": "Broker / Agency Name",
+                      "type": "text",
+                      "placeholder": "Enter broker or agency name"
+                    },
+                    {
+                      "key": "contact_preference",
+                      "label": "Contact Preference",
+                      "type": "multi_select",
+                      "options": [
+                        "Call",
+                        "WhatsApp",
+                        "Email",
+                        "Site Visit"
+                      ]
+                    },
+                    {
+                      "key": "site_visit_availability",
+                      "label": "Site Visit Availability",
+                      "type": "select",
+                      "options": [
+                        "Weekdays",
+                        "Weekends",
+                        "By Appointment",
+                        "Anytime"
+                      ]
+                    },
+                    {
+                      "key": "virtual_tour",
+                      "label": "Virtual Tour",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "listing_validity",
+                      "label": "Listing Validity",
+                      "type": "select",
+                      "options": [
+                        "30 Days",
+                        "60 Days",
+                        "90 Days",
+                        "Ongoing"
+                      ]
+                    },
+                    {
+                      "key": "negotiable",
+                      "label": "Negotiable",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "exclusive_listing",
+                      "label": "Exclusive Listing",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "co_brokerage",
+                      "label": "Co-Brokerage",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "documentation_support",
+                      "label": "Documentation Support",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "commercial_listing",
+              "name": "Commercial Listing",
+              "description": "Office Space, Shops, Showrooms, Warehouses, SCO, Industrial Units",
+              "attributeSets": [
+                {
+                  "key": "commercial_property_identity",
+                  "name": "Property Identity",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "property_category",
+                      "label": "Property Category",
+                      "type": "static",
+                      "value": "Commercial"
+                    },
+                    {
+                      "key": "transaction_type",
+                      "label": "Transaction Type",
+                      "type": "select",
+                      "options": [
+                        "Sale",
+                        "Rent",
+                        "Lease"
+                      ]
+                    },
+                    {
+                      "key": "property_subtype",
+                      "label": "Property Subtype",
+                      "type": "select",
+                      "options": [
+                        "Office Space",
+                        "Shop",
+                        "Showroom",
+                        "Warehouse",
+                        "SCO",
+                        "Industrial Unit",
+                        "Co-working Unit"
+                      ]
+                    },
+                    {
+                      "key": "commercial_usage_type",
+                      "label": "Commercial Usage Type",
+                      "type": "select",
+                      "options": [
+                        "Retail",
+                        "Office",
+                        "Storage",
+                        "Manufacturing",
+                        "F&B",
+                        "Medical",
+                        "Education"
+                      ]
+                    },
+                    {
+                      "key": "furnishing_status",
+                      "label": "Furnishing Status",
+                      "type": "select",
+                      "options": [
+                        "Bare Shell",
+                        "Warm Shell",
+                        "Semi-Furnished",
+                        "Fully Furnished"
+                      ]
+                    },
+                    {
+                      "key": "property_age",
+                      "label": "Property Age",
+                      "type": "select",
+                      "options": [
+                        "New",
+                        "Under Construction",
+                        "0–5 Yrs",
+                        "5–10 Yrs",
+                        "10+ Yrs"
+                      ]
+                    },
+                    {
+                      "key": "possession_status",
+                      "label": "Possession Status",
+                      "type": "select",
+                      "options": [
+                        "Ready to Move",
+                        "Under Construction"
+                      ]
+                    },
+                    {
+                      "key": "availability_date",
+                      "label": "Availability Date",
+                      "type": "select",
+                      "options": [
+                        "Immediate",
+                        "Custom Date (DD-MM-YYYY)"
+                      ]
+                    },
+                    {
+                      "key": "floor_number",
+                      "label": "Floor Number",
+                      "type": "select",
+                      "options": [
+                        "Ground",
+                        "1st",
+                        "2nd",
+                        "3rd",
+                        "High Floor"
+                      ]
+                    },
+                    {
+                      "key": "total_floors",
+                      "label": "Total Floors in Building",
+                      "type": "select",
+                      "options": [
+                        "1–5",
+                        "5–10",
+                        "10–20",
+                        "20+"
+                      ]
+                    },
+                    {
+                      "key": "facing_direction",
+                      "label": "Facing Direction",
+                      "type": "select",
+                      "options": [
+                        "East",
+                        "West",
+                        "North",
+                        "South",
+                        "Main Road Facing"
+                      ]
+                    },
+                    {
+                      "key": "corner_unit",
+                      "label": "Corner Unit",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "commercial_size_layout",
+                  "name": "Size & Layout",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "builtup_area",
+                      "label": "Built-up Area",
+                      "type": "number",
+                      "unit": "sq ft / sq m"
+                    },
+                    {
+                      "key": "carpet_area",
+                      "label": "Carpet Area",
+                      "type": "number",
+                      "unit": "sq ft / sq m"
+                    },
+                    {
+                      "key": "super_builtup_area",
+                      "label": "Super Built-up Area",
+                      "type": "number",
+                      "unit": "sq ft / sq m"
+                    },
+                    {
+                      "key": "ceiling_height",
+                      "label": "Ceiling Height",
+                      "type": "select",
+                      "options": [
+                        "10 ft",
+                        "12 ft",
+                        "14 ft",
+                        "Custom"
+                      ]
+                    },
+                    {
+                      "key": "cabin_count",
+                      "label": "Cabin Count",
+                      "type": "select",
+                      "options": [
+                        "Open",
+                        "1–5",
+                        "5–10",
+                        "10+"
+                      ]
+                    },
+                    {
+                      "key": "conference_room",
+                      "label": "Conference Room",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "washroom",
+                      "label": "Washroom",
+                      "type": "select",
+                      "options": [
+                        "Shared",
+                        "Attached"
+                      ]
+                    },
+                    {
+                      "key": "pantry",
+                      "label": "Pantry / Cafeteria",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Shared"
+                      ]
+                    },
+                    {
+                      "key": "loading_dock",
+                      "label": "Loading / Unloading Dock",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "parking_availability",
+                      "label": "Parking Availability",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "parking_type",
+                      "label": "Parking Type",
+                      "type": "select",
+                      "options": [
+                        "Covered",
+                        "Open",
+                        "Reserved",
+                        "Basement"
+                      ]
+                    },
+                    {
+                      "key": "parking_slots",
+                      "label": "No. of Parking Slots",
+                      "type": "select",
+                      "options": [
+                        "0",
+                        "1–5",
+                        "5–10",
+                        "10+",
+                        "As per sq ft"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "commercial_pricing",
+                  "name": "Pricing & Financials",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "listed_price",
+                      "label": "Listed Price",
+                      "type": "number",
+                      "unit": "INR"
+                    },
+                    {
+                      "key": "price_type",
+                      "label": "Price Type",
+                      "type": "select",
+                      "options": [
+                        "Total",
+                        "Per Sq Ft",
+                        "Monthly Rent"
+                      ]
+                    },
+                    {
+                      "key": "price_per_sqft",
+                      "label": "Price per Sq Ft",
+                      "type": "number",
+                      "unit": "INR/sq ft"
+                    },
+                    {
+                      "key": "security_deposit",
+                      "label": "Security Deposit",
+                      "type": "select",
+                      "options": [
+                        "1 Month",
+                        "3 Months",
+                        "6 Months",
+                        "12 Months"
+                      ]
+                    },
+                    {
+                      "key": "maintenance_charges",
+                      "label": "Maintenance Charges",
+                      "type": "select",
+                      "options": [
+                        "Monthly",
+                        "Quarterly",
+                        "Included",
+                        "Separate"
+                      ]
+                    },
+                    {
+                      "key": "cam_charges",
+                      "label": "CAM Charges",
+                      "type": "number",
+                      "unit": "INR/sq ft/month"
+                    },
+                    {
+                      "key": "lease_tenure",
+                      "label": "Lease Tenure",
+                      "type": "select",
+                      "options": [
+                        "1 Yr",
+                        "3 Yrs",
+                        "5 Yrs",
+                        "9 Yrs",
+                        "Custom"
+                      ]
+                    },
+                    {
+                      "key": "lock_in_period",
+                      "label": "Lock-in Period",
+                      "type": "select",
+                      "options": [
+                        "None",
+                        "6 Months",
+                        "1 Yr",
+                        "3 Yrs"
+                      ]
+                    },
+                    {
+                      "key": "rent_escalation",
+                      "label": "Rent Escalation",
+                      "type": "select",
+                      "options": [
+                        "5% per year",
+                        "10% per year",
+                        "15% per year",
+                        "Every 3 years"
+                      ]
+                    },
+                    {
+                      "key": "brokerage_fee",
+                      "label": "Brokerage Fee",
+                      "type": "select",
+                      "options": [
+                        "1 Month Rent",
+                        "2% of Deal Value",
+                        "Negotiable"
+                      ]
+                    },
+                    {
+                      "key": "gst_applicable",
+                      "label": "GST Applicable",
+                      "type": "select",
+                      "options": [
+                        "Yes (18%)",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "stamp_duty",
+                      "label": "Stamp Duty",
+                      "type": "text",
+                      "placeholder": "As per state"
+                    }
+                  ]
+                },
+                {
+                  "key": "commercial_features",
+                  "name": "Features & Amenities",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "lift",
+                      "label": "Lift",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Cargo Lift"
+                      ]
+                    },
+                    {
+                      "key": "power_backup",
+                      "label": "Power Backup",
+                      "type": "select",
+                      "options": [
+                        "Full",
+                        "Partial",
+                        "DG Set",
+                        "None"
+                      ]
+                    },
+                    {
+                      "key": "water_supply",
+                      "label": "Water Supply",
+                      "type": "select",
+                      "options": [
+                        "24×7",
+                        "Scheduled",
+                        "Municipal",
+                        "Borewell"
+                      ]
+                    },
+                    {
+                      "key": "internet",
+                      "label": "Internet / Broadband",
+                      "type": "select",
+                      "options": [
+                        "Fibre Ready",
+                        "Broadband",
+                        "Leased Line",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "hvac",
+                      "label": "HVAC / Air Conditioning",
+                      "type": "select",
+                      "options": [
+                        "Centralized",
+                        "Split",
+                        "Provision Only",
+                        "None"
+                      ]
+                    },
+                    {
+                      "key": "fire_safety",
+                      "label": "Fire Safety",
+                      "type": "multi_select",
+                      "options": [
+                        "Fire NOC",
+                        "Sprinklers",
+                        "Fire Extinguishers"
+                      ]
+                    },
+                    {
+                      "key": "security",
+                      "label": "CCTV & Security",
+                      "type": "multi_select",
+                      "options": [
+                        "24×7 Security",
+                        "CCTV",
+                        "Access Control"
+                      ]
+                    },
+                    {
+                      "key": "signage_permission",
+                      "label": "Signage Permission",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Frontage Signage",
+                        "Pylon"
+                      ]
+                    },
+                    {
+                      "key": "housekeeping",
+                      "label": "Housekeeping",
+                      "type": "select",
+                      "options": [
+                        "Included",
+                        "Not Included"
+                      ]
+                    },
+                    {
+                      "key": "food_court",
+                      "label": "Food Court / Canteen",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "wheelchair_accessible",
+                      "label": "Wheelchair Accessible",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "green_building",
+                      "label": "Green Building",
+                      "type": "select",
+                      "options": [
+                        "Yes (LEED)",
+                        "Yes (IGBC)",
+                        "No"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "commercial_legal",
+                  "name": "Legal & Ownership",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "ownership_type",
+                      "label": "Ownership Type",
+                      "type": "select",
+                      "options": [
+                        "Freehold",
+                        "Leasehold"
+                      ]
+                    },
+                    {
+                      "key": "rera_registered",
+                      "label": "RERA Registered",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Exempted"
+                      ]
+                    },
+                    {
+                      "key": "rera_id",
+                      "label": "RERA ID",
+                      "type": "text",
+                      "placeholder": "Enter RERA registration number"
+                    },
+                    {
+                      "key": "title_clearance",
+                      "label": "Title Clearance",
+                      "type": "select",
+                      "options": [
+                        "Clear",
+                        "Under Litigation"
+                      ]
+                    },
+                    {
+                      "key": "encumbrance_status",
+                      "label": "Encumbrance Status",
+                      "type": "select",
+                      "options": [
+                        "Encumbrance Free",
+                        "Mortgaged"
+                      ]
+                    },
+                    {
+                      "key": "occupancy_certificate",
+                      "label": "Occupancy Certificate",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Applied",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "completion_certificate",
+                      "label": "Completion Certificate",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "clu_order",
+                      "label": "Change of Land Use (CLU)",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Required",
+                        "Applied"
+                      ]
+                    },
+                    {
+                      "key": "trade_license",
+                      "label": "Trade License Provision",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "property_tax_status",
+                      "label": "Property Tax Status",
+                      "type": "select",
+                      "options": [
+                        "Paid Up-to-Date",
+                        "Pending"
+                      ]
+                    },
+                    {
+                      "key": "bank_loan_approved",
+                      "label": "Bank Loan Approved",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "legal_documentation",
+                      "label": "Legal Documentation",
+                      "type": "select",
+                      "options": [
+                        "Sale Deed",
+                        "Lease Deed",
+                        "Agreement to Lease"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "commercial_brokerage",
+                  "name": "Brokerage & Policy",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "listed_by",
+                      "label": "Listed By",
+                      "type": "select",
+                      "options": [
+                        "Owner",
+                        "Developer",
+                        "Broker",
+                        "Agent"
+                      ]
+                    },
+                    {
+                      "key": "broker_agency_name",
+                      "label": "Broker / Agency Name",
+                      "type": "text",
+                      "placeholder": "Enter broker or agency name"
+                    },
+                    {
+                      "key": "contact_preference",
+                      "label": "Contact Preference",
+                      "type": "multi_select",
+                      "options": [
+                        "Call",
+                        "WhatsApp",
+                        "Email",
+                        "Site Visit"
+                      ]
+                    },
+                    {
+                      "key": "site_visit_availability",
+                      "label": "Site Visit Availability",
+                      "type": "select",
+                      "options": [
+                        "Weekdays",
+                        "Weekends",
+                        "By Appointment"
+                      ]
+                    },
+                    {
+                      "key": "virtual_tour",
+                      "label": "Virtual Tour",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "listing_validity",
+                      "label": "Listing Validity",
+                      "type": "select",
+                      "options": [
+                        "30 Days",
+                        "60 Days",
+                        "90 Days",
+                        "Ongoing"
+                      ]
+                    },
+                    {
+                      "key": "negotiable",
+                      "label": "Negotiable",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "exclusive_listing",
+                      "label": "Exclusive Listing",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "co_brokerage",
+                      "label": "Co-Brokerage",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "documentation_support",
+                      "label": "Documentation Support",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "land_plot_listing",
+              "name": "Land & Plot Listing",
+              "description": "Residential Plots, Commercial Plots, Agricultural Land, NA Plots, Farm Land, SCO Plots",
+              "attributeSets": [
+                {
+                  "key": "land_property_identity",
+                  "name": "Property Identity",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "property_category",
+                      "label": "Property Category",
+                      "type": "static",
+                      "value": "Land / Plot"
+                    },
+                    {
+                      "key": "transaction_type",
+                      "label": "Transaction Type",
+                      "type": "select",
+                      "options": [
+                        "Sale",
+                        "Lease",
+                        "Joint Venture"
+                      ]
+                    },
+                    {
+                      "key": "land_plot_type",
+                      "label": "Land / Plot Type",
+                      "type": "select",
+                      "options": [
+                        "Residential Plot",
+                        "Commercial Plot",
+                        "Agricultural Land",
+                        "Industrial Plot",
+                        "NA Plot",
+                        "Farm Land",
+                        "SCO Plot"
+                      ]
+                    },
+                    {
+                      "key": "land_use_zoning",
+                      "label": "Land Use / Zoning",
+                      "type": "select",
+                      "options": [
+                        "Residential",
+                        "Commercial",
+                        "Mixed",
+                        "Agricultural",
+                        "Industrial",
+                        "Institutional"
+                      ]
+                    },
+                    {
+                      "key": "availability_date",
+                      "label": "Availability Date",
+                      "type": "select",
+                      "options": [
+                        "Immediate",
+                        "Custom Date (DD-MM-YYYY)"
+                      ]
+                    },
+                    {
+                      "key": "facing_direction",
+                      "label": "Facing Direction",
+                      "type": "select",
+                      "options": [
+                        "East",
+                        "West",
+                        "North",
+                        "South",
+                        "North-East",
+                        "North-West"
+                      ]
+                    },
+                    {
+                      "key": "corner_plot",
+                      "label": "Corner Plot",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "topography",
+                      "label": "Topography",
+                      "type": "select",
+                      "options": [
+                        "Flat",
+                        "Sloped",
+                        "Rocky",
+                        "Waterfront",
+                        "Elevated"
+                      ]
+                    },
+                    {
+                      "key": "shape_of_land",
+                      "label": "Shape of Land",
+                      "type": "select",
+                      "options": [
+                        "Regular",
+                        "Irregular",
+                        "L-shaped",
+                        "Corner"
+                      ]
+                    },
+                    {
+                      "key": "landmark_proximity",
+                      "label": "Landmark Proximity",
+                      "type": "text",
+                      "placeholder": "e.g. 2 km from Highway / Airport"
+                    }
+                  ]
+                },
+                {
+                  "key": "land_size_dimensions",
+                  "name": "Size & Dimensions",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "plot_area",
+                      "label": "Plot Area",
+                      "type": "number",
+                      "unit": "sq ft / sq yd / sq m / acres / bigha"
+                    },
+                    {
+                      "key": "plot_dimensions",
+                      "label": "Plot Dimensions",
+                      "type": "text",
+                      "placeholder": "Length × Width (e.g. 30×40 ft)"
+                    },
+                    {
+                      "key": "road_frontage_width",
+                      "label": "Road Frontage Width",
+                      "type": "select",
+                      "options": [
+                        "10 ft",
+                        "20 ft",
+                        "30 ft",
+                        "40 ft",
+                        "60 ft+",
+                        "As per site"
+                      ]
+                    },
+                    {
+                      "key": "road_type",
+                      "label": "Road Type",
+                      "type": "select",
+                      "options": [
+                        "Municipal Road",
+                        "Highway",
+                        "Internal Road",
+                        "Kuccha Road"
+                      ]
+                    },
+                    {
+                      "key": "fsi",
+                      "label": "Floor Space Index (FSI)",
+                      "type": "select",
+                      "options": [
+                        "1.0",
+                        "1.5",
+                        "2.0",
+                        "2.5",
+                        "As per zoning"
+                      ]
+                    },
+                    {
+                      "key": "ground_coverage",
+                      "label": "Ground Coverage",
+                      "type": "text",
+                      "placeholder": "Permissible % as per zone"
+                    },
+                    {
+                      "key": "total_floors_permitted",
+                      "label": "Total Floors Permitted",
+                      "type": "text",
+                      "placeholder": "As per FSI / local norms"
+                    },
+                    {
+                      "key": "units_possible",
+                      "label": "No. of Units Possible",
+                      "type": "text",
+                      "placeholder": "As per FSI and plot area"
+                    },
+                    {
+                      "key": "setback_requirements",
+                      "label": "Set-back Requirements",
+                      "type": "text",
+                      "placeholder": "As per local authority norms"
+                    }
+                  ]
+                },
+                {
+                  "key": "land_pricing",
+                  "name": "Pricing & Financials",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "listed_price",
+                      "label": "Listed Price",
+                      "type": "number",
+                      "unit": "INR"
+                    },
+                    {
+                      "key": "price_type",
+                      "label": "Price Type",
+                      "type": "select",
+                      "options": [
+                        "Total",
+                        "Per Sq Ft",
+                        "Per Sq Yd",
+                        "Per Acre",
+                        "Per Bigha"
+                      ]
+                    },
+                    {
+                      "key": "price_per_sqft",
+                      "label": "Price per Sq Ft",
+                      "type": "number",
+                      "unit": "INR/sq ft"
+                    },
+                    {
+                      "key": "price_per_sqyd",
+                      "label": "Price per Sq Yd",
+                      "type": "number",
+                      "unit": "INR/sq yd"
+                    },
+                    {
+                      "key": "price_per_acre",
+                      "label": "Price per Acre",
+                      "type": "number",
+                      "unit": "INR/acre"
+                    },
+                    {
+                      "key": "brokerage_fee",
+                      "label": "Brokerage Fee",
+                      "type": "select",
+                      "options": [
+                        "1%",
+                        "2%",
+                        "Negotiable"
+                      ]
+                    },
+                    {
+                      "key": "token_amount",
+                      "label": "Token Amount",
+                      "type": "select",
+                      "options": [
+                        "Refundable",
+                        "Non-refundable",
+                        "As per agreement"
+                      ]
+                    },
+                    {
+                      "key": "stamp_duty",
+                      "label": "Stamp Duty",
+                      "type": "text",
+                      "placeholder": "As per state (~5–7%)"
+                    },
+                    {
+                      "key": "registration_charges",
+                      "label": "Registration Charges",
+                      "type": "text",
+                      "placeholder": "As per state (~1%)"
+                    },
+                    {
+                      "key": "plot_loan_available",
+                      "label": "Plot Loan Available",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "joint_venture_option",
+                      "label": "Joint Venture Option",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Open to JV"
+                      ]
+                    },
+                    {
+                      "key": "negotiable",
+                      "label": "Negotiable",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "land_infrastructure",
+                  "name": "Infrastructure & Utilities",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "boundary_wall",
+                      "label": "Boundary Wall",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Partial"
+                      ]
+                    },
+                    {
+                      "key": "drainage_sewage",
+                      "label": "Drainage / Sewage",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available",
+                        "Applied"
+                      ]
+                    },
+                    {
+                      "key": "water_connection",
+                      "label": "Water Connection",
+                      "type": "select",
+                      "options": [
+                        "Municipal",
+                        "Borewell",
+                        "Canal",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "electricity_connection",
+                      "label": "Electricity Connection",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Applied",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "street_light",
+                      "label": "Street Light",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "internal_roads",
+                      "label": "Internal Roads",
+                      "type": "select",
+                      "options": [
+                        "Tar Road",
+                        "Kuccha Road",
+                        "None"
+                      ]
+                    },
+                    {
+                      "key": "gated_township",
+                      "label": "Gated Township / Layout",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "vastu_compliant",
+                      "label": "Vastu Compliant",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No",
+                        "Partially"
+                      ]
+                    },
+                    {
+                      "key": "tree_vegetation",
+                      "label": "Tree / Vegetation",
+                      "type": "select",
+                      "options": [
+                        "Clear",
+                        "Partial — Needs Clearing",
+                        "Dense — Needs Clearing"
+                      ]
+                    },
+                    {
+                      "key": "water_body",
+                      "label": "Water Body / Nala",
+                      "type": "select",
+                      "options": [
+                        "None",
+                        "Adjacent",
+                        "On Boundary"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "land_legal",
+                  "name": "Legal & Approvals",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "ownership_type",
+                      "label": "Ownership Type",
+                      "type": "select",
+                      "options": [
+                        "Freehold",
+                        "Leasehold",
+                        "Govt Allotted",
+                        "Patta"
+                      ]
+                    },
+                    {
+                      "key": "title_clearance",
+                      "label": "Title Clearance",
+                      "type": "select",
+                      "options": [
+                        "Clear",
+                        "Under Litigation",
+                        "Disputed"
+                      ]
+                    },
+                    {
+                      "key": "encumbrance_status",
+                      "label": "Encumbrance Status",
+                      "type": "select",
+                      "options": [
+                        "Encumbrance Free",
+                        "Mortgaged"
+                      ]
+                    },
+                    {
+                      "key": "na_clu_order",
+                      "label": "NA / CLU Order",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Applied",
+                        "Not Required",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "land_use_certificate",
+                      "label": "Land Use Certificate",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "layout_approval",
+                      "label": "Layout Approval",
+                      "type": "select",
+                      "options": [
+                        "RERA Approved",
+                        "Authority Approved",
+                        "Not Approved"
+                      ]
+                    },
+                    {
+                      "key": "property_tax_status",
+                      "label": "Property Tax Status",
+                      "type": "select",
+                      "options": [
+                        "Paid Up-to-Date",
+                        "Pending",
+                        "NA"
+                      ]
+                    },
+                    {
+                      "key": "seven_twelve_extract",
+                      "label": "7/12 Extract (Rural Land)",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available"
+                      ]
+                    },
+                    {
+                      "key": "survey_mutation",
+                      "label": "Survey / Mutation",
+                      "type": "select",
+                      "options": [
+                        "Done",
+                        "Pending"
+                      ]
+                    },
+                    {
+                      "key": "environmental_clearance",
+                      "label": "Environmental Clearance",
+                      "type": "select",
+                      "options": [
+                        "Required & Obtained",
+                        "Not Required"
+                      ]
+                    },
+                    {
+                      "key": "bank_loan_approved",
+                      "label": "Bank Loan Approved",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "legal_documentation",
+                      "label": "Legal Documentation",
+                      "type": "select",
+                      "options": [
+                        "Sale Deed",
+                        "Title Deed",
+                        "Gift Deed",
+                        "Patta"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "key": "land_brokerage",
+                  "name": "Brokerage & Policy",
+                  "appliesTo": "listing_profile",
+                  "attributes": [
+                    {
+                      "key": "listed_by",
+                      "label": "Listed By",
+                      "type": "select",
+                      "options": [
+                        "Owner",
+                        "Developer",
+                        "Broker",
+                        "Agent"
+                      ]
+                    },
+                    {
+                      "key": "broker_agency_name",
+                      "label": "Broker / Agency Name",
+                      "type": "text",
+                      "placeholder": "Enter broker or agency name"
+                    },
+                    {
+                      "key": "contact_preference",
+                      "label": "Contact Preference",
+                      "type": "multi_select",
+                      "options": [
+                        "Call",
+                        "WhatsApp",
+                        "Email",
+                        "Site Visit"
+                      ]
+                    },
+                    {
+                      "key": "site_visit_availability",
+                      "label": "Site Visit Availability",
+                      "type": "select",
+                      "options": [
+                        "Weekdays",
+                        "Weekends",
+                        "By Appointment",
+                        "Anytime"
+                      ]
+                    },
+                    {
+                      "key": "virtual_tour",
+                      "label": "Virtual Tour / Map View",
+                      "type": "select",
+                      "options": [
+                        "Available",
+                        "Not Available",
+                        "Google Maps Link"
+                      ]
+                    },
+                    {
+                      "key": "listing_validity",
+                      "label": "Listing Validity",
+                      "type": "select",
+                      "options": [
+                        "30 Days",
+                        "60 Days",
+                        "90 Days",
+                        "Ongoing"
+                      ]
+                    },
+                    {
+                      "key": "exclusive_listing",
+                      "label": "Exclusive Listing",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "co_brokerage",
+                      "label": "Co-Brokerage",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    },
+                    {
+                      "key": "jv_development_deal",
+                      "label": "JV / Development Deal",
+                      "type": "select",
+                      "options": [
+                        "Open",
+                        "Not Open",
+                        "On Request"
+                      ]
+                    },
+                    {
+                      "key": "documentation_support",
+                      "label": "Documentation Support",
+                      "type": "select",
+                      "options": [
+                        "Yes",
+                        "No"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

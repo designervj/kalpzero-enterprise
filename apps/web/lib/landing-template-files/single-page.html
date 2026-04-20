@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParentGood - Parenting Advice on Demand</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-coral: #FF8A71;
+            --primary-dark: #1D2951;
+            --bg-light: #FFFBF9;
+            --text-gray: #667085;
+            --white: #ffffff;
+            --border-light: #f2f4f7;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--white);
+            color: var(--primary-dark);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 32px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            transition: all 0.3s ease;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-coral);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(255, 138, 113, 0.3);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            border: 1.5px solid #d0d5dd;
+            color: var(--primary-dark);
+            background: white;
+        }
+
+        .btn-outline:hover {
+            background: #f9fafb;
+        }
+
+        /* Header */
+        header {
+            padding: 25px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--primary-coral);
+            letter-spacing: -0.5px;
+        }
+
+        .logo span { color: var(--primary-dark); font-weight: 600; }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: var(--primary-dark);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav ul li a:hover { color: var(--primary-coral); }
+
+        /* Hero Section */
+        .hero {
+            background-color: var(--bg-light);
+            padding: 100px 0;
+            position: relative;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            top: 0; right: 0;
+            width: 40%; height: 100%;
+            background: radial-gradient(circle, rgba(255,138,113,0.1) 0%, rgba(255,255,255,0) 70%);
+            z-index: 0;
+        }
+
+        .hero-flex {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-content { flex: 1; padding-right: 50px; }
+        .hero-image { flex: 1; display: flex; justify-content: flex-end; }
+
+        .hero h1 {
+            font-size: 52px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 25px;
+        }
+
+        .hero h1 span { color: var(--primary-coral); }
+
+        .hero p {
+            color: var(--text-gray);
+            font-size: 17px;
+            margin-bottom: 35px;
+            max-width: 520px;
+        }
+
+        .hero-btns { display: flex; gap: 15px; align-items: center; margin-bottom: 40px; }
+
+        .app-badges { display: flex; gap: 15px; }
+        .app-badges img { height: 42px; cursor: pointer; }
+
+        .phone-mockup {
+            width: 320px;
+            height: 640px;
+            background: #000;
+            border: 12px solid #333;
+            border-radius: 45px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+        }
+
+        .phone-mockup img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Section Global Styles */
+        .section-header {
+            text-align: center;
+            padding: 100px 0 50px;
+        }
+
+        .section-header h2 { font-size: 36px; font-weight: 700; margin-bottom: 15px; }
+        .section-header p { color: var(--text-gray); max-width: 850px; margin: 0 auto; line-height: 1.8; }
+
+        /* Challenges Grid */
+        .challenges-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-bottom: 100px;
+        }
+
+        .challenge-card {
+            background: var(--white);
+            padding: 40px 25px;
+            border-radius: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        }
+
+        .challenge-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+            border-color: #fcece8;
+        }
+
+        .challenge-card .icon-box {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .challenge-card i { font-size: 40px; color: var(--primary-coral); }
+        .challenge-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #101828; }
+        .challenge-card p { font-size: 13px; color: var(--text-gray); line-height: 1.5; }
+
+        /* Info Section (What is ParentGood) */
+        .info-section {
+            padding: 100px 0;
+            background: linear-gradient(to right, #ffffff 50%, #fffcfb 50%);
+        }
+
+        .info-flex { display: flex; align-items: center; gap: 80px; }
+        .info-content { flex: 1; }
+        .info-visual { flex: 1; position: relative; display: flex; justify-content: center; }
+
+        .callout {
+            background: #F9FAFB;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 30px 0;
+            font-size: 14px;
+            line-height: 1.7;
+            border-left: 5px solid var(--primary-coral);
+            color: #475467;
+        }
+
+        /* Float bubbles on mockup */
+        .bubble-container { position: relative; }
+        .bubble {
+            position: absolute;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 250px;
+            z-index: 2;
+        }
+        .b1 { top: 10%; right: -120px; }
+        .b2 { top: 40%; left: -140px; }
+        .b3 { bottom: 15%; right: -130px; }
+
+        /* How Does it Work */
+        .steps-flex {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-top: 60px;
+            text-align: center;
+        }
+
+        .step-card img {
+            width: 100%;
+            border-radius: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            border: 6px solid #fff;
+        }
+
+        .step-card h4 { font-size: 15px; font-weight: 600; color: #344054; }
+
+        /* Experts Section */
+        .expert-card {
+            display: flex;
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.04);
+            max-width: 1000px;
+            margin: 60px auto;
+            border: 1px solid #f2f4f7;
+        }
+
+        .expert-img { flex: 1; position: relative; overflow: hidden; height: 480px;}
+        .expert-img img { width: 100%; height: 100%; object-fit: cover; }
+
+        .expert-details { flex: 1.2; padding: 50px; }
+
+        .rec-label {
+            background: #FFF1EE;
+            color: var(--primary-coral);
+            padding: 6px 16px;
+            border-radius: 30px;
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 25px;
+        }
+
+        .expert-details h3 { font-size: 26px; font-weight: 700; margin-bottom: 20px; }
+        .tag-row { display: flex; gap: 10px; margin-bottom: 30px; }
+        .tag {
+            background: #fdf2f0;
+            color: var(--primary-coral);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .expert-details h4 { font-size: 16px; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .expert-details p { color: var(--text-gray); font-size: 14px; line-height: 1.8; }
+
+        .slider-dots { display: flex; justify-content: center; gap: 10px; padding-bottom: 80px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #eaecf0; cursor: pointer; }
+        .dot.active { background: var(--primary-coral); width: 25px; border-radius: 10px; }
+
+        /* Features */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            padding: 60px 0 100px;
+            text-align: center;
+        }
+
+        .feature-item i { font-size: 36px; color: var(--primary-coral); margin-bottom: 20px; }
+        .feature-item h4 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+        .feature-item p { font-size: 13px; color: var(--text-gray); line-height: 1.6; }
+
+        .sub-features {
+            display: flex;
+            justify-content: center;
+            gap: 100px;
+            margin-top: 20px;
+        }
+
+        /* Footer */
+        footer {
+            background: #101828;
+            color: #98A2B3;
+            padding: 100px 0 30px;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 60px;
+            padding-bottom: 60px;
+            border-bottom: 1px solid #1d2939;
+        }
+
+        .footer-logo { color: white; margin-bottom: 25px; }
+        .footer-col h4 { color: white; margin-bottom: 25px; font-size: 16px; }
+        .footer-col ul { list-style: none; }
+        .footer-col ul li { margin-bottom: 12px; }
+        .footer-col ul li a { color: #98A2B3; text-decoration: none; font-size: 14px; transition: 0.3s; }
+        .footer-col ul li a:hover { color: white; }
+
+        .social-links { display: flex; gap: 15px; margin-top: 30px; }
+        .social-links a {
+            width: 36px; height: 36px;
+            background: #1d2939;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            color: white;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+        .social-links a:hover { background: var(--primary-coral); }
+
+        .footer-bottom {
+            padding-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .scroll-top {
+            width: 40px; height: 40px;
+            background: #1d2939;
+            color: white;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 1024px) {
+            .challenges-grid, .steps-flex { grid-template-columns: repeat(2, 1fr); }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .hero-flex, .info-flex, .expert-card { flex-direction: column; text-align: center; }
+            .hero-content { padding-right: 0; margin-bottom: 50px; }
+            .hero h1 { font-size: 38px; }
+            .hero-btns { justify-content: center; }
+            .app-badges { justify-content: center; }
+            .expert-img { height: 300px; }
+            .features-grid { grid-template-columns: 1fr; }
+            .sub-features { flex-direction: column; gap: 50px; }
+            nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="container">
+        <header>
+            <div class="logo">Parent<span>good</span></div>
+            <nav>
+                <ul>
+                    <li><a href="#">What is ParentGood</a></li>
+                    <li><a href="#">How it Works</a></li>
+                    <li><a href="#">Common Challenges</a></li>
+                    <li><a href="#">Experts Expertise</a></li>
+                </ul>
+            </nav>
+        </header>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container hero-flex">
+            <div class="hero-content">
+                <h1>Need help with?<br><span>Parenting</span> Advice on Demand</h1>
+                <p>Connect face-to-face with trusted child development experts and get solutions that work. High quality developmental experts at your fingertips.</p>
+                <div class="hero-btns">
+                    <a href="#" class="btn btn-primary">Get Started Now</a>
+                    <a href="#" class="btn btn-outline">Free First Consultation</a>
+                </div>
+                <div class="app-badges">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Play Store">
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="phone-mockup">
+                    <img src="https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=400" alt="Video Call Application">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Challenges Section -->
+    <div class="container">
+        <div class="section-header">
+            <h2>What parenting challenges would you like to tackle</h2>
+            <p>All of the professionals in our community are Experienced & Certified and have a Master's or Doctorate degree in their field. They have extensive experience working with children, teachers and parents.</p>
+        </div>
+
+        <div class="challenges-grid">
+            <div class="challenge-card">
+                <div class="icon-box"><i class="fa-solid fa-graduation-cap"></i></div>
+                <h3>Behavior & Discipline</h3>
+                <p>Learn effective techniques to correct bad behavior.</p>
+            </div>
+            <div class="challenge-card">
+                <div class="icon-box"><i class="fa-solid fa-child-reaching"></i></div>
+                <h3>Child Development</h3>
+                <p>Get the advice you need to hit child developmental milestones.</p>
+            </div>
+            <div class="challenge-card">
+                <div class="icon-box"><i class="fa-solid fa-tablet-screen-button"></i></div>
+                <h3>Digital & Media Limits</h3>
+                <p>Find a healthy balance for your child and digital media.</p>
+            </div>
+            <div class="challenge-card">
+                <div class="icon-box"><i class="fa-solid fa-school"></i></div>
+                <h3>Education & School</h3>
+                <p>Strategies to help your child get through school challenges.</p>
+            </div>
+            <div class="challenge-card">
+                <div class="icon-box"><i class="fa-solid fa-apple-whole"></i></div>
+                <h3>Nutrition & Health</h3>
+                <p>Develop good habits that turn your child into a healthy adult.</p>
+            </div>
+            <div class="challenge-card">
+                <div class="icon-box"><i class="fa-regular fa-moon"></i></div>
+                <h3>Sleep & Bedtime</h3>
+                <p>Tips and tricks to help your child (and you) get some sleep.</p>
+            </div>
+            <div class="challenge-card">
+                <div class="icon-box"><i class="fa-solid fa-bowl-food"></i></div>
+                <h3>Weaning</h3>
+                <p>How to wean your child off breastfeeding, diapers, and more.</p>
+            </div>
+            <div class="challenge-card">
+                <div class="icon-box"><i class="fa-solid fa-baby"></i></div>
+                <h3>Lactation</h3>
+                <p>Get the support you need when nursing isn't going as expected.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- What is ParentGood -->
+    <section class="info-section">
+        <div class="container info-flex">
+            <div class="info-content">
+                <h2 style="font-size: 36px; font-weight: 700;">What is ParentGood</h2>
+                <p style="margin-top: 20px; color: var(--text-gray); font-size: 15px;">Raising a kid is hard, and it doesn't come with a manual. At ParentGood, we want to give parents the support they need by giving them access to top child care professionals. Every kid is different, so we match parents with the right specialist to give personalized advice and coaching.</p>
+                <div class="callout">
+                    Parents can ask a question or schedule a 1on1 session with an expert to tackle any issue. Together, we can make parenting easier and give our kids a strong start in life.
+                </div>
+                <div style="margin-top: 40px;">
+                    <a href="#" class="btn btn-primary">Get Started Now</a>
+                    <p style="margin-top: 15px; color: var(--text-gray); font-size: 14px; font-weight: 500; cursor: pointer;">Free First Consultation</p>
+                </div>
+            </div>
+            <div class="info-visual">
+                <div class="bubble-container">
+                    <div class="bubble b1">Is my baby getting enough sleep?</div>
+                    <div class="bubble b2">How to handle a picky eater?</div>
+                    <div class="bubble b3">What do I do if my son is addicted to his iPad?</div>
+                    <div class="phone-mockup" style="width: 280px; height: 560px; border-width: 8px;">
+                        <img src="https://images.unsplash.com/photo-1587653263995-422546a72569?auto=format&fit=crop&q=80&w=400" alt="App Usage">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How Does it Work -->
+    <div class="container" style="padding: 100px 0;">
+        <h2 style="text-align: center; font-size: 32px; font-weight: 700;">How Does it Work</h2>
+        <div class="steps-flex">
+            <div class="step-card">
+                <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&q=80&w=250&h=450" alt="Search">
+                <h4>Search</h4>
+            </div>
+            <div class="step-card">
+                <img src="https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?auto=format&fit=crop&q=80&w=250&h=450" alt="Match">
+                <h4>Get Matched</h4>
+            </div>
+            <div class="step-card">
+                <img src="https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?auto=format&fit=crop&q=80&w=250&h=450" alt="Chat">
+                <h4>Schedule a 1on1 free video chat</h4>
+            </div>
+            <div class="step-card">
+                <img src="https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?auto=format&fit=crop&q=80&w=250&h=450" alt="Solution">
+                <h4>Get solution to your needs Challenges</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Experts Section -->
+    <div class="container">
+        <h2 style="text-align: center; font-size: 32px; font-weight: 700;">Experience & Certified Experts</h2>
+        <div class="expert-card">
+            <div class="expert-img">
+                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600" alt="Carrington Cunnington">
+            </div>
+            <div class="expert-details">
+                <div class="rec-label">Recommended by 61 people</div>
+                <h3>CARRINGTON CUNNINGTON</h3>
+                <div class="tag-row">
+                    <div class="tag"><i class="fa-regular fa-check-circle"></i> 4 Year Experience</div>
+                    <div class="tag"><i class="fa-regular fa-check-circle"></i> Nutrition & Health</div>
+                </div>
+                <h4>ABOUT ME</h4>
+                <p>I have been a practicing PCI Certified Parent Coach since 2015. I was drawn to coaching through my experience as a stay-at-home mom raising my triplets, born in 2007. The challenges of raising my kids along with the joy of watching them grow gave me a passion to help other parents find confidence and joy in their parenting journeys. I believe healthy relationships are foundational to joyful, vibrant family life.</p>
+            </div>
+        </div>
+        <div class="slider-dots">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <section style="background-color: #FFFBF9; padding: 100px 0;">
+        <div class="container">
+            <h2 style="text-align: center; font-size: 32px; font-weight: 700; margin-bottom: 50px;">Our Features</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <i class="fa-solid fa-tag"></i>
+                    <h4>Free first session</h4>
+                    <p>Swift Creative Solutions met and exceeded our expectations in designing our website and branding.</p>
+                </div>
+                <div class="feature-item">
+                    <i class="fa-regular fa-comments"></i>
+                    <h4>Message with expert anytime</h4>
+                    <p>Swift Creative Solutions met and exceeded our expectations in designing our website and branding.</p>
+                </div>
+                <div class="feature-item">
+                    <i class="fa-solid fa-video"></i>
+                    <h4>Online Video/Voice calls</h4>
+                    <p>Swift Creative Solutions met and exceeded our expectations in designing our website and branding.</p>
+                </div>
+            </div>
+            <div class="sub-features">
+                <div class="feature-item" style="max-width: 350px;">
+                    <i class="fa-regular fa-calendar-check"></i>
+                    <h4>Scheduling</h4>
+                    <p>Swift Creative Solutions met and exceeded our expectations in designing our website and branding.</p>
+                </div>
+                <div class="feature-item" style="max-width: 350px;">
+                    <i class="fa-regular fa-bell"></i>
+                    <h4>Add to Calendar reminders</h4>
+                    <p>Swift Creative Solutions met and exceeded our expectations in designing our website and branding.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <div class="logo footer-logo">Parent<span>good</span></div>
+                    <p style="font-size: 14px; line-height: 1.8;">Popularised in the with the release of Letraset sheets containing passages and more recently with desktop publishing software like Maker including versions.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fa-brands fa-pinterest-p"></i></a>
+                        <a href="#"><i class="fa-brands fa-twitter"></i></a>
+                        <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                        <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#">Home</a></li>
+                        <li><a href="#">Service</a></li>
+                        <li><a href="#">About us</a></li>
+                        <li><a href="#">Testimonials</a></li>
+                        <li><a href="#">Contact US</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Products</h4>
+                    <ul>
+                        <li><a href="#">Customization</a></li>
+                        <li><a href="#">Blockchain</a></li>
+                        <li><a href="#">Digital File</a></li>
+                        <li><a href="#">About us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#">Product help</a></li>
+                        <li><a href="#">Service & warranty</a></li>
+                        <li><a href="#">Righting beach</a></li>
+                        <li><a href="#">Authorized service</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Copyrights 2020 Parent Good All right Reserved</p>
+                <div class="scroll-top"><i class="fa-solid fa-arrow-up"></i></div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

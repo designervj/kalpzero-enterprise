@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { getCurrentSession, login as loginRequest, magicLogin as magicLoginRequest, type LoginPayload, type SessionDto } from "@/lib/api";
 import { AUTH_STORAGE_KEY } from "@/lib/auth-storage";
-import { AuthUser, setAuthUser } from "@/lib/slices/auth/authSlice";
+import { AuthUser, setAuthUser } from "@/hook/slices/auth/authSlice";
 import { useDispatch } from "react-redux";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (payload: LoginPayload) => {
     const response = await loginRequest(payload);
-      console.log("response.session.user_id--->",response)
+    console.log("response.session.user_id--->", response)
     const usrerdata: AuthUser = {
       id: response.session?.email ?? "",
       name: response.session?.name ?? "",
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       access_token: response.access_token ?? "",
       expires_at: response.expires_at ?? "",
     };
-    console.log("usrerdata",usrerdata)
+    console.log("usrerdata", usrerdata)
     dispatch(setAuthUser(usrerdata));
     // console.log("login ",response)
     writeStoredToken(response.access_token);
@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       expires_at: response.expires_at ?? "",
     };
     dispatch(setAuthUser(userData));
-    
+
     writeStoredToken(response.access_token);
     setToken(response.access_token);
     setSession(response.session);

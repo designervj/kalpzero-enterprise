@@ -1,0 +1,743 @@
+<!-- 1. EXTERNAL ASSETS -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Lucide Icons Library -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- 2. STYLE BLOCK -->
+<style>
+  :root {
+    --usp-primary: #ffee00;
+    --usp-dark: #000000;
+    --usp-dark-grey: #111111;
+    --usp-light-grey: #f8f8f8;
+    --usp-white: #ffffff;
+    --usp-text: #1a1a1a;
+    --usp-text-muted: #666666;
+    --usp-border: #e2e8f0;
+    /* Smoother Animation Curve */
+    --usp-transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  body{
+    margin:0px;
+    padding: 0px;
+  }
+
+  .usp-wrapper {
+    /* Updated Font Family for premium look */
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--usp-dark);
+    line-height: 1.6;
+    background: var(--usp-white);
+    overflow-x: hidden;
+  }
+
+  .usp-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* --- ADVANCED ANIMATIONS --- */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: var(--usp-transition);
+  }
+  .reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .usp-section { padding: 120px 0; }
+  .usp-h2 { font-size: 52px; font-weight: 800; line-height: 1.1; margin-bottom: 30px; letter-spacing: -1.5px; }
+
+  /* Buttons & Hovers */
+  .usp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 36px;
+    border-radius: 100px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: var(--usp-transition);
+    cursor: pointer;
+    border: none;
+    font-size: 15px;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+  }
+
+    .usp-banner { height: 600px; display: flex; align-items: center; color: white; position: relative; }
+  .usp-banner-content { max-width: 500px; position: relative; z-index: 2; }
+  
+  .usp-btn-yellow { background: var(--usp-primary); color: var(--usp-dark); }
+  .usp-btn-white { background: var(--usp-white); color: var(--usp-dark); }
+  .usp-btn-black { background: var(--usp-dark); color: var(--usp-white); }
+  
+  .usp-btn:hover { 
+    transform: translateY(-5px) scale(1.02); 
+    box-shadow: 0 15px 30px rgba(0,0,0,0.1); 
+  }
+
+  /* --- HERO SECTION --- */
+  #usp-hero {
+    height: 100vh;
+    background: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1175&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white;
+    position: relative;
+  }
+  .usp-logo-big { font-size: clamp(80px, 18vw, 180px); font-weight: 900; letter-spacing: -8px; margin: 0; }
+  .usp-logo-big span { color: var(--usp-primary); }
+  .usp-hero-stats { position: absolute; bottom: 40px; display: flex; gap: 40px; font-size: 14px; opacity: 0.9; font-weight: 600; }
+
+  /* --- ABOUT & GRID --- */
+  .usp-about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
+  .usp-bullet-list { list-style: none; padding: 0; margin-top: 40px; }
+  .usp-bullet-list li { margin-bottom: 12px; display: flex; align-items: center; font-weight: 700; border-bottom: 1px solid #f0f0f0; padding-bottom: 18px; transition: 0.3s; }
+  .usp-bullet-list li:hover { padding-left: 10px; border-color: var(--usp-primary); }
+  .usp-bullet-list li i { color: var(--usp-primary); margin-right: 18px; }
+
+  /* Feature Cards Hover */
+  .usp-feature-row { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--usp-border); padding-top: 60px; margin-top: 60px; }
+  .usp-feature-card { padding: 0 25px; border-right: 1px solid var(--usp-border); transition: var(--usp-transition); cursor: default; }
+  .usp-feature-card:last-child { border-right: none; }
+  .usp-feature-card i { margin-bottom: 24px; color: #aaa; transition: 0.4s ease; display: block; }
+  .usp-feature-card:hover { transform: translateY(-10px); }
+  .usp-feature-card:hover i { color: var(--usp-primary); transform: scale(1.2) rotate(5deg); }
+
+  /* --- LOCATION TABS --- */
+  #usp-location { background: var(--usp-dark-grey); color: white; }
+  .usp-tabs { display: flex; gap: 40px; border-bottom: 1px solid #333; margin-top: 50px; }
+  .usp-tab { padding: 15px 0; cursor: pointer; opacity: 0.5; border-bottom: 3px solid transparent; transition: 0.3s; font-weight: 600; }
+  .usp-tab.active { opacity: 1; border-color: var(--usp-primary); color: var(--usp-primary); }
+  .usp-tab:hover { opacity: 1; }
+
+  /* --- JOURNEY --- */
+  #usp-journey { background: var(--usp-dark); color: white; }
+  .usp-journey-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 100px; }
+  .usp-step { position: relative; padding-left: 70px; margin-bottom: 60px; transition: 0.4s; }
+  .usp-step:hover { transform: translateX(10px); }
+  .usp-step-num { 
+    position: absolute; left: 0; top: 0; width: 44px; height: 44px; border: 2px solid var(--usp-primary); 
+    border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: var(--usp-primary);
+    background: transparent; transition: 0.3s;
+  }
+  .usp-step:hover .usp-step-num { background: var(--usp-primary); color: var(--usp-dark); }
+  .usp-step-line { position: absolute; left: 22px; top: 48px; bottom: -64px; width: 2px; border-left: 2px dashed rgba(255,255,255,0.15); }
+
+  /* --- PROGRAM CARDS --- */
+  .usp-program-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 60px; }
+  .usp-prog-card { padding: 60px 45px; display: flex; flex-direction: column; transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); border-radius: 20px; border: 1px solid transparent; }
+  .usp-prog-card.dark { background: var(--usp-dark-grey); color: white; }
+  .usp-prog-card.light { background: white; border-color: #eee; }
+  .usp-prog-card:hover { 
+    transform: translateY(-20px) scale(1.02); 
+    box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+    border-color: var(--usp-primary);
+  }
+  .usp-prog-card i { margin-bottom: 35px; color: var(--usp-primary); transition: 0.4s; }
+  .usp-prog-card:hover i { transform: scale(1.3) rotate(-10deg); }
+  .usp-tag { font-size: 11px; font-weight: 700; padding: 6px 14px; border: 1px solid rgba(128,128,128,0.25); border-radius: 50px; margin: 5px; display: inline-block; transition: 0.3s; }
+  .usp-tag:hover { background: var(--usp-primary); color: var(--usp-dark); border-color: var(--usp-primary); }
+
+  /* --- TESTIMONIAL --- */
+  #usp-testimonial { background: var(--usp-primary); padding: 140px 0; position: relative; overflow: hidden; }
+  .usp-quote-icon { font-size: 200px; position: absolute; top: -40px; left: 40px; opacity: 0.15; font-weight: 900; }
+
+  /* --- CONTACT FORM --- */
+  #usp-contact { background: linear-gradient(180deg, white 0%, #fffbd0 100%); }
+  .usp-form-container { background: white; padding: 70px; border-radius: 24px; max-width: 850px; margin: 0 auto; box-shadow: 0 40px 80px rgba(0,0,0,0.06); }
+  .usp-input { width: 100%; padding: 18px; border: 2px solid #f0f0f0; background: #fafafa; border-radius: 12px; margin-bottom: 24px; font-family: inherit; font-size: 16px; transition: 0.3s; box-sizing: border-box; }
+  .usp-input:focus { outline: none; border-color: var(--usp-primary); background: #fff; box-shadow: 0 0 0 4px rgba(255, 238, 0, 0.15); }
+
+  /* --- NEWSROOM --- */
+  .usp-news-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .usp-news-card { border-radius: 20px; overflow: hidden; background: white; transition: 0.4s; }
+  .usp-news-card img { width: 100%; height: 260px; object-fit: cover; transition: 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+  .usp-news-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(0,0,0,0.08); }
+  .usp-news-card:hover img { transform: scale(1.1); }
+  .usp-cat { font-size: 11px; font-weight: 800; color: #999; text-transform: uppercase; margin-bottom: 15px; display: block; letter-spacing: 1px; }
+
+  /* --- COMMUNITY --- */
+  #usp-community { 
+    background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2000') center/cover;
+    padding: 160px 0; text-align: center; color: white; 
+  }
+  .usp-input-group { max-width: 650px; margin: 40px auto 0; display: flex; background: white; border-radius: 100px; padding: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+  .usp-input-group input { flex: 1; border: none; padding: 0 35px; border-radius: 100px; outline: none; font-size: 16px; font-family: inherit; }
+
+  /* --- FOOTER --- */
+  .usp-footer { background: var(--usp-dark); color: white; padding: 120px 0 40px; }
+  .usp-footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 70px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 80px; margin-bottom: 40px; }
+  .usp-footer-col h4 { font-size: 13px; color: #777; text-transform: uppercase; margin-bottom: 30px; letter-spacing: 2px; font-weight: 800; }
+  .usp-social-links { display: flex; gap: 20px; margin-top: 30px; }
+  .usp-social-links i { opacity: 0.6; cursor: pointer; transition: 0.3s; }
+  .usp-social-links i:hover { opacity: 1; color: var(--usp-primary); transform: translateY(-3px); }
+
+  @media (max-width: 992px) {
+    .usp-about-grid, .usp-journey-grid, .usp-program-grid, .usp-news-grid, .usp-feature-row, .usp-footer-grid { grid-template-columns: 1fr; gap: 50px; }
+    .usp-h2 { font-size: 38px; }
+    .usp-feature-card { border-right: none; border-bottom: 1px solid #eee; padding-bottom: 40px; padding-left: 0; }
+  }
+
+
+
+
+
+    .usp-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background: transparent;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: var(--usp-transition);
+  }
+
+  /* Scrolled state for the header (optional) */
+  .usp-header.scrolled {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 10px 0;
+  }
+
+  .usp-header-container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Logo Area */
+  .usp-header-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    width: 10%;
+  }
+
+  .usp-logo-icon {
+    width: 38px;
+    height: 38px;
+    background: conic-gradient(from 45deg, #444 0% 75%, var(--usp-primary) 75% 100%);
+    border-radius: 50%;
+    position: relative;
+    
+  }
+
+  /* Navigation Links */
+  .usp-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 35px;
+    width: 70%;
+    justify-content: center;
+  }
+
+  .usp-nav-link {
+    color: var(--usp-white);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.85;
+    transition: var(--usp-transition);
+  }
+
+  .usp-nav-link:hover {
+    opacity: 1;
+    color: var(--usp-primary);
+  }
+
+  /* Right Side Actions */
+  .usp-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+  }
+
+  .usp-lang-selector {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--usp-white);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0.9;
+  }
+
+  .usp-btn-apply {
+    background: var(--usp-dark);
+    color: var(--usp-white);
+    text-decoration: none;
+    padding: 12px 28px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: var(--usp-transition);
+  }
+
+  .usp-btn-apply:hover {
+    transform: translateY(-2px);
+    background: var(--usp-white);
+    color: var(--usp-dark);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  }
+
+  /* Responsive Mobile Menu Button (Hidden on Desktop) */
+  .usp-mobile-toggle {
+    display: none;
+    color: white;
+    cursor: pointer;
+  }
+
+  @media (max-width: 992px) {
+    .usp-header-nav { display: none; }
+    .usp-lang-selector { display: none; }
+    .usp-mobile-toggle { display: block; }
+  }
+
+</style>
+
+<!-- 3. SEMANTIC HTML -->
+<div class="usp-wrapper">
+
+  <header class="usp-header" id="main-header" data-gjs-custom-name="Main Header">
+  <div class="usp-header-container">
+    
+    <!-- Logo -->
+    <a href="#" class="usp-header-logo">
+      <div class="usp-logo-icon"></div>
+    </a>
+
+    <!-- Navigation -->
+    <nav class="usp-header-nav">
+      <a href="#" class="usp-nav-link">Programs</a>
+      <a href="#" class="usp-nav-link">Admission</a>
+      <a href="#" class="usp-nav-link">Campus</a>
+      <a href="#" class="usp-nav-link">Research</a>
+      <a href="#" class="usp-nav-link">About</a>
+    </nav>
+
+    <!-- Actions -->
+    <div class="usp-header-actions">
+      <div class="usp-lang-selector">
+        EN <i data-lucide="chevron-down" size="16"></i>
+      </div>
+      <a href="#" class="usp-btn-apply">Apply Now</a>
+      
+      <!-- Mobile Toggle -->
+      <div class="usp-mobile-toggle">
+        <i data-lucide="menu"></i>
+      </div>
+    </div>
+
+  </div>
+</header>
+
+  <!-- Hero Section -->
+  <section id="usp-hero" data-gjs-custom-name="Hero">
+    <div class="usp-logo-big reveal">Unspir<span>e</span></div>
+    <div style="margin-top: 40px;" class="reveal">
+      <a href="#" class="usp-btn usp-btn-white">Explore Program <i data-lucide="arrow-right"></i></a>
+    </div>
+    <div class="usp-hero-stats reveal">
+      <span>QS Top 5 Indonesia</span>
+      <span>40,000+ Students</span>
+      <span>4 Campuses</span>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section class="usp-section usp-container" data-gjs-custom-name="About">
+    <div class="usp-about-grid">
+      <div class="reveal">
+        <h2 class="usp-h2">A Global University for the Next Generation</h2>
+        <ul class="usp-bullet-list">
+          <li><i data-lucide="sparkles" size="20"></i> Started back in 2001!</li>
+          <li><i data-lucide="layers" size="20"></i> 8 cool educational programs nearby!</li>
+          <li><i data-lucide="award" size="20"></i> A million alumni excel at top companies!</li>
+        </ul>
+      </div>
+      <div class="reveal">
+        <p style="color: var(--usp-text-muted); margin-bottom: 25px; font-size: 18px;">At Unspire University we believe higher education should go beyond traditional classrooms. We are a new kind of university — one that blends global perspectives, modern technology, and real-world relevance.</p>
+        <p style="color: var(--usp-text-muted); font-size: 18px;">Rooted in innovation, creativity, and purpose, our programs are designed to unlock your potential in fields that matter most.</p>
+      </div>
+    </div>
+
+    <!-- Feature Row -->
+    <div class="usp-feature-row">
+      <div class="usp-feature-card reveal">
+        <i data-lucide="globe-2" size="36"></i>
+        <h3>Global Network</h3>
+        <p style="font-size: 14px; color: #888;">International partnerships with leading universities across the globe.</p>
+      </div>
+      <div class="usp-feature-card reveal">
+        <i data-lucide="graduation-cap" size="36"></i>
+        <h3>Career Focus</h3>
+        <p style="font-size: 14px; color: #888;">Industry-aligned curriculum designed for immediate practical skills.</p>
+      </div>
+      <div class="usp-feature-card reveal">
+        <i data-lucide="medal" size="36"></i>
+        <h3>Excellence</h3>
+        <p style="font-size: 14px; color: #888;">Consistently ranked among the top elite universities worldwide.</p>
+      </div>
+      <div class="usp-feature-card reveal">
+        <i data-lucide="cpu" size="36"></i>
+        <h3>Innovation</h3>
+        <p style="font-size: 14px; color: #888;">Research-driven learning environment utilizing latest technology.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Campus Banner -->
+  <section class="usp-banner reveal" style="background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover;" data-gjs-custom-name="Campus Banner">
+    <div class="usp-container">
+      <div class="usp-banner-content">
+        <span style="font-size: 13px; text-transform: uppercase; letter-spacing: 3px; font-weight: 800; color: var(--usp-primary);">Campus Life</span>
+        <h2 class="usp-h2" style="margin: 20px 0; color: white;">This Is More Than Just a <span style="color:var(--usp-primary)">University</span></h2>
+        <p style="opacity: 0.9; font-size: 18px;">Step beyond the classroom and into a world designed to inspire. Learning happens everywhere at Unspire, from urban labs to digital hubs.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Location (Dark) -->
+  <section id="usp-location" class="usp-section" data-gjs-custom-name="Location">
+    <div class="usp-container">
+      <h2 class="usp-h2 reveal" style="margin-bottom: 0; color: white;">Explore Our Campuses <span style="color: var(--usp-primary);">Location</span></h2>
+      <div class="usp-tabs reveal">
+        <div class="usp-tab active">Greater Jakarta Area</div>
+        <div class="usp-tab">Global & Digital Learning</div>
+      </div>
+      <div class="usp-about-grid" style="margin-top: 80px; align-items: center;">
+        <div class="reveal">
+          <h3 style="font-size: 38px; margin-bottom: 25px; color: var(--usp-primary); font-weight: 800;">Greater Jakarta Area</h3>
+          <p style="opacity: 0.8; line-height: 1.8; font-size: 18px;">Located in the heart of one of Southeast Asia's most dynamic cities, our campuses offer a vibrant mix of academic excellence, industry connections, and urban student life.</p>
+        </div>
+        <div class="reveal" style="text-align: right;">
+          <img src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=1169&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" style="width: 100%; max-width: 450px; opacity: 0.1; filter: invert(1);" alt="Sketch">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Journey (Timeline) -->
+  <section id="usp-journey" class="usp-section" data-gjs-custom-name="Journey">
+    <div class="usp-container">
+      <div class="usp-journey-grid">
+        <div class="reveal">
+          <h2 class="usp-h2">Journey At<br>Unspire University</h2>
+          <div class="usp-step">
+            <div class="usp-step-line"></div>
+            <div class="usp-step-num">01</div>
+            <h3 style="font-weight: 800; font-size: 22px;">Submit application online</h3>
+            <p style="font-size: 14px; opacity: 0.6; margin-top: 5px;">A streamlined process with secure digital document upload.</p>
+          </div>
+          <div class="usp-step">
+            <div class="usp-step-line"></div>
+            <div class="usp-step-num">02</div>
+            <h3 style="font-weight: 800; font-size: 22px;">Select field of study</h3>
+            <p style="font-size: 14px; opacity: 0.6; margin-top: 5px;">Personalized guidance to find your perfect academic path.</p>
+          </div>
+          <div class="usp-step">
+            <div class="usp-step-num">03</div>
+            <h3 style="font-weight: 800; font-size: 22px;">Launch career path</h3>
+            <p style="font-size: 14px; opacity: 0.6; margin-top: 5px;">Graduate with a portfolio of real-world skills and networks.</p>
+          </div>
+          <a href="#" class="usp-btn usp-btn-yellow" style="margin-top: 30px;">Start Your Journey <i data-lucide="rocket"></i></a>
+        </div>
+        <div class="reveal" style="position: relative;">
+          <p style="font-size: 17px; opacity: 0.9; line-height: 1.8;">Welcome to Unspire, a university built for the bold and future-ready. We are united by a shared belief: that education is about creating lasting change in the global landscape.</p>
+          <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=1974" style="width: 100%; border-radius: 24px; margin-top: 50px; height: 420px; object-fit: cover; box-shadow: 0 30px 60px rgba(0,0,0,0.3);" alt="Rector">
+          <div style="margin-top: 30px;">
+            <strong style="font-size: 24px; font-weight: 800;">Prof. Dr. Steve Rinaldi</strong><br>
+            <span style="opacity: 0.6; font-size: 16px; font-weight: 600;">Rector of Unspire University</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Programs -->
+  <section class="usp-section usp-container" data-gjs-custom-name="Programs">
+    <h2 class="usp-h2 reveal" style="text-align: center;">Innovative Programs<br>Designed For Future</h2>
+    <div class="usp-program-grid">
+      <div class="usp-prog-card dark reveal">
+        <i data-lucide="bar-chart-3" size="44"></i>
+        <h3 style="font-weight: 800; font-size: 24px;">Business Management</h3>
+        <p style="font-size: 13px; opacity: 0.6; margin-top: 10px; font-weight: 600;">Business School</p>
+        <div style="margin-top: auto; padding-top: 35px;">
+          <div class="usp-tag">International Business</div>
+          <div class="usp-tag">Digital Marketing</div>
+          <div class="usp-tag">Venture Capital</div>
+        </div>
+      </div>
+      <div class="usp-prog-card light reveal">
+        <i data-lucide="terminal" size="44"></i>
+        <h3 style="font-weight: 800; font-size: 24px;">Computer Science</h3>
+        <p style="font-size: 13px; color: #999; margin-top: 10px; font-weight: 600;">School of Tech & Data</p>
+        <div style="margin-top: auto; padding-top: 35px;">
+          <div class="usp-tag">Software Engineering</div>
+          <div class="usp-tag">Cyber Security</div>
+          <div class="usp-tag">Generative AI</div>
+        </div>
+      </div>
+      <div class="usp-prog-card dark reveal">
+        <i data-lucide="trending-up" size="44"></i>
+        <h3 style="font-weight: 800; font-size: 24px;">Digital Marketing</h3>
+        <p style="font-size: 13px; opacity: 0.6; margin-top: 10px; font-weight: 600;">Business School</p>
+        <div style="margin-top: auto; padding-top: 35px;">
+          <div class="usp-tag">Social Strategy</div>
+          <div class="usp-tag">Growth Hacking</div>
+          <div class="usp-tag">Analytics</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Leading Banner -->
+  <section class="usp-banner reveal" style="background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?q=80&w=2000') center/cover;" data-gjs-custom-name="Leading Banner">
+    <div class="usp-container">
+      <h2 class="usp-h2" style="max-width: 650px; color: white;">Inside One of Tomorrow's Leading Universities</h2>
+      <a href="#" class="usp-btn usp-btn-yellow" style="margin-top: 30px;">Learn More About Us <i data-lucide="chevron-right"></i></a>
+    </div>
+  </section>
+
+  <!-- Testimonial -->
+  <section id="usp-testimonial" class="section-padding" data-gjs-custom-name="Testimonial">
+    <div class="usp-quote-icon">“</div>
+    <div class="usp-container usp-about-grid" style="align-items: center;">
+      <div class="reveal">
+        <h2 class="usp-h2" style="margin-bottom: 25px;">What Our Student Saying About Us</h2>
+        <a href="#" class="usp-btn usp-btn-black">Read More Reviews</a>
+      </div>
+      <div class="reveal">
+        <p style="font-size: 28px; font-weight: 700; line-height: 1.4; margin-bottom: 40px; letter-spacing: -0.5px;">"What I love most is the diversity — people from different backgrounds, cultures, and perspectives. It's not just a university, it's a global melting pot of ideas."</p>
+        <div style="display: flex; align-items: center; gap: 24px;">
+          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&h=150&fit=crop" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid var(--usp-white);">
+          <div>
+            <strong style="font-size: 20px; font-weight: 800;">Nabila Yoon</strong><br>
+            <span style="font-size: 15px; opacity: 0.8; font-weight: 600;">Visual Communication, Class of 2024</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Form -->
+  <section id="usp-contact" class="usp-section" data-gjs-custom-name="Contact">
+    <div class="usp-container">
+      <div style="text-align: center; margin-bottom: 60px;" class="reveal">
+        <h2 class="usp-h2">Get In Touch</h2>
+        <p style="color: var(--usp-text-muted); font-weight: 600;">Have a question? We're here to help you start your journey.</p>
+      </div>
+      <div class="usp-form-container reveal">
+        <form id="usp-inquiry-form">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div>
+              <label style="font-size: 14px; font-weight: 700;">First Name</label>
+              <input type="text" class="usp-input" placeholder="Enter First Name">
+            </div>
+            <div>
+              <label style="font-size: 14px; font-weight: 700;">Last Name</label>
+              <input type="text" class="usp-input" placeholder="Enter Last Name">
+            </div>
+          </div>
+          <label style="font-size: 14px; font-weight: 700;">Your Academic Email</label>
+          <input type="email" class="usp-input" placeholder="example@university.com">
+          <label style="font-size: 14px; font-weight: 700;">Your Message</label>
+          <textarea class="usp-input" rows="5" placeholder="How can we assist you today?"></textarea>
+          <button type="submit" class="usp-btn usp-btn-yellow" style="width: 100%; justify-content: center;">Send Message Now <i data-lucide="send-horizontal"></i></button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Newsroom -->
+  <section class="usp-section usp-container" data-gjs-custom-name="Newsroom">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 60px;">
+      <h2 class="usp-h2 reveal" style="margin-bottom: 0;">Campus Newsroom</h2>
+      <div style="display: flex; gap: 15px;" class="reveal">
+        <button class="usp-btn" style="border: 1px solid #ddd; width: 48px; height: 48px; padding: 0; justify-content: center; border-radius: 50%;"><i data-lucide="chevron-left"></i></button>
+        <button class="usp-btn" style="border: 1px solid #ddd; width: 48px; height: 48px; padding: 0; justify-content: center; border-radius: 50%;"><i data-lucide="chevron-right"></i></button>
+      </div>
+    </div>
+    <div class="usp-news-grid">
+      <div class="usp-news-card reveal">
+        <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=800">
+        <div style="padding: 30px;">
+          <span class="usp-cat">Announcement</span>
+          <h3 style="font-weight: 800; font-size: 22px;">Student Startup Wins National Tech Award</h3>
+          <p style="font-size: 15px; color: #777; margin: 20px 0;">Our innovation lab team won the highest honor at the National Tech Challenge 2026.</p>
+          <a href="#" class="usp-btn usp-btn-yellow" style="padding: 12px 24px; font-size: 13px;">Read Full Article</a>
+        </div>
+      </div>
+      <div class="usp-news-card reveal">
+        <img src="https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=800">
+        <div style="padding: 30px;">
+          <span class="usp-cat">Global Reach</span>
+          <h3 style="font-weight: 800; font-size: 22px;">New Global Exchange Programs Launched</h3>
+          <p style="font-size: 15px; color: #777; margin: 20px 0;">New exchange partnerships with elite universities across Europe and Asia are now open.</p>
+          <a href="#" class="usp-btn usp-btn-yellow" style="padding: 12px 24px; font-size: 13px;">Read Full Article</a>
+        </div>
+      </div>
+      <div class="usp-news-card reveal">
+        <img src="https://images.unsplash.com/photo-1523580494863-6f3031224c94?q=80&w=800">
+        <div style="padding: 30px;">
+          <span class="usp-cat">Event</span>
+          <h3 style="font-weight: 800; font-size: 22px;">Spring Graduation Ceremony 2026</h3>
+          <p style="font-size: 15px; color: #777; margin: 20px 0;">Celebrating the academic success of over 2,000 future world leaders this spring.</p>
+          <a href="#" class="usp-btn usp-btn-yellow" style="padding: 12px 24px; font-size: 13px;">Read Full Article</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Community Newsletter -->
+  <section id="usp-community" data-gjs-custom-name="Community">
+    <div class="usp-container reveal">
+      <h2 class="usp-h2" style="margin-bottom: 0; color: white;">Join Our Growing<br>Community</h2>
+      <p style="color: white; opacity: 0.8; font-weight: 600; margin-top: 15px;">Stay updated with the latest campus events and academic news.</p>
+      <div class="usp-input-group">
+        <input type="email" placeholder="Enter your email address">
+        <button class="usp-btn usp-btn-yellow">Join Newsletter <i data-lucide="mail"></i></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="usp-footer" data-gjs-custom-name="Footer">
+    <div class="usp-container">
+      <div class="usp-footer-grid">
+        <div class="usp-footer-col">
+          <div style="font-size: 42px; font-weight: 900; margin-bottom: 25px;">Unspir<span>e</span></div>
+          <p style="opacity: 0.7;">Inspiring the next generation of global leaders through groundbreaking innovation and academic excellence since 2001.</p>
+          <div class="usp-social-links">
+            <i data-lucide="facebook" size="20"></i>
+            <i data-lucide="instagram" size="20"></i>
+            <i data-lucide="twitter" size="20"></i>
+            <i data-lucide="linkedin" size="20"></i>
+            <i data-lucide="youtube" size="20"></i>
+          </div>
+        </div>
+        <div class="usp-footer-col">
+          <h4>Headquarter</h4>
+          <p>Jakarta, ID</p>
+          <p>Campus 88 International Way, Financial District.</p>
+        </div>
+        <div class="usp-footer-col">
+          <h4>Substation</h4>
+          <p>Yogyakarta, ID</p>
+          <p>120 Regent Lane, Academic Hub Area.</p>
+        </div>
+        <div class="usp-footer-col">
+          <h4>Research Center</h4>
+          <p>Solo, ID</p>
+          <p>45 Horizon Avenue, Global Tech City.</p>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #666; font-weight: 600;">
+        <span>© 2026 Unspire University. All Rights Reserved.</span>
+        <div style="display: flex; gap: 30px;">
+          <span>Privacy Policy</span>
+          <span>Terms of Service</span>
+          <span>Contact Us</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<!-- 4. SCRIPT BLOCK -->
+<script>
+  (function () {
+    // 1. Initialize Lucide Icons
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+
+    const root = document.querySelector('.usp-wrapper');
+    if (!root) return;
+
+    // 2. Intersection Observer for Reveal Animation
+    const observerOptions = { 
+      threshold: 0.12,
+      rootMargin: '0px 0px -40px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('active');
+          // Optional: stop observing after reveal
+          // observer.unobserve(entry.target);
+        }
+      });
+    }, observerOptions);
+
+    root.querySelectorAll('.reveal').forEach(item => {
+      observer.observe(item);
+    });
+
+    // 3. Tab Navigation Logic
+    const tabs = root.querySelectorAll('.usp-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        // Add tab content switching logic here if needed
+      });
+    });
+
+    // 4. Newsletter/Form Logic
+    const newsBtn = root.querySelector('.usp-input-group .usp-btn');
+    if (newsBtn) {
+      newsBtn.addEventListener('click', () => {
+        const email = root.querySelector('.usp-input-group input').value;
+        if(email.includes('@')) {
+          alert('Welcome to the Unspire Community!');
+        } else {
+          alert('Please enter a valid academic email.');
+        }
+      });
+    }
+
+    const contactForm = root.querySelector('#usp-inquiry-form');
+    if (contactForm) {
+      contactForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        alert('Thank you for your message! Our admissions team will contact you within 24 hours.');
+        contactForm.reset();
+      });
+    }
+  })();
+
+
+    (function() {
+    // Initialize Icons
+    if (window.lucide) { lucide.createIcons(); }
+
+    const header = document.querySelector('#main-header');
+    
+    // Add background color on scroll
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    });
+  })();
+
+</script>

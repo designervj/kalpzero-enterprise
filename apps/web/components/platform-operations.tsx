@@ -50,7 +50,7 @@ export function PlatformOperations() {
       return;
     }
 
-    if (!session?.roles.includes("platform_admin")) {
+    if (session?.role !== "platform_admin") {
       router.push("/tenant");
       return;
     }
@@ -81,10 +81,10 @@ export function PlatformOperations() {
     return () => {
       active = false;
     };
-  }, [router, session?.roles, status, token]);
+  }, [router, session?.role, status, token]);
 
   useEffect(() => {
-    if (status !== "authenticated" || !token || !session?.roles.includes("platform_admin")) {
+    if (status !== "authenticated" || !token || session?.role !== "platform_admin") {
       return;
     }
 
@@ -119,7 +119,7 @@ export function PlatformOperations() {
     return () => {
       active = false;
     };
-  }, [selectedScope, session?.roles, status, token]);
+  }, [selectedScope, session?.role, status, token]);
 
   const selectedTenant = useMemo(
     () => data.tenants.find((tenant) => tenant.slug === selectedScope) ?? null,

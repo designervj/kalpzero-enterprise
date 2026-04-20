@@ -15,8 +15,8 @@ export default function HomePage() {
       return;
     }
 
-    router.replace(session?.roles.includes("platform_admin") ? "/platform" : "/tenant");
-  }, [router, session?.roles, status]);
+    router.replace(session?.role === "platform_admin" ? "/dashboard" : "/tenant");
+  }, [router, session?.role, status]);
 
   if (status === "loading") {
     return <div className="min-h-screen bg-background" />;

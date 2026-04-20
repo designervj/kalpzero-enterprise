@@ -59,10 +59,10 @@ export default function LoginPage() {
                 password: form.password,
                 tenant_slug: mode === "tenant" ? form.tenantKey : undefined
             });
-             debugger
+         
             if (session?.role) {
                 startTransition(() => {
-                    router.push(session.role === "platform_admin" ? "/platform" : "/tenant");
+                    router.push(session.role === "platform_admin" ? "/dashboard" : "/tenant");
                 });
             }
         } catch (submissionError) {

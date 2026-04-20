@@ -69,11 +69,11 @@ export function OnboardingWizard() {
     }
     if (
       status === "authenticated" &&
-      !session?.roles.includes("platform_admin")
+      session?.role !== "platform_admin"
     ) {
       router.push("/tenant");
     }
-  }, [router, session?.roles, status]);
+  }, [router, session?.role, status]);
 
   async function onCreateAgency(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

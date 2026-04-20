@@ -68,7 +68,7 @@ export function ConsoleShell({
 
           <div className="mt-6 rounded-[24px] border border-white/60 bg-white/70 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Signed in as</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">{session?.user_id ?? "anonymous"}</p>
+            {/* <p className="mt-2 text-sm font-semibold text-foreground">{session?.user?.email ?? "anonymous"}</p> */}
             <p className="mt-1 text-sm text-muted-foreground">{session?.tenant_id ?? "no tenant context"}</p>
           </div>
 

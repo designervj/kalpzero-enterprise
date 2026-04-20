@@ -1,0 +1,2251 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yuvi Garments — Wear The Moment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+@property --grad-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --gold-pos {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
+:root {
+  --midnight: #1A1A2E;
+  --midnight-light: #22223a;
+  --midnight-mid: #2a2a45;
+  --gold: #FFC857;
+  --gold-light: #ffd580;
+  --cream: #FAF3E0;
+  --cream-dim: #e8dfc8;
+  --white: #ffffff;
+  --section-padding: clamp(4rem, 10vw, 12rem);
+  --container: clamp(320px, 90vw, 1400px);
+  --gap-xl: clamp(3rem, 6vw, 8rem);
+  --gap-lg: clamp(2rem, 4vw, 5rem);
+  --gap-md: clamp(1rem, 2vw, 2.5rem);
+  --radius: 2px;
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'Lato', sans-serif;
+}
+
+[data-theme="light"] {
+  --bg: var(--cream);
+  --bg-card: rgba(255,255,255,0.7);
+  --text: var(--midnight);
+  --text-muted: #666;
+  --border: rgba(26,26,46,0.12);
+  --glass-bg: rgba(250,243,224,0.6);
+  --nav-bg: rgba(250,243,224,0.85);
+}
+[data-theme="dark"] {
+  --bg: var(--midnight);
+  --bg-card: rgba(255,255,255,0.03);
+  --text: var(--cream);
+  --text-muted: rgba(250,243,224,0.5);
+  --border: rgba(255,200,87,0.15);
+  --glass-bg: rgba(26,26,46,0.6);
+  --nav-bg: rgba(26,26,46,0.85);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 300;
+  line-height: 1.7;
+  overflow-x: hidden;
+  transition: background 0.4s, color 0.4s;
+}
+
+/* GRAIN OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* PRELOADER */
+#preloader {
+  position: fixed;
+  inset: 0;
+  background: var(--midnight);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  clip-path: circle(150% at 50% 50%);
+  transition: clip-path 1.2s cubic-bezier(0.77, 0, 0.18, 1);
+}
+#preloader.hide { clip-path: circle(0% at 50% 50%); pointer-events: none; }
+#preloader-logo {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 4rem);
+  color: var(--gold);
+  letter-spacing: -0.03em;
+  margin-bottom: 3rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 0.8s 0.2s forwards;
+}
+#preloader-bar {
+  width: clamp(200px, 40vw, 400px);
+  height: 1px;
+  background: rgba(255,200,87,0.2);
+  position: relative;
+  overflow: hidden;
+}
+#preloader-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  width: 0%;
+  background: var(--gold);
+  transition: width 0.05s linear;
+}
+#preloader-count {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  margin-top: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.4s forwards;
+}
+
+/* CUSTOM CURSOR */
+#cursor {
+  position: fixed;
+  width: 10px; height: 10px;
+  background: var(--gold);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: transform 0.1s, width 0.3s, height 0.3s, opacity 0.3s;
+  mix-blend-mode: difference;
+}
+#cursor-ring {
+  position: fixed;
+  width: 40px; height: 40px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9997;
+  transform: translate(-50%, -50%);
+  transition: transform 0.25s ease-out, width 0.3s, height 0.3s, opacity 0.3s;
+  opacity: 0.5;
+}
+body:hover #cursor { opacity: 1; }
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 1.5rem clamp(1.5rem, 5vw, 4rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--nav-bg);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+  transition: all 0.4s;
+}
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+.nav-logo span { color: var(--text); font-weight: 400; font-style: italic; }
+.nav-links {
+  display: flex;
+  gap: 2.5rem;
+  list-style: none;
+}
+.nav-links a {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.3s;
+  position: relative;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 0;
+  width: 0; height: 1px;
+  background: var(--gold);
+  transition: width 0.4s;
+}
+.nav-links a:hover { color: var(--gold); }
+.nav-links a:hover::after { width: 100%; }
+.nav-actions { display: flex; align-items: center; gap: 1.2rem; }
+.nav-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  transition: color 0.3s;
+  padding: 0.3rem;
+  display: flex;
+  align-items: center;
+}
+.nav-icon-btn:hover { color: var(--gold); }
+
+/* SEARCH OVERLAY */
+#search-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,26,46,0.97);
+  z-index: 9990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+#search-overlay.open { opacity: 1; pointer-events: all; }
+.search-inner {
+  width: min(700px, 90vw);
+  text-align: center;
+}
+.search-inner h3 {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  color: var(--cream);
+  margin-bottom: 2rem;
+  font-style: italic;
+}
+.search-field {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--gold);
+  padding: 1rem 0;
+  font-family: var(--font-body);
+  font-size: 1.2rem;
+  color: var(--cream);
+  outline: none;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+.search-field::placeholder { color: rgba(250,243,224,0.3); }
+.search-close {
+  margin-top: 2rem;
+  background: none;
+  border: 1px solid rgba(250,243,224,0.2);
+  color: var(--cream);
+  padding: 0.7rem 2rem;
+  cursor: pointer;
+  letter-spacing: 0.15em;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  transition: all 0.3s;
+}
+.search-close:hover { background: var(--gold); color: var(--midnight); border-color: var(--gold); }
+
+/* DARK MODE TOGGLE */
+.theme-toggle {
+  width: 46px; height: 24px;
+  background: var(--border);
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  background: var(--gold);
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+[data-theme="light"] .theme-toggle::after { transform: translateX(22px); }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
+  padding-top: 7rem;
+  gap: var(--gap-lg);
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(255,200,87,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 2rem;
+  height: 1px;
+  background: var(--gold);
+}
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 7vw, 8rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  margin-bottom: 2rem;
+  --grad-angle: 135deg;
+  --gold-pos: 0%;
+  background: linear-gradient(var(--grad-angle), var(--cream) 0%, var(--gold) var(--gold-pos), var(--cream) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 6s ease-in-out infinite;
+}
+@keyframes gradientShift {
+  0%, 100% { --gold-pos: 0%; --grad-angle: 135deg; }
+  50% { --gold-pos: 100%; --grad-angle: 315deg; }
+}
+.hero-sub {
+  font-size: clamp(0.95rem, 1.5vw, 1.15rem);
+  color: var(--text-muted);
+  max-width: 42ch;
+  margin-bottom: 3rem;
+  line-height: 1.9;
+}
+.hero-ctas { display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: center; }
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--gold);
+  color: var(--midnight);
+  border: none;
+  padding: 1.1rem 2.5rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--cream);
+  transform: translateX(-110%);
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.btn-primary:hover::before { transform: translateX(0); }
+.btn-primary span { position: relative; z-index: 1; }
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: none;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 1.1rem 2.5rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+.btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+.hero-media {
+  position: relative;
+  height: 70vh;
+  min-height: 500px;
+}
+.hero-img-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  clip-path: polygon(8% 0%, 100% 0%, 92% 100%, 0% 100%);
+}
+.hero-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.85);
+  transform-origin: center;
+  animation: heroZoom 12s ease-in-out infinite alternate;
+}
+@keyframes heroZoom {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}
+.hero-badge {
+  position: absolute;
+  bottom: -2rem;
+  left: -3rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(32px);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  min-width: 180px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05) inset, 0 30px 60px rgba(0,0,0,0.3);
+}
+.hero-badge-num {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--gold);
+  display: block;
+}
+.hero-badge-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hero-scroll-line {
+  width: 1px;
+  height: 50px;
+  background: linear-gradient(to bottom, var(--gold), transparent);
+  animation: scrollPulse 2s ease-in-out infinite;
+}
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0; transform: scaleY(0); transform-origin: top; }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+
+/* TICKER */
+.ticker-wrap {
+  padding: 1rem 0;
+  background: var(--gold);
+  overflow: hidden;
+  position: relative;
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker 25s linear infinite;
+}
+.ticker-item {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--midnight);
+  padding: 0 3rem;
+  white-space: nowrap;
+}
+.ticker-item::after {
+  content: '✦';
+  margin-left: 3rem;
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* SECTIONS COMMON */
+section {
+  padding: var(--section-padding) clamp(1.5rem, 5vw, 4rem);
+  position: relative;
+}
+.section-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.section-label::before {
+  content: '';
+  width: 2rem;
+  height: 1px;
+  background: var(--gold);
+}
+.section-heading {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-bottom: var(--gap-md);
+}
+.section-heading em { font-style: italic; color: var(--gold); }
+.section-sub {
+  color: var(--text-muted);
+  font-size: 1rem;
+  max-width: 50ch;
+  line-height: 1.9;
+  margin-bottom: var(--gap-lg);
+}
+
+/* NEW ARRIVALS */
+.new-arrivals { background: var(--bg); }
+.arrivals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2px;
+}
+.arrival-card {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3/4;
+  cursor: pointer;
+  background: var(--midnight-mid);
+}
+.arrival-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1), filter 0.5s;
+}
+.arrivals-grid:has(.arrival-card:hover) .arrival-card:not(:hover) img {
+  filter: blur(2px) saturate(0.3);
+}
+.arrival-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 2rem 1.5rem 1.5rem;
+  background: linear-gradient(to top, rgba(26,26,46,0.95), transparent);
+  transform: translateY(40%);
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.arrival-card:hover .arrival-overlay { transform: translateY(0); }
+.arrival-card:hover img { transform: scale(1.07); }
+.arrival-tag {
+  display: inline-block;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  padding: 0.25rem 0.7rem;
+  margin-bottom: 0.7rem;
+}
+.arrival-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--cream);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.arrival-price {
+  color: var(--gold);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+
+/* LOOKBOOK */
+.lookbook {
+  background: var(--midnight-light);
+  overflow: hidden;
+}
+.lookbook-inner {
+  max-width: var(--container);
+  margin: 0 auto;
+}
+.lookbook-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 4px;
+}
+.lbook-item {
+  overflow: hidden;
+  position: relative;
+}
+.lbook-item:first-child { grid-row: 1 / 3; }
+.lbook-item img {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  object-fit: cover;
+  transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  display: block;
+}
+.lbook-item:hover img { transform: scale(1.04); }
+.lbook-caption {
+  position: absolute;
+  bottom: 1.5rem; left: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--cream);
+  font-style: italic;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  padding: 0.5rem 1rem;
+  border-left: 2px solid var(--gold);
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.4s;
+}
+.lbook-item:hover .lbook-caption { opacity: 1; transform: translateX(0); }
+
+/* SIZE GUIDE */
+.size-guide { background: var(--bg); }
+.size-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.size-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.size-table th {
+  background: var(--midnight-mid);
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  padding: 1.2rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.size-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+.size-table tr:hover td { background: rgba(255,200,87,0.04); color: var(--text); }
+.size-table tr:last-child td { border-bottom: none; }
+
+/* PRICING */
+.pricing { background: var(--midnight-light); }
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--gap-md);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.price-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(32px);
+  border: 1px solid var(--border);
+  padding: 3rem 2.5rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 40px 80px rgba(0,0,0,0.3);
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s;
+  animation-timeline: view();
+  animation-range: entry 0% entry 30%;
+  animation-name: cardReveal;
+  animation-fill-mode: both;
+}
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.price-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 0 0 1px rgba(255,200,87,0.1) inset, 0 60px 120px rgba(0,0,0,0.4), 0 0 80px rgba(255,200,87,0.06);
+}
+.price-card.featured {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(255,200,87,0.2) inset, 0 40px 80px rgba(0,0,0,0.4), 0 0 60px rgba(255,200,87,0.1);
+}
+.price-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, rgba(255,200,87,0.03), transparent 50%);
+  pointer-events: none;
+}
+.price-featured-badge {
+  position: absolute;
+  top: 1.5rem; right: 1.5rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--midnight);
+  background: var(--gold);
+  padding: 0.3rem 0.8rem;
+}
+.price-tier {
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1rem;
+}
+.price-name {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+}
+.price-amount {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+.price-amount sup {
+  font-size: 1.2rem;
+  vertical-align: super;
+  font-weight: 400;
+  color: var(--gold);
+}
+.price-period {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 2rem;
+}
+.price-features {
+  list-style: none;
+  margin-bottom: 2.5rem;
+}
+.price-features li {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.price-features li::before { content: '✦'; color: var(--gold); font-size: 0.5rem; }
+
+/* ABOUT */
+.about { background: var(--bg); }
+.about-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-xl);
+  align-items: center;
+  max-width: var(--container);
+  margin: 0 auto;
+}
+.about-media {
+  position: relative;
+}
+.about-img-main {
+  width: 100%;
+  height: 70vh;
+  min-height: 400px;
+  object-fit: cover;
+  clip-path: polygon(0 0, 90% 0, 100% 10%, 100% 100%, 10% 100%, 0 90%);
+  animation-timeline: view();
+  animation-range: entry 0% entry 60%;
+  animation-name: imgReveal;
+  animation-fill-mode: both;
+}
+@keyframes imgReveal {
+  from { clip-path: polygon(0 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%, 0 50%); opacity: 0; }
+  to { clip-path: polygon(0 0, 90% 0, 100% 10%, 100% 100%, 10% 100%, 0 90%); opacity: 1; }
+}
+.about-badge-2 {
+  position: absolute;
+  top: 2rem; right: -2rem;
+  background: var(--gold);
+  color: var(--midnight);
+  padding: 1.5rem;
+  min-width: 150px;
+  text-align: center;
+}
+.about-badge-2-num {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 900;
+  display: block;
+  line-height: 1;
+}
+.about-badge-2-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.about-quote {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.5vw, 2rem);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text);
+  border-left: 2px solid var(--gold);
+  padding-left: 1.5rem;
+  margin: 2rem 0;
+}
+.about-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+}
+.value-item h4 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--gold);
+  margin-bottom: 0.3rem;
+}
+.value-item p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* TESTIMONIALS */
+.testimonials { background: var(--midnight-light); }
+.testi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--gap-md);
+}
+.testi-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(32px);
+  border: 1px solid var(--border);
+  padding: 2.5rem;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 20px 50px rgba(0,0,0,0.2);
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  animation-timeline: view();
+  animation-range: entry 0% entry 30%;
+  animation-name: cardReveal;
+  animation-fill-mode: both;
+}
+.testi-card:hover { transform: translateY(-6px); }
+.testi-stars {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 1.2rem;
+}
+.star { color: var(--gold); font-size: 0.8rem; }
+.testi-text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+}
+.testi-author {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.testi-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+.testi-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.testi-loc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* FAQ */
+.faq { background: var(--bg); }
+.faq-inner {
+  max-width: 800px;
+  margin: 0 auto;
+}
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+.faq-q {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 1.8rem 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  transition: color 0.3s;
+}
+.faq-q:hover { color: var(--gold); }
+.faq-q span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: all 0.3s;
+  color: var(--gold);
+}
+.faq-item.open .faq-q span { transform: rotate(45deg); border-color: var(--gold); background: var(--gold); color: var(--midnight); }
+.faq-a {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.23, 1, 0.32, 1), padding 0.3s;
+}
+.faq-a-inner {
+  padding-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.9;
+}
+.faq-item.open .faq-a { max-height: 300px; }
+
+/* INSTAGRAM */
+.instagram { background: var(--midnight-light); }
+.insta-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+}
+.insta-item {
+  aspect-ratio: 1;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+.insta-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), filter 0.4s;
+}
+.insta-item::after {
+  content: '♡';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: rgba(26,26,46,0.7);
+  color: var(--gold);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.insta-item:hover img { transform: scale(1.08); filter: saturate(0.6); }
+.insta-item:hover::after { opacity: 1; }
+
+/* NEWSLETTER */
+.newsletter {
+  background: var(--midnight);
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+}
+.newsletter::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  height: 80vw;
+  background: radial-gradient(circle, rgba(255,200,87,0.05) 0%, transparent 60%);
+  pointer-events: none;
+}
+.newsletter-form {
+  display: flex;
+  gap: 0;
+  max-width: 500px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+.newsletter-input {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-right: none;
+  padding: 1.1rem 1.5rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.3s;
+}
+.newsletter-input:focus { border-color: var(--gold); }
+.newsletter-input::placeholder { color: var(--text-muted); }
+.newsletter-btn {
+  background: var(--gold);
+  color: var(--midnight);
+  border: 1px solid var(--gold);
+  padding: 1.1rem 2rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+.newsletter-btn:hover { background: var(--cream); border-color: var(--cream); }
+.newsletter-disclaimer {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 1rem;
+  letter-spacing: 0.05em;
+}
+
+/* CONTACT */
+.contact { background: var(--midnight-light); }
+.contact-inner {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: var(--gap-xl);
+  max-width: var(--container);
+  margin: 0 auto;
+  align-items: start;
+}
+.contact-info-item {
+  display: flex;
+  gap: 1.2rem;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+.contact-icon {
+  width: 44px;
+  height: 44px;
+  background: rgba(255,200,87,0.1);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  color: var(--gold);
+}
+.contact-info-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.3rem;
+}
+.contact-info-val {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.contact-form {
+  display: grid;
+  gap: 1.5rem;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.form-field label {
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.form-field input,
+.form-field textarea,
+.form-field select {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  padding: 1rem 1.2rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.3s;
+  resize: none;
+}
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus { border-color: var(--gold); }
+.form-field select option { background: var(--midnight); }
+.form-submit { justify-self: start; }
+
+/* HOURS */
+.hours-table { width: 100%; }
+.hours-table tr { display: flex; justify-content: space-between; padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+.hours-table td:first-child { font-size: 0.82rem; letter-spacing: 0.05em; color: var(--text-muted); }
+.hours-table td:last-child { font-size: 0.82rem; color: var(--text); }
+
+/* SOCIAL FEED */
+.social-feed { background: var(--bg); }
+.social-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: var(--gap-md);
+  border-bottom: 1px solid var(--border);
+}
+.stab {
+  background: none;
+  border: none;
+  padding: 1rem 1.5rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s;
+}
+.stab.active { color: var(--gold); }
+.stab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 2px;
+  background: var(--gold);
+}
+.stab:hover { color: var(--gold); }
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+.social-post {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: transform 0.4s;
+}
+.social-post:hover { transform: translateY(-4px); }
+.social-post-img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.social-post-body { padding: 1.2rem; }
+.social-post-handle { font-size: 0.72rem; color: var(--gold); letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+.social-post-text { font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; }
+
+/* LIVE CHAT */
+#live-chat-btn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 5000;
+  width: 56px;
+  height: 56px;
+  background: var(--gold);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 10px 30px rgba(255,200,87,0.3);
+  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.3s;
+}
+#live-chat-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 15px 40px rgba(255,200,87,0.5);
+}
+#live-chat-bubble {
+  position: fixed;
+  bottom: 6.5rem;
+  right: 2rem;
+  z-index: 5000;
+  width: 320px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(32px);
+  border: 1px solid var(--border);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  transform: scale(0) translateY(20px);
+  transform-origin: bottom right;
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+  opacity: 0;
+}
+#live-chat-bubble.open { transform: scale(1) translateY(0); pointer-events: all; opacity: 1; }
+.chat-header {
+  padding: 1.2rem 1.5rem;
+  background: var(--gold);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.chat-header h4 { font-family: var(--font-body); font-size: 0.85rem; font-weight: 700; color: var(--midnight); }
+.chat-close { background: none; border: none; cursor: pointer; color: var(--midnight); font-size: 1rem; }
+.chat-messages {
+  padding: 1.5rem;
+  height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.chat-msg {
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.5;
+  max-width: 85%;
+}
+.chat-msg.agent {
+  background: rgba(255,200,87,0.08);
+  border: 1px solid var(--border);
+  padding: 0.8rem 1rem;
+  align-self: flex-start;
+}
+.chat-msg.user {
+  background: var(--gold);
+  color: var(--midnight);
+  padding: 0.8rem 1rem;
+  align-self: flex-end;
+}
+.chat-msg-agent-name { font-size: 0.65rem; color: var(--gold); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.3rem; }
+.chat-input-wrap {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 0.5rem;
+}
+.chat-input {
+  flex: 1;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.8rem;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--text);
+  outline: none;
+}
+.chat-input:focus { border-color: var(--gold); }
+.chat-send {
+  background: var(--gold);
+  border: none;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--midnight);
+  font-weight: 700;
+  transition: background 0.2s;
+}
+.chat-send:hover { background: var(--gold-light); }
+
+/* FOOTER */
+footer {
+  background: var(--midnight);
+  border-top: 1px solid var(--border);
+  padding: var(--section-padding) clamp(1.5rem, 5vw, 4rem) 2rem;
+}
+.footer-inner {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: var(--gap-lg);
+  max-width: var(--container);
+  margin: 0 auto;
+}
+.footer-brand p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.9;
+  max-width: 35ch;
+  margin-top: 1rem;
+}
+.footer-social {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+.fsocial {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: all 0.3s;
+}
+.fsocial:hover { border-color: var(--gold); color: var(--gold); }
+.footer-col h5 {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.5rem;
+}
+.footer-col ul { list-style: none; }
+.footer-col ul li { margin-bottom: 0.7rem; }
+.footer-col ul li a {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+.footer-col ul li a:hover { color: var(--text); }
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 2rem;
+  margin-top: 3rem;
+  border-top: 1px solid var(--border);
+  max-width: var(--container);
+  margin-left: auto;
+  margin-right: auto;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.footer-bottom p { font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.05em; }
+
+/* HAMBURGER */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px;
+}
+.hamburger span {
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--text);
+  transition: all 0.3s;
+}
+
+/* SCROLL ANIMATIONS */
+.reveal {
+  animation-timeline: view();
+  animation-range: entry 0% entry 25%;
+  animation-name: revealUp;
+  animation-fill-mode: both;
+}
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* MOBILE NAV */
+#mobile-nav {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--midnight);
+  z-index: 9000;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+#mobile-nav.open { display: flex; }
+#mobile-nav a {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 8vw, 4rem);
+  color: var(--text);
+  text-decoration: none;
+  font-style: italic;
+  transition: color 0.3s;
+}
+#mobile-nav a:hover { color: var(--gold); }
+#mobile-nav-close {
+  position: absolute;
+  top: 1.5rem; right: 1.5rem;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+#mobile-nav-close:hover { border-color: var(--gold); color: var(--gold); }
+
+@media (max-width: 1024px) {
+  .about-values { grid-template-columns: 1fr; }
+  .footer-inner { grid-template-columns: 1fr 1fr; }
+  .lookbook-grid { grid-template-columns: 1fr 1fr; }
+  .lookbook-grid .lbook-item:first-child { grid-row: 1; }
+  .insta-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .hero { grid-template-columns: 1fr; padding-top: 6rem; }
+  .hero-media { height: 50vh; min-height: 300px; }
+  .hero-badge { left: 1rem; bottom: 1rem; }
+  .about-inner { grid-template-columns: 1fr; }
+  .about-badge-2 { right: 0; top: 1rem; }
+  .contact-inner { grid-template-columns: 1fr; }
+  .footer-inner { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .hamburger { display: flex; }
+  .insta-grid { grid-template-columns: repeat(2, 1fr); }
+  .pricing-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<!-- PRELOADER -->
+<div id="preloader">
+  <div id="preloader-logo">Yuvi <em style="font-style:italic;color:var(--cream)">garments</em></div>
+  <div id="preloader-bar"><div id="preloader-fill"></div></div>
+  <div id="preloader-count">0%</div>
+</div>
+
+<!-- CUSTOM CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- SEARCH OVERLAY -->
+<div id="search-overlay">
+  <div class="search-inner">
+    <h3>What are you looking for?</h3>
+    <input type="text" class="search-field" placeholder="Search collections, styles, sizes…">
+    <br>
+    <button class="search-close" onclick="toggleSearch()">Close Search</button>
+  </div>
+</div>
+
+<!-- MOBILE NAV -->
+<div id="mobile-nav">
+  <button id="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+  <a href="#arrivals" onclick="closeMobileNav()">New Arrivals</a>
+  <a href="#lookbook" onclick="closeMobileNav()">Lookbook</a>
+  <a href="#about" onclick="closeMobileNav()">About</a>
+  <a href="#pricing" onclick="closeMobileNav()">Collections</a>
+  <a href="#contact" onclick="closeMobileNav()">Visit Us</a>
+</div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="#" class="nav-logo">Yuvi <span>garments</span></a>
+  <ul class="nav-links">
+    <li><a href="#arrivals">New Arrivals</a></li>
+    <li><a href="#lookbook">Lookbook</a></li>
+    <li><a href="#about">Our Story</a></li>
+    <li><a href="#pricing">Collections</a></li>
+    <li><a href="#contact">Visit Us</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="nav-icon-btn" onclick="toggleSearch()" title="Search">&#9906;</button>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark/light mode"></button>
+    <button class="hamburger" onclick="openMobileNav()"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-content">
+    <div class="hero-eyebrow">New Season 2025 — Now In Store</div>
+    <h1 class="hero-headline">Wear<br>The<br>Moment.</h1>
+    <p class="hero-sub">Discover curated collections that move with you — crafted for those who understand that style is a silent declaration. Visit our store and experience fashion as it was meant to be felt.</p>
+    <div class="hero-ctas">
+      <a href="#arrivals" class="btn-primary" id="magnet-btn"><span>Explore New Arrivals</span></a>
+      <a href="#contact" class="btn-ghost">Find Our Store →</a>
+    </div>
+  </div>
+  <div class="hero-media">
+    <div class="hero-img-wrap">
+      <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&q=80" alt="Fashion model in Yuvi Garments" loading="eager">
+    </div>
+    <div class="hero-badge">
+      <span class="hero-badge-num" id="arrivals-count">0</span>
+      <span class="hero-badge-label">New Pieces<br>This Season</span>
+    </div>
+  </div>
+  <div class="hero-scroll-hint">
+    <div class="hero-scroll-line"></div>
+    Scroll
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-track" id="ticker">
+    <span class="ticker-item">New Arrivals In Store Now</span>
+    <span class="ticker-item">Premium Fabrics</span>
+    <span class="ticker-item">Exclusive Collections</span>
+    <span class="ticker-item">Crafted With Intention</span>
+    <span class="ticker-item">Visit Yuvi Garments Today</span>
+    <span class="ticker-item">Style Redefined</span>
+    <span class="ticker-item">New Arrivals In Store Now</span>
+    <span class="ticker-item">Premium Fabrics</span>
+    <span class="ticker-item">Exclusive Collections</span>
+    <span class="ticker-item">Crafted With Intention</span>
+    <span class="ticker-item">Visit Yuvi Garments Today</span>
+    <span class="ticker-item">Style Redefined</span>
+  </div>
+</div>
+
+<!-- NEW ARRIVALS -->
+<section id="arrivals">
+  <div class="section-label">Fresh From The Floor</div>
+  <h2 class="section-heading reveal">New <em>Arrivals</em></h2>
+  <p class="section-sub reveal">The latest pieces, arrived just in time. Each garment tells its own story — visit the store to feel the difference.</p>
+  <div class="arrivals-grid">
+    <div class="arrival-card">
+      <img src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=600&q=80" alt="Silk Evening Drape">
+      <div class="arrival-overlay">
+        <div class="arrival-tag">Just Arrived</div>
+        <span class="arrival-name">Silk Evening Drape</span>
+        <span class="arrival-price">₹3,499</span>
+      </div>
+    </div>
+    <div class="arrival-card">
+      <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=80" alt="Structured Blazer Set">
+      <div class="arrival-overlay">
+        <div class="arrival-tag">Editor's Pick</div>
+        <span class="arrival-name">Structured Blazer Set</span>
+        <span class="arrival-price">₹5,200</span>
+      </div>
+    </div>
+    <div class="arrival-card">
+      <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80" alt="Linen Printed Coord">
+      <div class="arrival-overlay">
+        <div class="arrival-tag">Summer '25</div>
+        <span class="arrival-name">Linen Printed Coord</span>
+        <span class="arrival-price">₹2,800</span>
+      </div>
+    </div>
+    <div class="arrival-card">
+      <img src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600&q=80" alt="Embroidered Kurti">
+      <div class="arrival-overlay">
+        <div class="arrival-tag">Bestseller</div>
+        <span class="arrival-name">Embroidered Kurti</span>
+        <span class="arrival-price">₹1,950</span>
+      </div>
+    </div>
+    <div class="arrival-card">
+      <img src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600&q=80" alt="Statement Palazzo Set">
+      <div class="arrival-overlay">
+        <div class="arrival-tag">New</div>
+        <span class="arrival-name">Statement Palazzo Set</span>
+        <span class="arrival-price">₹2,400</span>
+      </div>
+    </div>
+    <div class="arrival-card">
+      <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80" alt="Evening Anarkali">
+      <div class="arrival-overlay">
+        <div class="arrival-tag">Limited</div>
+        <span class="arrival-name">Evening Anarkali</span>
+        <span class="arrival-price">₹4,600</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOOKBOOK -->
+<section class="lookbook" id="lookbook">
+  <div class="lookbook-inner">
+    <div class="section-label">Season Story</div>
+    <h2 class="section-heading reveal">The <em>Lookbook</em></h2>
+    <p class="section-sub reveal">A curated visual journey through our most-loved silhouettes, styled for the woman who moves through the world with quiet confidence.</p>
+    <div class="lookbook-grid">
+      <div class="lbook-item">
+        <img src="https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?w=800&q=80" alt="Lookbook 1">
+        <div class="lbook-caption">The Effortless Edit</div>
+      </div>
+      <div class="lbook-item">
+        <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=80" alt="Lookbook 2">
+        <div class="lbook-caption">Daytime Luxe</div>
+      </div>
+      <div class="lbook-item">
+        <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&q=80" alt="Lookbook 3">
+        <div class="lbook-caption">Evening Ritual</div>
+      </div>
+      <div class="lbook-item">
+        <img src="https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=600&q=80" alt="Lookbook 4">
+        <div class="lbook-caption">Weekend Mood</div>
+      </div>
+      <div class="lbook-item">
+        <img src="https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=600&q=80" alt="Lookbook 5">
+        <div class="lbook-caption">The Statement Piece</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SIZE GUIDE -->
+<section class="size-guide" id="size-guide">
+  <div class="section-label">Find Your Fit</div>
+  <h2 class="section-heading reveal">Size <em>Guide</em></h2>
+  <p class="section-sub reveal">Our garments are crafted with precise, inclusive sizing. Use this guide to find your perfect fit before visiting the store.</p>
+  <div class="size-table-wrap">
+    <table class="size-table">
+      <thead>
+        <tr>
+          <th>Size</th>
+          <th>Bust (cm)</th>
+          <th>Waist (cm)</th>
+          <th>Hips (cm)</th>
+          <th>UK Size</th>
+          <th>US Size</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>XS</td><td>78 – 82</td><td>60 – 64</td><td>86 – 90</td><td>6</td><td>2</td></tr>
+        <tr><td>S</td><td>83 – 87</td><td>65 – 69</td><td>91 – 95</td><td>8</td><td>4</td></tr>
+        <tr><td>M</td><td>88 – 93</td><td>70 – 75</td><td>96 – 101</td><td>10</td><td>6</td></tr>
+        <tr><td>L</td><td>94 – 99</td><td>76 – 81</td><td>102 – 107</td><td>12</td><td>8</td></tr>
+        <tr><td>XL</td><td>100 – 106</td><td>82 – 88</td><td>108 – 114</td><td>14</td><td>10</td></tr>
+        <tr><td>XXL</td><td>107 – 114</td><td>89 – 96</td><td>115 – 122</td><td>16</td><td>12</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:0.78rem;color:var(--text-muted);margin-top:1rem;letter-spacing:0.05em;">* For custom alterations, speak with our in-store stylists. Complimentary fitting service available.</p>
+</section>
+
+<!-- PRICING COLLECTIONS -->
+<section class="pricing" id="pricing">
+  <div class="section-label">Our Collections</div>
+  <h2 class="section-heading reveal" style="text-align:center;">Curated <em>For You</em></h2>
+  <p class="section-sub reveal" style="margin:0 auto var(--gap-lg);text-align:center;">Three distinct worlds of style, each designed to meet you exactly where you are. Every piece available exclusively in-store.</p>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="price-tier">Everyday Edit</div>
+      <div class="price-name">The Daily<br>Collection</div>
+      <div class="price-amount"><sup>₹</sup>799</div>
+      <div class="price-period">— starting from</div>
+      <ul class="price-features">
+        <li>Casual Kurtis & Tops</li>
+        <li>Palazzo & Trouser Sets</li>
+        <li>Cotton & Linen Fabrics</li>
+        <li>Sizes XS – XXL Available</li>
+        <li>Machine Washable</li>
+      </ul>
+      <a href="#contact" class="btn-ghost"><span>Visit In Store</span></a>
+    </div>
+    <div class="price-card featured">
+      <div class="price-featured-badge">Most Loved</div>
+      <div class="price-tier">Signature Line</div>
+      <div class="price-name">The Signature<br>Collection</div>
+      <div class="price-amount"><sup>₹</sup>2,499</div>
+      <div class="price-period">— starting from</div>
+      <ul class="price-features">
+        <li>Designer Anarkalis & Suits</li>
+        <li>Handcrafted Embroidery</li>
+        <li>Premium Silk & Chiffon</li>
+        <li>Exclusive Limited Editions</li>
+        <li>Complimentary Fitting</li>
+      </ul>
+      <a href="#contact" class="btn-primary"><span>Visit In Store</span></a>
+    </div>
+    <div class="price-card">
+      <div class="price-tier">Celebration</div>
+      <div class="price-name">The Occasion<br>Collection</div>
+      <div class="price-amount"><sup>₹</sup>5,999</div>
+      <div class="price-period">— starting from</div>
+      <ul class="price-features">
+        <li>Bridal & Party Wear</li>
+        <li>Heavy Zari & Beadwork</li>
+        <li>Lehengas & Gowns</li>
+        <li>Bespoke Alterations</li>
+        <li>Private Styling Session</li>
+      </ul>
+      <a href="#contact" class="btn-ghost"><span>Book Appointment</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT US -->
+<section class="about" id="about">
+  <div class="about-inner">
+    <div class="about-media">
+      <img src="https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&q=80" alt="Yuvi Garments Store" class="about-img-main">
+      <div class="about-badge-2">
+        <span class="about-badge-2-num">15+</span>
+        <span class="about-badge-2-label">Years of<br>Craft</span>
+      </div>
+    </div>
+    <div class="about-text">
+      <div class="section-label">Our Story</div>
+      <h2 class="section-heading">More Than <em>Fashion</em></h2>
+      <blockquote class="about-quote">"Every garment we carry was chosen with one question: does it make the woman wearing it feel extraordinary?"</blockquote>
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.9;margin-bottom:1.5rem;">Yuvi Garments was founded on the belief that fashion should be accessible without sacrificing quality. From our store in the heart of the city, we have been dressing women for their most important moments — and their most ordinary ones — for over fifteen years.</p>
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.9;margin-bottom:2rem;">We source directly from the finest weavers and designers, ensuring every thread meets our exacting standards. When you walk in, you're not just a customer — you're family.</p>
+      <div class="about-values">
+        <div class="value-item">
+          <h4>Craftsmanship First</h4>
+          <p>Every piece is selected with meticulous attention to fabric, finish, and form.</p>
+        </div>
+        <div class="value-item">
+          <h4>Inclusive Sizing</h4>
+          <p>Sizes XS through XXL, with in-store alteration services for a perfect fit.</p>
+        </div>
+        <div class="value-item">
+          <h4>Personal Service</h4>
+          <p>Our stylists know every piece by heart and guide you with genuine care.</p>
+        </div>
+        <div class="value-item">
+          <h4>Local Roots</h4>
+          <p>Proudly serving the community with direct relationships with Indian artisans.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials" id="testimonials">
+  <div class="section-label">What They Say</div>
+  <h2 class="section-heading reveal">Voices of <em>Satisfaction</em></h2>
+  <p class="section-sub reveal">Real words from the women who trust us with their wardrobes, their celebrations, and their everyday moments.</p>
+  <div class="testi-grid">
+    <div class="testi-card">
+      <div class="testi-stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
+      <p class="testi-text">"I walked in for one piece and left with an entirely new confidence. The staff understood my taste immediately. Yuvi is not just a store — it's an experience."</p>
+      <div class="testi-author">
+        <img src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=80&q=70" alt="Priya S." class="testi-avatar">
+        <div>
+          <div class="testi-name">Priya Sharma</div>
+          <div class="testi-loc">Jaipur, Rajasthan</div>
+        </div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <div class="testi-stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
+      <p class="testi-text">"Found my sister's wedding lehenga here. The quality is unmatched for the price, and the alterations were done perfectly. Will never shop anywhere else for celebrations."</p>
+      <div class="testi-author">
+        <img src="https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=80&q=70" alt="Ananya M." class="testi-avatar">
+        <div>
+          <div class="testi-name">Ananya Mehta</div>
+          <div class="testi-loc">Jaipur, Rajasthan</div>
+        </div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <div class="testi-stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
+      <p class="testi-text">"As someone who struggles with sizing, Yuvi's in-store fitting service changed everything. They treated me with such dignity and found pieces that fit and flattered."</p>
+      <div class="testi-author">
+        <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&q=70" alt="Nandini K." class="testi-avatar">
+        <div>
+          <div class="testi-name">Nandini Kapoor</div>
+          <div class="testi-loc">Jaipur, Rajasthan</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="section-label">Questions Answered</div>
+  <h2 class="section-heading reveal">Frequently <em>Asked</em></h2>
+  <div class="faq-inner">
+    <div class="faq-item open">
+      <button class="faq-q">What are your store hours? <span>+</span></button>
+      <div class="faq-a"><div class="faq-a-inner">We're open Monday to Saturday from 10 AM to 8 PM, and Sunday from 11 AM to 6 PM. We also offer private styling appointments outside regular hours — contact us to arrange.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">Do you offer custom tailoring and alterations? <span>+</span></button>
+      <div class="faq-a"><div class="faq-a-inner">Yes, all purchases come with complimentary basic alterations. For bespoke tailoring or custom orders, please speak with our in-store stylist team or book a fitting appointment through our contact form.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">What is your return and exchange policy? <span>+</span></button>
+      <div class="faq-a"><div class="faq-a-inner">We offer exchanges within 7 days of purchase for unworn items with original tags. We want you to love what you wear — if something isn't right, bring it back and our team will make it so. Sale items are final.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">Do you carry plus sizes and extended sizing? <span>+</span></button>
+      <div class="faq-a"><div class="faq-a-inner">Absolutely. We stock sizes XS through XXL across all collections, and many designs can be custom-made in any size with a 7–10 day turnaround. Inclusive fashion is at the core of who we are.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">Can I book a personal styling session? <span>+</span></button>
+      <div class="faq-a"><div class="faq-a-inner">Yes — and we love them. Our complimentary 45-minute personal styling sessions are available by appointment. Whether you're dressing for a wedding, a new season, or simply refreshing your wardrobe, our stylists are here for you.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">Do you offer group or bulk purchase discounts? <span>+</span></button>
+      <div class="faq-a"><div class="faq-a-inner">We offer exclusive pricing for bulk orders (10+ pieces) and group events such as wedding parties, corporate gifting, or cultural programs. Reach out via our contact form or call us to discuss your requirements.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTAGRAM / SOCIAL FEED -->
+<section class="instagram" id="instagram">
+  <div class="section-label">@yuvigarments</div>
+  <h2 class="section-heading reveal">Follow Our <em>World</em></h2>
+  <p class="section-sub reveal">Tag us in your looks for a chance to be featured. Our community is our runway.</p>
+  <div class="insta-grid">
+    <div class="insta-item"><img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&q=70" alt="Instagram 1"></div>
+    <div class="insta-item"><img src="https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&q=70" alt="Instagram 2"></div>
+    <div class="insta-item"><img src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&q=70" alt="Instagram 3"></div>
+    <div class="insta-item"><img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&q=70" alt="Instagram 4"></div>
+    <div class="insta-item"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&q=70" alt="Instagram 5"></div>
+    <div class="insta-item"><img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&q=70" alt="Instagram 6"></div>
+  </div>
+</section>
+
+<!-- SOCIAL MEDIA FEED -->
+<section class="social-feed" id="social-feed">
+  <div class="section-label">Community Voices</div>
+  <h2 class="section-heading reveal">Live <em>From The Feed</em></h2>
+  <div class="social-tabs">
+    <button class="stab active" onclick="setTab(this, 'instagram')">Instagram</button>
+    <button class="stab" onclick="setTab(this, 'facebook')">Facebook</button>
+    <button class="stab" onclick="setTab(this, 'twitter')">Twitter</button>
+  </div>
+  <div class="social-grid">
+    <div class="social-post">
+      <img src="https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?w=400&q=70" alt="" class="social-post-img">
+      <div class="social-post-body">
+        <div class="social-post-handle">@yuvigarments</div>
+        <p class="social-post-text">New season, new arrivals. The Signature Collection is here. ✦ Limited pieces available in-store.</p>
+      </div>
+    </div>
+    <div class="social-post">
+      <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=70" alt="" class="social-post-img">
+      <div class="social-post-body">
+        <div class="social-post-handle">@priya_styles</div>
+        <p class="social-post-text">Just found the most perfect anarkali at @yuvigarments! The quality is unreal. ❤️ #yuvigarments</p>
+      </div>
+    </div>
+    <div class="social-post">
+      <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&q=70" alt="" class="social-post-img">
+      <div class="social-post-body">
+        <div class="social-post-handle">@ananya.mehta</div>
+        <p class="social-post-text">Wedding season sorted. 🙌 Thank you @yuvigarments for making us look incredible! #bridalfashion</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section class="newsletter" id="newsletter">
+  <div class="section-label" style="justify-content:center;">Stay In The Know</div>
+  <h2 class="section-heading reveal" style="text-align:center;">First to <em>Know</em></h2>
+  <p class="section-sub reveal" style="margin:0 auto var(--gap-md);text-align:center;">Be among the first to hear about new arrivals, exclusive events, and private sale access. No noise. Just style.</p>
+  <form class="newsletter-form" onsubmit="return handleNewsletter(event)">
+    <input type="email" class="newsletter-input" placeholder="your@email.com" required>
+    <button type="submit" class="newsletter-btn">Subscribe</button>
+  </form>
+  <p class="newsletter-disclaimer">We respect your privacy. Unsubscribe at any time. No spam, ever.</p>
+</section>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <div class="contact-inner">
+    <div class="contact-left">
+      <div class="section-label">Come Find Us</div>
+      <h2 class="section-heading">Visit <em>The Store</em></h2>
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.9;margin-bottom:2.5rem;">We believe fashion is best experienced in person. Come in, touch the fabrics, try the cuts, and let our stylists guide you. We're always here to welcome you.</p>
+
+      <div class="contact-info-item">
+        <div class="contact-icon">📍</div>
+        <div>
+          <div class="contact-info-label">Address</div>
+          <div class="contact-info-val">Plot 14, Tonk Road, Near Durgapura Station<br>Jaipur, Rajasthan – 302018</div>
+        </div>
+      </div>
+      <div class="contact-info-item">
+        <div class="contact-icon">📞</div>
+        <div>
+          <div class="contact-info-label">Phone</div>
+          <div class="contact-info-val">+91 98765 43210</div>
+        </div>
+      </div>
+      <div class="contact-info-item">
+        <div class="contact-icon">✉</div>
+        <div>
+          <div class="contact-info-label">Email</div>
+          <div class="contact-info-val">hello@yuvigarments.in</div>
+        </div>
+      </div>
+
+      <table class="hours-table" style="margin-top:2rem;">
+        <tr><td>Monday – Saturday</td><td>10:00 AM – 8:00 PM</td></tr>
+        <tr><td>Sunday</td><td>11:00 AM – 6:00 PM</td></tr>
+        <tr><td>Public Holidays</td><td>11:00 AM – 5:00 PM</td></tr>
+      </table>
+    </div>
+    <div class="contact-right">
+      <div class="price-card" style="padding: 2.5rem;">
+        <div class="price-tier" style="margin-bottom:1.5rem;">Send Us A Message</div>
+        <div class="contact-form">
+          <div class="form-row">
+            <div class="form-field">
+              <label>First Name</label>
+              <input type="text" placeholder="Priya">
+            </div>
+            <div class="form-field">
+              <label>Last Name</label>
+              <input type="text" placeholder="Sharma">
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Email Address</label>
+            <input type="email" placeholder="priya@example.com">
+          </div>
+          <div class="form-field">
+            <label>Phone Number</label>
+            <input type="tel" placeholder="+91 98765 43210">
+          </div>
+          <div class="form-field">
+            <label>I'm Interested In</label>
+            <select>
+              <option>New Arrivals</option>
+              <option>Personal Styling Session</option>
+              <option>Wedding / Occasion Wear</option>
+              <option>Bulk / Corporate Order</option>
+              <option>Custom Tailoring</option>
+              <option>General Enquiry</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Message</label>
+            <textarea rows="4" placeholder="Tell us how we can help…"></textarea>
+          </div>
+          <button class="btn-primary form-submit" onclick="return handleContact(event)"><span>Send Message ✦</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="#" class="nav-logo" style="font-size:2rem;">Yuvi <span>garments</span></a>
+      <p>Dressing the women of Jaipur for over fifteen years. Crafted with love, chosen with care. Your story, worn beautifully.</p>
+      <div class="footer-social">
+        <a href="#" class="fsocial">f</a>
+        <a href="#" class="fsocial">in</a>
+        <a href="#" class="fsocial">tw</a>
+        <a href="#" class="fsocial">yt</a>
+        <a href="#" class="fsocial">pt</a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h5>Collections</h5>
+      <ul>
+        <li><a href="#arrivals">New Arrivals</a></li>
+        <li><a href="#lookbook">Lookbook</a></li>
+        <li><a href="#pricing">Daily Edit</a></li>
+        <li><a href="#pricing">Signature Line</a></li>
+        <li><a href="#pricing">Occasion Wear</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Services</h5>
+      <ul>
+        <li><a href="#size-guide">Size Guide</a></li>
+        <li><a href="#contact">Personal Styling</a></li>
+        <li><a href="#contact">Alterations</a></li>
+        <li><a href="#contact">Bulk Orders</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Company</h5>
+      <ul>
+        <li><a href="#about">Our Story</a></li>
+        <li><a href="#testimonials">Reviews</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Refund Policy</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2025 Yuvi Garments. All rights reserved. Crafted with ✦ in Jaipur.</p>
+    <p>Plot 14, Tonk Road, Jaipur — +91 98765 43210</p>
+  </div>
+</footer>
+
+<!-- LIVE CHAT -->
+<button id="live-chat-btn" onclick="toggleChat()" title="Live Chat">💬</button>
+<div id="live-chat-bubble">
+  <div class="chat-header">
+    <h4>Yuvi Style Advisor</h4>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-msg agent">
+      <div class="chat-msg-agent-name">Riya — Style Advisor</div>
+      Welcome to Yuvi Garments! 👋 How can I help you today? Looking for something specific or need styling advice?
+    </div>
+  </div>
+  <div class="chat-input-wrap">
+    <input type="text" class="chat-input" id="chat-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter') sendChat()">
+    <button class="chat-send" onclick="sendChat()">→</button>
+  </div>
+</div>
+
+<script>
+// PRELOADER
+const preloader = document.getElementById('preloader');
+const fill = document.getElementById('preloader-fill');
+const count = document.getElementById('preloader-count');
+let progress = 0;
+const interval = setInterval(() => {
+  progress += Math.random() * 15 + 3;
+  if (progress >= 100) {
+    progress = 100;
+    clearInterval(interval);
+    fill.style.width = '100%';
+    count.textContent = '100%';
+    setTimeout(() => {
+      preloader.classList.add('hide');
+      setTimeout(() => preloader.style.display = 'none', 1200);
+    }, 400);
+  } else {
+    fill.style.width = progress + '%';
+    count.textContent = Math.floor(progress) + '%';
+  }
+}, 80);
+
+// COUNTER ANIMATION
+function animateCounter(el, target, duration) {
+  let start = 0;
+  const step = target / (duration / 16);
+  const timer = setInterval(() => {
+    start += step;
+    if (start >= target) { start = target; clearInterval(timer); }
+    el.textContent = Math.floor(start);
+  }, 16);
+}
+setTimeout(() => animateCounter(document.getElementById('arrivals-count'), 48, 2000), 1500);
+
+// CUSTOM CURSOR
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY;
+  cursor.style.left = mouseX + 'px';
+  cursor.style.top = mouseY + 'px';
+});
+function animateRing() {
+  ringX += (mouseX - ringX) * 0.12;
+  ringY += (mouseY - ringY) * 0.12;
+  ring.style.left = ringX + 'px';
+  ring.style.top = ringY + 'px';
+  requestAnimationFrame(animateRing);
+}
+animateRing();
+document.querySelectorAll('a, button, .arrival-card, .testi-card, .price-card').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursor.style.width = '20px';
+    cursor.style.height = '20px';
+    ring.style.width = '70px';
+    ring.style.height = '70px';
+    ring.style.opacity = '0.3';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursor.style.width = '10px';
+    cursor.style.height = '10px';
+    ring.style.width = '40px';
+    ring.style.height = '40px';
+    ring.style.opacity = '0.5';
+  });
+});
+
+// DARK MODE TOGGLE
+function toggleTheme() {
+  const html = document.documentElement;
+  html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+
+// SEARCH OVERLAY
+function toggleSearch() {
+  document.getElementById('search-overlay').classList.toggle('open');
+}
+document.getElementById('search-overlay').addEventListener('click', function(e) {
+  if (e.target === this) toggleSearch();
+});
+
+// MOBILE NAV
+function openMobileNav() { document.getElementById('mobile-nav').classList.add('open'); }
+function closeMobileNav() { document.getElementById('mobile-nav').classList.remove('open'); }
+
+// FAQ ACCORDION
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.parentElement;
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+  });
+});
+
+// LIVE CHAT
+function toggleChat() {
+  document.getElementById('live-chat-bubble').classList.toggle('open');
+}
+const chatReplies = [
+  "Great choice! That piece is one of our bestsellers this season. Would you like to know about available sizes?",
+  "I'd be happy to help with that! Our in-store stylists are available to assist you personally as well.",
+  "We have something perfect for that occasion. Come visit us and we'll find your ideal fit!",
+  "That collection just arrived! Limited quantities available. I recommend visiting soon.",
+  "Of course! Our alteration service is complimentary for all purchases. We can make it fit you perfectly."
+];
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msgs = document.getElementById('chat-messages');
+  const text = input.value.trim();
+  if (!text) return;
+  const userMsg = document.createElement('div');
+  userMsg.className = 'chat-msg user';
+  userMsg.textContent = text;
+  msgs.appendChild(userMsg);
+  input.value = '';
+  msgs.scrollTop = msgs.scrollHeight;
+  setTimeout(() => {
+    const agentMsg = document.createElement('div');
+    agentMsg.className = 'chat-msg agent';
+    agentMsg.innerHTML = '<div class="chat-msg-agent-name">Riya — Style Advisor</div>' + chatReplies[Math.floor(Math.random() * chatReplies.length)];
+    msgs.appendChild(agentMsg);
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 900);
+}
+
+// MAGNETIC BUTTON
+const magnetBtn = document.getElementById('magnet-btn');
+if (magnetBtn) {
+  magnetBtn.addEventListener('mousemove', function(e) {
+    const rect = this.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) * 0.35;
+    const dy = (e.clientY - cy) * 0.35;
+    this.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+  magnetBtn.addEventListener('mouseleave', function() {
+    this.style.transform = 'translate(0, 0)';
+    this.style.transition = 'transform 0.5s cubic-bezier(0.23, 1, 0.32, 1)';
+  });
+  magnetBtn.addEventListener('mouseenter', function() {
+    this.style.transition = 'transform 0.1s linear';
+  });
+}
+
+// SOCIAL TABS
+function setTab(btn, tab) {
+  document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// NEWSLETTER
+function handleNewsletter(e) {
+  e.preventDefault();
+  const form = e.target;
+  const input = form.querySelector('input');
+  const btn = form.querySelector('button');
+  btn.textContent = '✓ Subscribed!';
+  btn.style.background = '#4caf50';
+  input.value = '';
+  setTimeout(() => { btn.textContent = 'Subscribe'; btn.style.background = ''; }, 3000);
+  return false;
+}
+
+// CONTACT
+function handleContact(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const btn = document.querySelector('.form-submit span');
+  btn.textContent = 'Message Sent ✓';
+  setTimeout(() => { btn.textContent = 'Send Message ✦'; }, 3000);
+  return false;
+}
+
+// NAV SCROLL
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('main-nav');
+  if (window.scrollY > 80) {
+    nav.style.padding = '1rem clamp(1.5rem, 5vw, 4rem)';
+  } else {
+    nav.style.padding = '1.5rem clamp(1.5rem, 5vw, 4rem)';
+  }
+});
+
+// ANIMATE LOGO ON LOAD
+document.querySelector('.nav-logo').style.opacity = '0';
+setTimeout(() => {
+  document.querySelector('.nav-logo').style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+  document.querySelector('.nav-logo').style.opacity = '1';
+}, 1600);
+</script>
+</body>
+</html>

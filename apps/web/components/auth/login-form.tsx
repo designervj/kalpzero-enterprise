@@ -57,7 +57,7 @@ export function LoginForm() {
       });
       console.log(session)
       startTransition(() => {
-        router.push(session.roles.includes("platform_admin") ? "/platform" : "/tenant");
+        router.push(session.role === "platform_admin" ? "/dashboard" : "/tenant");
       });
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Unable to sign in.");
