@@ -1441,8 +1441,7 @@ async def _seed_variant_warehouse_stock(
             recorded_by_user_id=actor_user_id,
         )
     await commerce_service._sync_variant_inventory_from_stocks(
-        db,
-        db_name=db_name,
+        db_name,
         tenant_id=tenant_id,
         variant_ids=[variant["id"]],
     )

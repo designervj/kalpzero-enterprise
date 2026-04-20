@@ -2438,9 +2438,8 @@ async def create_order(db: Session, *, db_name: str, tenant_slug: str, actor_use
     await _outbox_order(db, db_name=db_name, tenant_id=tenant_slug, order=order)
     db.commit()
     
-    # We serialize with fresh data if needed, but since we just created it, we can used what we have.
-    # Note: list_order_lines_for_orders can be used for consistency if needed.
-    return _serialize_order(order, {order["id"]: [_serialize_order_line(l) for l in created_lines]})
+    fresh_lines = await commerce_repository.list_order_lines_for_orders(db_name, order_ids=[order["id"]])
+    return _serialize_order(order, {order["id"]: [_serialize_order_line(line) for line in fresh_lines]})
 
 
 async def record_payment(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, order_id: str, amount_minor: int, provider: str | None, payment_method: str, status: str, reference: str | None, notes: str | None) -> dict[str, object]:
@@ -2650,7 +2649,12 @@ async def create_return(db: Session, *, db_name: str, tenant_slug: str, actor_us
         return_request=created_return,
     )
     db.commit()
-    return await get_return_detail(db, tenant_slug=tenant_slug, return_id=created_return["id"])
+    return await get_return_detail(
+        db,
+        tenant_slug=tenant_slug,
+        db_name=db_name,
+        return_id=created_return["id"],
+    )
 
 
 async def update_return_status(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, return_id: str, status: str) -> dict[str, object]:
@@ -2662,7 +2666,12 @@ async def update_return_status(db: Session, *, db_name: str, tenant_slug: str, a
     
     current_status = return_request.get("status")
     if normalized_status == current_status:
-        return await get_return_detail(db, tenant_slug=tenant_slug, return_id=return_id)
+        return await get_return_detail(
+            db,
+            tenant_slug=tenant_slug,
+            db_name=db_name,
+            return_id=return_id,
+        )
 
     allowed_next = RETURN_STATUS_TRANSITIONS.get(current_status, set())
     if normalized_status not in allowed_next:
@@ -2704,7 +2713,12 @@ async def update_return_status(db: Session, *, db_name: str, tenant_slug: str, a
         subject_id=str(return_id),
         metadata={"from_status": current_status, "to_status": normalized_status})
     db.commit()
-    return await get_return_detail(db, tenant_slug=tenant_slug, return_id=return_id)
+    return await get_return_detail(
+        db,
+        tenant_slug=tenant_slug,
+        db_name=db_name,
+        return_id=return_id,
+    )
 
 
 async def create_settlement(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, provider: str, settlement_reference: str | None, currency: str, status: str, payment_ids: list[str], refund_ids: list[str], fees_minor: int, adjustments_minor: int, notes: str | None) -> dict[str, object]:
@@ -2835,7 +2849,12 @@ async def create_settlement(db: Session, *, db_name: str, tenant_slug: str, acto
         settlement=settlement,
     )
     db.commit()
-    return await get_settlement_detail(db, tenant_slug=tenant_slug, settlement_id=settlement["id"])
+    return await get_settlement_detail(
+        db,
+        tenant_slug=tenant_slug,
+        db_name=db_name,
+        settlement_id=settlement["id"],
+    )
 
 
 async def update_settlement_status(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, settlement_id: str, status: str) -> dict[str, object]:
@@ -2845,7 +2864,12 @@ async def update_settlement_status(db: Session, *, db_name: str, tenant_slug: st
     if normalized_status not in SETTLEMENT_STATUSES:
         raise ValidationError(f"Unsupported settlement status '{status}'.")
     if normalized_status == settlement["status"]:
-        return await get_settlement_detail(db, tenant_slug=tenant_slug, settlement_id=settlement_id)
+        return await get_settlement_detail(
+            db,
+            tenant_slug=tenant_slug,
+            db_name=db_name,
+            settlement_id=settlement_id,
+        )
     allowed_next = SETTLEMENT_STATUS_TRANSITIONS.get(settlement["status"], set())
     if normalized_status not in allowed_next:
         raise ConflictError(
@@ -2876,7 +2900,12 @@ async def update_settlement_status(db: Session, *, db_name: str, tenant_slug: st
         settlement=settlement,
     )
     db.commit()
-    return await get_settlement_detail(db, tenant_slug=tenant_slug, settlement_id=settlement_id)
+    return await get_settlement_detail(
+        db,
+        tenant_slug=tenant_slug,
+        db_name=db_name,
+        settlement_id=settlement_id,
+    )
 
 
 async def issue_order_invoice(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, order_id: str) -> dict[str, object]:
