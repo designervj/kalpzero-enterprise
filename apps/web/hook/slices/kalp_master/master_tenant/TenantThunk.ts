@@ -17,7 +17,6 @@ export const fetchTenants = createAsyncThunk<
     }
     const data = await response.json();
 
-    console.log("====>>", data.items);
     return data?.items as TenantSwitcherOption[];
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch tenants");

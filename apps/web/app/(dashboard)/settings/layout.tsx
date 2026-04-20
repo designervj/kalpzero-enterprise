@@ -10,6 +10,8 @@ import {
     Settings, Users, Database, Globe, BarChart3, ChevronRight
 } from 'lucide-react';
 import { canRoleAccessAdminPath } from '@/lib/role-scope';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/lib/store';
 
 interface ControlCenterGroup {
     title: string;
@@ -28,29 +30,33 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     const pathname = usePathname();
     const router = useRouter();
     const { currentProfile, user } = useAuth();
-
+  console.log("currentProfile----",currentProfile)
     // We treat "/settings" as the hub. The children prop handles actual settings page renders.
     // So if pathname === '/settings', we render the dashboard grid. Otherwise we just render children.
     const isHubView = pathname === '/settings';
     const isStandaloneSettingsPage = pathname === '/settings/export';
-
+    const {authUser}= useSelector((state:RootState)=>state.auth)
     // Role-based visibility checks
-    const canSeeTenant = canRoleAccessAdminPath(currentProfile, '/settings/tenant');
-    const canSeePlatform = canRoleAccessAdminPath(currentProfile, '/settings/platform');
-    const canSeeAdminTheme = canRoleAccessAdminPath(currentProfile, '/settings/admin-theme');
-    const canSeeAdminWorkspace = canRoleAccessAdminPath(currentProfile, '/settings/admin-workspace');
-    const canSeeUser = canRoleAccessAdminPath(currentProfile, '/settings/user');
-    const canSeeUsersList = canRoleAccessAdminPath(currentProfile, '/users');
-    const canSeeTenantsList = canRoleAccessAdminPath(currentProfile, '/tenants');
-    const canSeeAgenciesList = canRoleAccessAdminPath(currentProfile, '/admin/agencies');
-    const canSeeAgencySettings = canRoleAccessAdminPath(currentProfile, '/settings/agency');
-    const canSeeSystemRegistry = canRoleAccessAdminPath(currentProfile, '/admin/registry');
-    const canSeeTenantResources = canRoleAccessAdminPath(currentProfile, '/tenant/resources');
-    const canSeeAgencyResources = canRoleAccessAdminPath(currentProfile, '/agency/resources');
+    const canSeeTenant = canRoleAccessAdminPath(authUser?.role??"", '/settings/tenant');
+    const canSeePlatform = canRoleAccessAdminPath(authUser?.role??"", '/settings/platform');
+    const canSeeAdminTheme = canRoleAccessAdminPath(authUser?.role??"", '/settings/admin-theme');
+    const canSeeAdminWorkspace = canRoleAccessAdminPath(authUser?.role??"", '/settings/admin-workspace');
+    const canSeeUser = canRoleAccessAdminPath(authUser?.role??"", '/settings/user');
+    const canSeeUsersList = canRoleAccessAdminPath(authUser?.role??"", '/users');
+    const canSeeTenantsList = canRoleAccessAdminPath(authUser?.role??"", '/tenants');
+    const canSeeAgenciesList = canRoleAccessAdminPath(authUser?.role??"", '/admin/agencies');
+    const canSeeAgencySettings = canRoleAccessAdminPath(authUser?.role??"", '/settings/agency');
+    const canSeeSystemRegistry = canRoleAccessAdminPath(authUser?.role??"", '/admin/registry');
+    const canSeeTenantResources = canRoleAccessAdminPath(authUser?.role??"", '/tenant/resources');
+    const canSeeAgencyResources = canRoleAccessAdminPath(authUser?.role??"", '/agency/resources');
     const hasDedicatedWorkspace = user?.provisioningMode === 'full_tenant';
 
+
+    console.log("canSeeTenant",canSeeTenant)
+    console.log("canSeePlatform",canSeePlatform)
     // Setup the groups per the PRD
     const groups: ControlCenterGroup[] = [
+
         {
             title: "General",
             items: [
@@ -112,6 +118,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         );
     }
 
+
+    console.log("groups--",groups)
     return (
         <div className="max-w-6xl mx-auto space-y-8 mt-6 relative z-10 animate-in fade-in duration-500">
             <header className="px-2">

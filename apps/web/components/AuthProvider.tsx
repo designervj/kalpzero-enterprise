@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
+import { useDispatch } from 'react-redux';
+import { setAuthUser } from '@/hook/slices/auth/authSlice';
 import { useRouter, usePathname } from 'next/navigation';
 import type { AccessContext } from '@engine/permission-engine/types';
 import { getRoleMeta, isScopedRoleView, resolveRoleProfileForView, resolveRoleSwitchCandidates, type RoleProfileKey } from '@/lib/role-scope';
@@ -117,15 +119,38 @@ function getRoleViewStorageKey(user: { email: string; tenantKey: string } | null
 
 import { useAuth as useRootAuth } from '@/components/providers/auth-provider';
 
+// Utility to read persisted auth user from localStorage
+function readStoredAuthUser() {
+    if (typeof window === 'undefined') return null;
+    const raw = window.localStorage.getItem('kalp_auth_user');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
     const rootAuth = useRootAuth();
-    
+    const dispatch = useDispatch();
+
     const [isLoading, setIsLoading] = useState(false);
-    const [profileKey, setProfileKey] = useState<RoleProfileKey>('tenant_admin');
+    const [profileKey, setProfileKey] = useState<RoleProfileKey|null>(null);
     const isLoggingOut = useRef(false);
     const lastCheckedPath = useRef<string | null>(null);
+
+    // On mount, rehydrate Redux auth state from localStorage if present (prevents flush on /settings refresh)
+    useEffect(() => {
+        if (pathname.startsWith('/settings')) {
+            const storedUser = readStoredAuthUser();
+            if (storedUser) {
+                dispatch(setAuthUser(storedUser));
+            }
+        }
+    }, [pathname, dispatch]);
 
     const user = useMemo(() => {
         if (rootAuth.status !== 'authenticated' || !rootAuth.session) return null;
@@ -147,6 +172,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const storageKey = getRoleViewStorageKey(user);
             const persistedRole = storageKey ? window.localStorage.getItem(storageKey) : null;
             setProfileKey(resolveRoleProfileForView(sessionRole, persistedRole));
+        } else {
+            setProfileKey(null);
         }
     }, [user]);
 
@@ -163,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const storageKey = getRoleViewStorageKey(user);
-        if (!storageKey) return;
+        if (!storageKey || !profileKey) return;
         window.localStorage.setItem(storageKey, profileKey);
     }, [user, profileKey]);
 
@@ -179,7 +206,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Compose the access context from the active view profile
     const sessionRole = resolveRoleProfileForView(user?.role || 'tenant_admin', user?.role || 'tenant_admin');
-    const effectiveProfileKey = resolveRoleProfileForView(sessionRole, profileKey);
+    // Use profileKey if set, otherwise fallback to sessionRole
+    const effectiveProfileKey = profileKey || sessionRole;
     const roleMeta = getRoleMeta(effectiveProfileKey);
     const availableProfiles = resolveRoleSwitchCandidates(sessionRole);
 

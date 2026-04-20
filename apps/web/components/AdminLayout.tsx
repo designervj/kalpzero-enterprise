@@ -462,6 +462,8 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   const [tenantSwitchingTo, setTenantSwitchingTo] = useState<string | null>(
     null,
   );
+
+
   const [tenantSwitchError, setTenantSwitchError] = useState("");
   const [tenantPickerOpen, setTenantPickerOpen] = useState(false);
   const [tenantPickerQuery, setTenantPickerQuery] = useState("");
@@ -475,7 +477,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
-    
+
     return window.localStorage.getItem("kalp_admin_sidebar_collapsed") === "1";
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -525,12 +527,12 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
             : {};
         const brandName =
           typeof whiteLabel.brandName === "string" &&
-          whiteLabel.brandName.trim()
+            whiteLabel.brandName.trim()
             ? whiteLabel.brandName.trim()
             : "KalpZERO";
         const shortName =
           typeof whiteLabel.shortName === "string" &&
-          whiteLabel.shortName.trim()
+            whiteLabel.shortName.trim()
             ? whiteLabel.shortName.trim()
             : brandName;
         setAgencyBranding({
@@ -597,7 +599,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
           prev.length > 0 ? prev : data.enabledModules,
         );
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       isCancelled = true;
@@ -734,7 +736,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
     const industry =
       typeof profile?.industry === "string" ? profile.industry : "";
     const lookup = `${businessType} ${industry}`.trim();
-    
+
     const hasImplicitTravelSignal = lookup ? hasTravelSignals(lookup) : false;
 
     // Suppress travel navigation if they DO NOT have any travel context or signals.
@@ -1422,6 +1424,11 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
     );
   }
 
+
+  const handlelogout=()=>{
+     authCtx.logout()
+    router.push("/")
+  }
   return (
     <>
       {/* get all tenant */}
@@ -1466,8 +1473,8 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
               className={`relative flex items-center justify-center w-8 h-8 rounded-lg ${sidebarCollapsed && !isMobileMenuOpen ? "" : "mr-3"}`}
             >
               {sidebarCollapsed &&
-              !isMobileMenuOpen &&
-              agencyBranding.compactLogoUrl ? (
+                !isMobileMenuOpen &&
+                agencyBranding.compactLogoUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={agencyBranding.compactLogoUrl}
@@ -1477,13 +1484,13 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
               ) : (
                 // <Activity className="w-4 h-4 text-cyan-400" />
                 <div className='w-14 h-14'>
-                     <img
-                            src="/img/favicon.svg"
-                            alt="KalpTree Logo"
-                            className="h-full w-auto object-contain"
+                  <img
+                    src="/img/favicon.svg"
+                    alt="KalpTree Logo"
+                    className="h-full w-auto object-contain"
 
-                        />
-                        </div>
+                  />
+                </div>
               )}
             </div>
             {(!sidebarCollapsed || isMobileMenuOpen) && (
@@ -1539,7 +1546,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
                   {(!sidebarCollapsed || isMobileMenuOpen) &&
                     (workspaceConfig.sidebar.sectionLabels.overview !==
-                    DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.overview
+                      DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.overview
                       ? workspaceConfig.sidebar.sectionLabels.overview
                       : t("section.overview", "Overview"))}
                 </h3>
@@ -1556,7 +1563,6 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                 ))}
               </div>
             )}
-
             {customizedFrontendNavItems.length > 0 && (
               <div className="space-y-1">
                 <h3
@@ -1565,7 +1571,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(0,240,255,0.8)]"></span>
                   {(!sidebarCollapsed || isMobileMenuOpen) &&
                     (workspaceConfig.sidebar.sectionLabels.frontend !==
-                    DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.frontend
+                      DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.frontend
                       ? workspaceConfig.sidebar.sectionLabels.frontend
                       : t("section.frontend", "Frontend"))}
                 </h3>
@@ -1588,7 +1594,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
               const sectionKey = group.id as AdminWorkspaceSectionKey;
               const sectionLabel =
                 sectionKey in workspaceConfig.sidebar.sectionLabels &&
-                workspaceConfig.sidebar.sectionLabels[sectionKey] !==
+                  workspaceConfig.sidebar.sectionLabels[sectionKey] !==
                   DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels[sectionKey]
                   ? workspaceConfig.sidebar.sectionLabels[sectionKey]
                   : t(meta.labelKey, meta.label);
@@ -1629,7 +1635,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(0,240,255,0.8)]"></span>
                   {(!sidebarCollapsed || isMobileMenuOpen) &&
                     (workspaceConfig.sidebar.sectionLabels.platform !==
-                    DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.platform
+                      DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.platform
                       ? workspaceConfig.sidebar.sectionLabels.platform
                       : t("section.platform", "Platform"))}
                 </h3>
@@ -1750,7 +1756,8 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                         <Settings size={13} />
                       </Link>
                       <button
-                        onClick={() => authCtx.logout()}
+                        onClick={handlelogout}
+                       // onClick={() => authCtx.logout()}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-400 hover:border-rose-500/40 hover:text-rose-300"
                         title={t("auth.logout", "Logout")}
                       >
@@ -1760,7 +1767,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                   )}
                   {sidebarCollapsed && !isMobileMenuOpen && (
                     <button
-                      onClick={() => authCtx.logout()}
+                      onClick={handlelogout}
                       className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-400 hover:border-rose-500/40 hover:text-rose-300"
                       title={t("auth.logout", "Logout")}
                     >
@@ -1853,11 +1860,10 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                 <button
                   type="button"
                   onClick={() => setQuickBodhOpen((prev) => !prev)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    isQuickBodhDrawerOpen
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${isQuickBodhDrawerOpen
                       ? "border-cyan-400/60 bg-cyan-500/20 text-cyan-100"
                       : "border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500"
-                  }`}
+                    }`}
                   title="Open KalpBodh quick assistant"
                 >
                   <Bot size={13} />
@@ -1936,11 +1942,10 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                             void handleTenantSwitch(item?.key ?? "");
                           }}
                           disabled={tenantSwitchingTo !== null}
-                          className={`w-full rounded-lg border px-3 py-2 text-left transition ${
-                            isActive
+                          className={`w-full rounded-lg border px-3 py-2 text-left transition ${isActive
                               ? "border-cyan-500/40 bg-cyan-500/10"
                               : "border-slate-800 bg-slate-900/60 hover:border-slate-600"
-                          } disabled:cursor-not-allowed disabled:opacity-70`}
+                            } disabled:cursor-not-allowed disabled:opacity-70`}
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
@@ -1952,11 +1957,10 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                               </div>
                             </div>
                             <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
-                                isActive
+                              className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${isActive
                                   ? "border-cyan-500/40 text-cyan-300"
                                   : "border-slate-700 text-slate-500"
-                              }`}
+                                }`}
                             >
                               {isActive
                                 ? "Active"

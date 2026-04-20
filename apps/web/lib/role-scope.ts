@@ -127,8 +127,10 @@ export function isScopedRoleView(sessionRole: string, activeRole: string): boole
 }
 
 export function canRoleAccessAdminPath(role: string, pathname: string): boolean {
+        console.log("normalizedPath.  role",role)
     const normalizedRole = normalizeRoleProfile(role);
     const normalizedPath = pathname.trim().toLowerCase();
+
     if (!normalizedPath.startsWith('/')) return true;
 
     const matchedRule = [...ADMIN_ROUTE_SCOPE_RULES]

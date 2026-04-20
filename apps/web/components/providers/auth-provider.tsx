@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-
 import { getCurrentSession, login as loginRequest, magicLogin as magicLoginRequest, type LoginPayload, type SessionDto } from "@/lib/api";
 import { AUTH_STORAGE_KEY } from "@/lib/auth-storage";
 import { AuthUser, setAuthUser } from "@/hook/slices/auth/authSlice";
@@ -20,17 +19,16 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const AUTH_USER_STORAGE_KEY = "kalp_auth_user"; // ← Add this constant
 
 function readStoredToken() {
   if (typeof window === "undefined") {
     return null;
   }
-
   const rawValue = window.localStorage.getItem(AUTH_STORAGE_KEY);
   if (!rawValue) {
     return null;
   }
-
   try {
     const parsed = JSON.parse(rawValue) as { token?: string };
     return parsed.token ?? null;
@@ -43,13 +41,38 @@ function writeStoredToken(token: string | null) {
   if (typeof window === "undefined") {
     return;
   }
-
   if (!token) {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     return;
   }
-
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token }));
+}
+
+// ← Add these functions for auth user persistence
+function readStoredAuthUser(): AuthUser | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const rawValue = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
+  if (!rawValue) {
+    return null;
+  }
+  try {
+    return JSON.parse(rawValue) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAuthUser(user: AuthUser | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!user) {
+    window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -61,10 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     const nextToken = readStoredToken();
+    const storedAuthUser = readStoredAuthUser(); // ← Restore auth user from storage
+
     if (!nextToken) {
       setToken(null);
       setSession(null);
       setStatus("anonymous");
+      writeStoredAuthUser(null);
       return null;
     }
 
@@ -74,7 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(nextSession);
       setStatus("authenticated");
 
-      // Restore auth user in Redux on page refresh
       const userData: AuthUser = {
         id: nextSession.email,
         name: nextSession.name,
@@ -84,10 +109,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         access_token: nextToken,
       };
       dispatch(setAuthUser(userData));
+      writeStoredAuthUser(userData); // ← Persist to storage
+
+        // Save the entire userData into session state as well
+        setSession(userData as unknown as SessionDto); // Type cast for compatibility
 
       return nextSession;
     } catch {
       writeStoredToken(null);
+      writeStoredAuthUser(null); // ← Clear storage on error
       setToken(null);
       setSession(null);
       setStatus("anonymous");
@@ -95,9 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [dispatch]);
 
+  // ← Rehydrate Redux on mount from localStorage
   useEffect(() => {
+    const storedUser = readStoredAuthUser();
+    if (storedUser) {
+      dispatch(setAuthUser(storedUser));
+    }
     void refresh();
-  }, [refresh]);
+  }, [refresh, dispatch]);
 
   const login = useCallback(async (payload: LoginPayload) => {
     const response = await loginRequest(payload);
@@ -113,8 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     console.log("usrerdata", usrerdata)
     dispatch(setAuthUser(usrerdata));
-    // console.log("login ",response)
     writeStoredToken(response.access_token);
+    writeStoredAuthUser(usrerdata); // ← Persist auth user to localStorage
     setToken(response.access_token);
     setSession(response.session);
     setStatus("authenticated");
@@ -123,7 +158,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const magicLogin = useCallback(async (userId: string) => {
     const response = await magicLoginRequest(userId);
-
     const userData: AuthUser = {
       id: response.session?.email ?? "",
       name: response.session?.name ?? "",
@@ -134,8 +168,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       expires_at: response.expires_at ?? "",
     };
     dispatch(setAuthUser(userData));
-
     writeStoredToken(response.access_token);
+    writeStoredAuthUser(userData); // ← Persist auth user to localStorage
     setToken(response.access_token);
     setSession(response.session);
     setStatus("authenticated");
@@ -144,6 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     writeStoredToken(null);
+    writeStoredAuthUser(null); // ← Clear storage on logout
     setToken(null);
     setSession(null);
     setStatus("anonymous");

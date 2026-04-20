@@ -62,7 +62,7 @@ export default function LoginPage() {
          
             if (session?.role) {
                 startTransition(() => {
-                    router.push(session.role === "platform_admin" ? "/dashboard" : "/tenant");
+                    router.push(session.role === "platform_owner" ? "/dashboard" : "/tenant");
                 });
             }
         } catch (submissionError) {
