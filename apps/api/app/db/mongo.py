@@ -364,4 +364,6 @@ def describe_runtime_document_store(settings: Settings) -> dict[str, object]:
 
 def clear_mongo_cache() -> None:
     get_mongo_client.cache_clear()
+    get_motor_client.cache_clear()
     get_memory_document_store.cache_clear()
+    _BEANE_INITIALIZED_TENANTS.clear()

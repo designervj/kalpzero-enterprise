@@ -1,38 +1,26 @@
+from __future__ import annotations
+
 from datetime import date
-from uuid import uuid4
-from typing import Any
 
 from beanie.operators import In
-from app.core.config import get_settings
-from app.db.mongo import get_runtime_motor_database
-from app.models.travel import (
-    TravelPackage,
-    TravelItineraryDay,
-    TravelDeparture,
-    TravelLead)
+
+from app.models.travel import TravelDeparture, TravelItineraryDay, TravelLead, TravelPackage
 
 
-async def list_packages(db_name: str) -> list[dict[str, Any]]:
-    packages = await TravelPackage.find().sort("-created_at").to_list()
-    return [p.model_dump() for p in packages]
+async def list_packages(db_name: str) -> list[TravelPackage]:
+    return await TravelPackage.find().sort("-created_at").to_list()
 
 
-async def get_package(db_name: str, *, package_id: str) -> dict[str, Any] | None:
-    p = await TravelPackage.find_one(
-        TravelPackage.id == package_id)
-    return p.model_dump() if p else None
+async def get_package(db_name: str, *, package_id: str) -> TravelPackage | None:
+    return await TravelPackage.find_one(TravelPackage.id == package_id)
 
 
-async def find_package_by_code(db_name: str, *, code: str) -> dict[str, Any] | None:
-    p = await TravelPackage.find_one(
-        TravelPackage.code == code)
-    return p.model_dump() if p else None
+async def find_package_by_code(db_name: str, *, code: str) -> TravelPackage | None:
+    return await TravelPackage.find_one(TravelPackage.code == code)
 
 
-async def find_package_by_slug(db_name: str, *, slug: str) -> dict[str, Any] | None:
-    p = await TravelPackage.find_one(
-        TravelPackage.slug == slug)
-    return p.model_dump() if p else None
+async def find_package_by_slug(db_name: str, *, slug: str) -> TravelPackage | None:
+    return await TravelPackage.find_one(TravelPackage.slug == slug)
 
 
 async def create_package(
@@ -48,7 +36,8 @@ async def create_package(
     duration_days: int,
     base_price_minor: int,
     currency: str,
-    status: str) -> dict[str, Any]:
+    status: str,
+) -> TravelPackage:
     model = TravelPackage(
         code=code,
         slug=slug,
@@ -60,21 +49,19 @@ async def create_package(
         duration_days=duration_days,
         base_price_minor=base_price_minor,
         currency=currency,
-        status=status)
+        status=status,
+    )
     await model.insert()
-    return model.model_dump()
+    return model
 
 
-async def list_itinerary_days(
-    db_name: str,
-    *,
-    package_ids: list[str]) -> list[dict[str, Any]]:
+async def list_itinerary_days(db_name: str, *, package_ids: list[str]) -> list[TravelItineraryDay]:
     if not package_ids:
         return []
-    days = await TravelItineraryDay.find(
-        In(TravelItineraryDay.package_id, package_ids)
-    ).sort("package_id", "day_number").to_list()
-    return [d.model_dump() for d in days]
+    return await TravelItineraryDay.find(In(TravelItineraryDay.package_id, package_ids)).sort(
+        "package_id",
+        "day_number",
+    ).to_list()
 
 
 async def create_itinerary_day(
@@ -86,7 +73,8 @@ async def create_itinerary_day(
     summary: str,
     hotel_ref_id: str | None,
     activity_ref_ids: list[str],
-    transfer_ref_ids: list[str]) -> dict[str, Any]:
+    transfer_ref_ids: list[str],
+) -> TravelItineraryDay:
     model = TravelItineraryDay(
         package_id=package_id,
         day_number=day_number,
@@ -94,29 +82,28 @@ async def create_itinerary_day(
         summary=summary,
         hotel_ref_id=hotel_ref_id,
         activity_ref_ids=activity_ref_ids,
-        transfer_ref_ids=transfer_ref_ids)
+        transfer_ref_ids=transfer_ref_ids,
+    )
     await model.insert()
-    return model.model_dump()
+    return model
 
 
 async def list_departures(
     db_name: str,
     *,
     package_id: str | None = None,
-    status: str | None = None) -> list[dict[str, Any]]:
+    status: str | None = None,
+) -> list[TravelDeparture]:
     query = TravelDeparture.find()
     if package_id:
         query = query.find(TravelDeparture.package_id == package_id)
     if status:
-        query = query.find(TravelDeparture.status == status),
-    departures = await query.sort("departure_date", "created_at").to_list()
-    return [d.model_dump() for d in departures]
+        query = query.find(TravelDeparture.status == status)
+    return await query.sort("departure_date", "created_at").to_list()
 
 
-async def get_departure(db_name: str, *, departure_id: str) -> dict[str, Any] | None:
-    d = await TravelDeparture.find_one(
-        TravelDeparture.id == departure_id)
-    return d.model_dump() if d else None
+async def get_departure(db_name: str, *, departure_id: str) -> TravelDeparture | None:
+    return await TravelDeparture.find_one(TravelDeparture.id == departure_id)
 
 
 async def create_departure(
@@ -128,7 +115,8 @@ async def create_departure(
     seats_total: int,
     seats_available: int,
     price_override_minor: int | None,
-    status: str) -> dict[str, Any]:
+    status: str,
+) -> TravelDeparture:
     model = TravelDeparture(
         package_id=package_id,
         departure_date=departure_date,
@@ -136,29 +124,37 @@ async def create_departure(
         seats_total=seats_total,
         seats_available=seats_available,
         price_override_minor=price_override_minor,
-        status=status)
+        status=status,
+    )
     await model.insert()
-    return model.model_dump()
+    return model
+
+
+async def update_departure_status(db_name: str, *, departure_id: str, status: str) -> TravelDeparture | None:
+    departure = await get_departure(db_name, departure_id=departure_id)
+    if departure is None:
+        return None
+    departure.status = status
+    await departure.save()
+    return departure
 
 
 async def list_leads(
     db_name: str,
     *,
     status: str | None = None,
-    interested_package_id: str | None = None) -> list[dict[str, Any]]:
+    interested_package_id: str | None = None,
+) -> list[TravelLead]:
     query = TravelLead.find()
     if status:
         query = query.find(TravelLead.status == status)
     if interested_package_id:
-        query = query.find(TravelLead.interested_package_id == interested_package_id),
-    leads = await query.sort("-created_at").to_list()
-    return [l.model_dump() for l in leads]
+        query = query.find(TravelLead.interested_package_id == interested_package_id)
+    return await query.sort("-created_at").to_list()
 
 
-async def get_lead(db_name: str, *, lead_id: str) -> dict[str, Any] | None:
-    l = await TravelLead.find_one(
-        TravelLead.id == lead_id)
-    return l.model_dump() if l else None
+async def get_lead(db_name: str, *, lead_id: str) -> TravelLead | None:
+    return await TravelLead.find_one(TravelLead.id == lead_id)
 
 
 async def create_lead(
@@ -175,7 +171,8 @@ async def create_lead(
     budget_minor: int | None,
     currency: str,
     status: str,
-    notes: str | None) -> dict[str, Any]:
+    notes: str | None,
+) -> TravelLead:
     model = TravelLead(
         source=source,
         interested_package_id=interested_package_id,
@@ -188,19 +185,16 @@ async def create_lead(
         budget_minor=budget_minor,
         currency=currency,
         status=status,
-        notes=notes)
+        notes=notes,
+    )
     await model.insert()
-    return model.model_dump()
+    return model
 
 
-async def update_lead_status(
-    db_name: str,
-    *,
-    lead_id: str,
-    status: str) -> dict[str, Any] | None:
-    lead = await TravelLead.find_one(
-        TravelLead.id == lead_id)
-    if not lead:
+async def update_lead_status(db_name: str, *, lead_id: str, status: str) -> TravelLead | None:
+    lead = await get_lead(db_name, lead_id=lead_id)
+    if lead is None:
         return None
-    await lead.update({"$set": {"status": status}})
-    return lead.model_dump()
+    lead.status = status
+    await lead.save()
+    return lead

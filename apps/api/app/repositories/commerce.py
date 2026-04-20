@@ -75,11 +75,12 @@ async def find_category_by_slug(db_name: str, slug: str) -> dict[str, Any] | Non
     return category.model_dump() if category else None
 
 async def create_category(
+    db_name: str,
+    *,
     name: str,
     slug: str,
     description: str | None,
-    parent_category_id: str | None,
-    db_name: str) -> dict[str, Any]:
+    parent_category_id: str | None) -> dict[str, Any]:
 
     category = CommerceCategory(
         name=name,
