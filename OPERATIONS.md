@@ -1,5 +1,20 @@
 # Kalpzero Operations
 
+# ===== IMPORTTANT TO CHECK CONSOLE #######################
+
+
+### Check PM2 logs
+
+```bash
+pm2 logs kalpzero-api
+pm2 logs kalpzero-web
+```
+
+# ===== IMPORTTANT TO CHECK CONSOLE END #######################
+
+
+
+
 ## Repo
 
 - Local path: `/mnt/data/kalpzero-enterprise`

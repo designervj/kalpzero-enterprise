@@ -28,12 +28,22 @@ const roleModes = [
 type RoleMode = (typeof roleModes)[number]["key"];
 
 export function LoginForm() {
+  const platformDefaults = {
+    email: "founder@kalpzero.com",
+    password: "very-secure-password",
+    tenantSlug: "demo-tenant"
+  };
+  const tenantDefaults = {
+    email: "ops@tenant.com",
+    password: "very-secure-password",
+    tenantSlug: "demo-tenant"
+  };
   const router = useRouter();
   const { login } = useAuth();
   const [mode, setMode] = useState<RoleMode>("platform");
-  const [email, setEmail] = useState("founder@kalpzero.com");
-  const [password, setPassword] = useState("1234567899");
-  const [tenantSlug, setTenantSlug] = useState("demo-tenant");
+  const [email, setEmail] = useState(platformDefaults.email);
+  const [password, setPassword] = useState(platformDefaults.password);
+  const [tenantSlug, setTenantSlug] = useState(platformDefaults.tenantSlug);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -126,11 +136,10 @@ export function LoginForm() {
                 onClick={() => {
                   setMode(roleMode.key);
                   setError(null);
-                  if (roleMode.key === "platform") {
-                    setEmail("founder@kalpzero.com");
-                  } else {
-                    setEmail("ops@tenant.com");
-                  }
+                  const defaults = roleMode.key === "platform" ? platformDefaults : tenantDefaults;
+                  setEmail(defaults.email);
+                  setPassword(defaults.password);
+                  setTenantSlug(defaults.tenantSlug);
                 }}
               >
                 <div className="font-semibold text-foreground">{roleMode.label}</div>
@@ -186,14 +195,10 @@ export function LoginForm() {
                 variant="outline"
                 size="lg"
                 onClick={() => {
-                  if (mode === "platform") {
-                    setEmail("founder@kalpzero.com");
-                    setPassword("very-secure-password");
-                  } else {
-                    setEmail("ops@tenant.com");
-                    setPassword("very-secure-password");
-                    setTenantSlug("demo-tenant");
-                  }
+                  const defaults = mode === "platform" ? platformDefaults : tenantDefaults;
+                  setEmail(defaults.email);
+                  setPassword(defaults.password);
+                  setTenantSlug(defaults.tenantSlug);
                 }}
               >
                 Use defaults

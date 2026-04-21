@@ -21,6 +21,16 @@ const roleModes = [
 ] as const;
 type RoleMode = (typeof roleModes)[number]["key"];
 export default function LoginPage() {
+    const platformDefaults = {
+        email: 'founder@kalpzero.com',
+        password: 'very-secure-password',
+        tenantKey: 'demo-tenant',
+    };
+    const tenantDefaults = {
+        email: 'ops@tenant.com',
+        password: 'very-secure-password',
+        tenantKey: 'demo-tenant',
+    };
     const router = useRouter();
     const [isRegister, setIsRegister] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -31,10 +41,10 @@ export default function LoginPage() {
     const [showMagic, setShowMagic] = useState(true);
     
     const [form, setForm] = useState({
-        email: 'admin@kalpzero.com',
-        password: '1234567899',
+        email: platformDefaults.email,
+        password: platformDefaults.password,
         name: '',
-        tenantKey: 'demo',
+        tenantKey: platformDefaults.tenantKey,
     });
 
     useEffect(() => {
@@ -187,6 +197,10 @@ export default function LoginPage() {
                                     onClick={() => {
                                         setMode(roleMode.key);
                                         setError('');
+                                        setForm((current) => ({
+                                            ...current,
+                                            ...(roleMode.key === "platform" ? platformDefaults : tenantDefaults),
+                                        }));
                                     }}
                                     className={`rounded-lg px-4 py-3 text-left transition ${
                                         mode === roleMode.key

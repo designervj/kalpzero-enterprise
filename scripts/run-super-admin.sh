@@ -64,6 +64,11 @@ ensure_api_venv() {
   fi
 }
 
+ensure_bootstrap_users() {
+  echo "Ensuring bootstrap sign-in users exist..."
+  "$ROOT_DIR/scripts/bootstrap-demo-users.sh"
+}
+
 ensure_local_infra() {
   echo "Checking local infrastructure..."
   (cd "$ROOT_DIR" && pnpm doctor:local)
@@ -167,9 +172,11 @@ main() {
   ensure_js_deps
   ensure_api_venv
   ensure_local_infra
+  ensure_bootstrap_users
   ensure_api
   ensure_web
   seed_demo_data
+  ensure_bootstrap_users
 
   echo
   echo "Super Admin is ready."
