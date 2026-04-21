@@ -24,8 +24,11 @@ pm2 logs kalpzero-web
 
 ## Auto Pull / Auto Deploy
 
-- Cron runs every minute:
-  - `* * * * * /mnt/data/kalpzero-enterprise/scripts/auto-deploy-live.sh`
+- Primary watcher runs under PM2:
+  - `kalpzero-auto-deploy-debug`
+- PM2 watcher command:
+  - `pm2 start /mnt/data/kalpzero-enterprise/scripts/auto-deploy-debug.sh --name kalpzero-auto-deploy-debug --interpreter bash -- --interval=60`
+- Cron for this repo is intentionally disabled now so only one watcher controls deploy checks.
 - Script that checks whether a new commit exists on `origin/main`:
   - `scripts/auto-deploy-live.sh`
 - Foreground debug watcher script:
@@ -37,7 +40,34 @@ pm2 logs kalpzero-web
 - Auto-deploy lock file:
   - `/tmp/kalpzero-auto-deploy.lock`
 
+## How To Check The Running Watcher
+
+### Main live terminal command
+
+```bash
+pm2 logs kalpzero-auto-deploy-debug
+```
+
+- This is the main command to watch fetch, SHA comparison, and deploy output live.
+- Leave it open in a terminal if you want to monitor auto-pull behavior continuously.
+
+### Check watcher status
+
+```bash
+pm2 list
+pm2 show kalpzero-auto-deploy-debug
+```
+
+### Check PM2 log files directly
+
+```bash
+tail -f /home/dzinly/.pm2/logs/kalpzero-auto-deploy-debug-out.log
+tail -f /home/dzinly/.pm2/logs/kalpzero-auto-deploy-debug-error.log
+```
+
 ## How To Check The Cron Job
+
+Cron is disabled for this repo on purpose.
 
 ### Check that the cron entry exists
 
@@ -45,10 +75,10 @@ pm2 logs kalpzero-web
 crontab -l
 ```
 
-Expected line:
+Expected result:
 
 ```bash
-* * * * * /mnt/data/kalpzero-enterprise/scripts/auto-deploy-live.sh
+no line for /mnt/data/kalpzero-enterprise/scripts/auto-deploy-live.sh
 ```
 
 ### Check that the cron service itself is running
@@ -57,21 +87,20 @@ Expected line:
 systemctl status cron
 ```
 
-### Watch the cron job run every minute
+### If you want to confirm cron is not handling this repo anymore
 
 ```bash
-tail -f /tmp/kalpzero-auto-deploy.log
+crontab -l | grep auto-deploy-live.sh
 ```
 
-- If new lines appear every minute, the cron job is running.
-- The timestamp should keep updating once per minute.
-- If you see `Checking origin/main for new commits`, the cron job executed successfully.
+- This should return no output.
+- The deploy checks should now come from the PM2 watcher instead of cron.
 
 ### Quick one-line checks
 
 ```bash
-crontab -l | grep auto-deploy-live.sh
-tail -n 20 /tmp/kalpzero-auto-deploy.log
+pm2 logs kalpzero-auto-deploy-debug --lines 50
+tail -n 20 /home/dzinly/.pm2/logs/kalpzero-auto-deploy-debug-out.log
 ```
 
 ### Run the auto-deploy checker in a terminal with live debug output
@@ -247,7 +276,7 @@ pm2 save
 
 ## Manual Deploy
 
-If you want to deploy immediately without waiting for cron:
+If you want to deploy immediately without waiting for the watcher:
 
 ```bash
 cd /mnt/data/kalpzero-enterprise
