@@ -28,6 +28,8 @@ pm2 logs kalpzero-web
   - `* * * * * /mnt/data/kalpzero-enterprise/scripts/auto-deploy-live.sh`
 - Script that checks whether a new commit exists on `origin/main`:
   - `scripts/auto-deploy-live.sh`
+- Foreground debug watcher script:
+  - `scripts/auto-deploy-debug.sh`
 - Script that performs the actual deploy when a new commit is found:
   - `scripts/deploy-live.sh`
 - Auto-deploy log file:
@@ -72,6 +74,34 @@ crontab -l | grep auto-deploy-live.sh
 tail -n 20 /tmp/kalpzero-auto-deploy.log
 ```
 
+### Run the auto-deploy checker in a terminal with live debug output
+
+```bash
+cd /mnt/data/kalpzero-enterprise
+./scripts/auto-deploy-debug.sh
+```
+
+- This keeps running in the terminal.
+- It shows each check, local SHA, remote SHA, and whether a new commit is being pulled.
+- If a deploy starts, you will see the pull/build/restart logs directly in the same terminal.
+- Stop it with `Ctrl+C`.
+
+### Run only one debug check
+
+```bash
+cd /mnt/data/kalpzero-enterprise
+./scripts/auto-deploy-debug.sh --once
+```
+
+### Run debug checks faster than cron
+
+```bash
+cd /mnt/data/kalpzero-enterprise
+./scripts/auto-deploy-debug.sh --interval=15
+```
+
+- This is useful when you want to test push/pull behavior quickly without waiting a full minute.
+
 ## How To Check If The Latest Commit Was Pulled
 
 ### Check the auto-deploy log
@@ -83,7 +113,9 @@ tail -n 50 /tmp/kalpzero-auto-deploy.log
 Useful log messages:
 
 - `No new commit detected` means the server already matches `origin/main`.
-- `New commit detected` means a newer commit was found on GitHub.
+- `New remote commit detected` means a newer commit was found on GitHub and deploy should start.
+- `Local repo is ahead of origin/main` means this folder already has commits that GitHub does not have yet, so there is nothing to pull.
+- `Local and remote have diverged` means manual intervention is required before auto-deploy should continue.
 - `Auto-deploy completed` means pull/build/restart finished successfully.
 
 Important note:
