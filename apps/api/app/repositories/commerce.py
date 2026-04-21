@@ -40,7 +40,6 @@ async def find_category_by_slug(db_name: str, slug: str) -> dict[str, Any] | Non
     return _map_id(doc)
 
 async def create_category(
-    db_name: str,
     *,
     name: str,
     slug: str,
@@ -51,6 +50,7 @@ async def create_category(
     bannerImageUrl: str | None,
     metaTitle: str | None,
     metaDescription: str | None,
+    db_name: str,
 ) -> dict[str, Any]:
     db = get_runtime_motor_database(get_settings(), database_name=db_name)
     doc = {
@@ -1708,3 +1708,66 @@ async def create_settlement_entry(
 
 async def update_settlement(db_name: str, *, settlement_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
     return await _update_by_id(db_name, "commerce_settlements", document_id=settlement_id, data=data)
+# --- Cart ---
+async def get_cart_by_session_id(db_name: str, session_id: str) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = await db["commerce_carts"].find_one({"sessionId": session_id})
+    return _map_id(doc)
+
+async def get_cart_by_user_id(db_name: str, user_id: str) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    from bson import ObjectId
+    try:
+        oid = ObjectId(user_id)
+        doc = await db["commerce_carts"].find_one({"userId": oid})
+    except Exception:
+        doc = await db["commerce_carts"].find_one({"userId": user_id})
+    return _map_id(doc)
+
+async def create_cart(db_name: str, data: dict[str, Any]) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    data["createdAt"] = datetime.now(tz=UTC)
+    data["updatedAt"] = datetime.now(tz=UTC)
+    if "userId" in data and isinstance(data["userId"], str):
+        from bson import ObjectId
+        try:
+            data["userId"] = ObjectId(data["userId"])
+        except Exception:
+            pass
+            
+    result = await db["commerce_carts"].insert_one(data)
+    data["id"] = str(result.inserted_id)
+    return data
+
+async def update_cart(db_name: str, cart_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    from bson import ObjectId
+    data["updatedAt"] = datetime.now(tz=UTC)
+    try:
+        oid = ObjectId(cart_id)
+        query = {"_id": oid}
+    except Exception:
+        query = {"_id": cart_id}
+    
+    result = await db["commerce_carts"].find_one_and_update(
+        query,
+        {"$set": data},
+        return_document=True
+    )
+    return _map_id(result)
+
+async def delete_cart(db_name: str, cart_id: str) -> bool:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    from bson import ObjectId
+    try:
+        oid = ObjectId(cart_id)
+        query = {"_id": oid}
+    except Exception:
+        query = {"_id": cart_id}
+    result = await db["commerce_carts"].delete_one(query)
+    return result.deleted_count > 0
+
+async def delete_cart_by_session_id(db_name: str, session_id: str) -> bool:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    result = await db["commerce_carts"].delete_one({"sessionId": session_id})
+    return result.deleted_count > 0

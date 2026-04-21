@@ -27,7 +27,9 @@ from app.models.hotel import (
     HotelStay,
     HotelShift,
     HotelNightAudit,
-    HOTEL_MODELS
+    HOTEL_MODELS,
+    HotelStay,
+    HotelStaffMember,
 )
 
 def _map_id(doc: dict | None) -> dict | None:

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -87,12 +87,19 @@ def _resolve_tenant_db_name(
 
 def get_current_session(
     credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    auth_token: Annotated[str | None, Cookie()] = None,
     x_tenant_db: str | None = Header(None, alias="x-tenant-db"),
     settings: Settings = Depends(get_settings),
 ) -> SessionContext:
+    token = None
     if credentials and credentials.scheme.lower() == "bearer":
-        payload = decode_access_token(credentials.credentials, settings)
-        return SessionContext(
+        token = credentials.credentials
+    elif auth_token:
+        token = auth_token
+
+    if token:
+        payload = decode_access_token(token, settings)
+        context = SessionContext(
             user_id=payload.id,
             email=payload.email,
             tenant_id=payload.tenant_id,
@@ -103,11 +110,14 @@ def get_current_session(
             ),
             role=payload.role,
         )
-
-    return SessionContext(
-        user_id=None,
-        email=None,
-        tenant_id=None,
-        tenant_db_name=x_tenant_db,
-        role="guest",
-    )
+        return context
+    else:
+        context = SessionContext(
+            user_id=None,
+            email=None,
+            tenant_id=None,
+            tenant_db_name=x_tenant_db,
+            role="guest",
+        )
+        
+        return context

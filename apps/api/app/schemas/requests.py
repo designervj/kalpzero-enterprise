@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -577,6 +578,42 @@ class CreateCommerceOrderRequest(BaseModel):
 
 class CommerceOrderStatusRequest(BaseModel):
     status: str = Field(pattern="^(draft|placed|paid|fulfilled|cancelled)$")
+
+
+class CartItemSchema(BaseModel):
+    cartItemId: str
+    quantity: int = Field(ge=1)
+    # The rest of the fields can be dynamic as per the example
+    # We use Extra.allow or just dynamic fields
+    item_data: dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        extra = "allow"
+
+
+class AddToCartRequest(BaseModel):
+    # The request is essentially the full item object shown in the example
+    # We'll allow any fields and ensure quantity and cartItemId are present or handled
+    quantity: int = Field(ge=1)
+    cartItemId: str | None = None
+    
+    class Config:
+        extra = "allow"
+
+
+class UpdateCartItemRequest(BaseModel):
+    cartItemId: str = Field(min_length=1)
+    quantity: int = Field(ge=0)
+
+
+class CreateFormRequest(BaseModel):
+    class Config:
+        extra = "allow"
+
+
+class UpdateFormRequest(BaseModel):
+    class Config:
+        extra = "allow"
 
 
 class CreateCommerceFulfillmentLineRequest(BaseModel):

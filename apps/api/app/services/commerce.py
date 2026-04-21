@@ -411,7 +411,16 @@ def _serialize_product(model, variants_by_product: dict[str, list[dict[str, obje
         "status": model["status"],
         "product_attributes": model.get("product_attributes", []),
         "variants": product_variants,
-        "created_at": _iso(_value(model, "created_at", "createdAt")),
+        "createdAt": (
+            model["createdAt"].isoformat()
+            if model["createdAt"] and hasattr(model["createdAt"], "isoformat")
+            else model["createdAt"]
+        ),
+        "updatedAt": (
+            model.get("updatedAt").isoformat()
+            if model.get("updatedAt") and hasattr(model.get("updatedAt"), "isoformat")
+            else model.get("updatedAt")
+        ),
     }
 
 

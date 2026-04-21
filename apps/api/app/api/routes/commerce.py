@@ -654,8 +654,7 @@ async def commerce_product_detail(
     except Exception as exc:
         _raise_http_error(exc)
 
-
-@router.post("/products", status_code=status.HTTP_201_CREATED)
+@router.post("/products")
 async def commerce_products_create(
     payload: CreateCommerceProductRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
@@ -690,6 +689,7 @@ async def commerce_products_update(
             product_id=product_id,
             payload=payload.model_dump(exclude_unset=True)
         )
+
         return {
             "tenant_id": session.tenant_id,
             "message": "Product updated successfully",
