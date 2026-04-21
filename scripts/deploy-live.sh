@@ -6,6 +6,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPLOY_REMOTE="${DEPLOY_REMOTE:-origin}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 DEPLOY_PM2_APPS="${DEPLOY_PM2_APPS:-kalpzero-api,kalpzero-web}"
+HEALTH_CHECK_ATTEMPTS="${HEALTH_CHECK_ATTEMPTS:-20}"
+HEALTH_CHECK_SLEEP_SECONDS="${HEALTH_CHECK_SLEEP_SECONDS:-2}"
 SKIP_PULL=0
 
 for arg in "$@"; do
@@ -90,11 +92,33 @@ restart_services() {
   pm2 save
 }
 
+wait_for_http_endpoint() {
+  local name="$1"
+  local url="$2"
+  local attempt=1
+
+  while (( attempt <= HEALTH_CHECK_ATTEMPTS )); do
+    if curl -fsS --max-time 15 "$url" >/dev/null; then
+      log "$name health check passed: $url"
+      return 0
+    fi
+
+    if (( attempt == HEALTH_CHECK_ATTEMPTS )); then
+      echo "$name health check failed after ${HEALTH_CHECK_ATTEMPTS} attempts: $url" >&2
+      return 1
+    fi
+
+    log "Waiting for $name to become healthy (attempt ${attempt}/${HEALTH_CHECK_ATTEMPTS}): $url"
+    sleep "$HEALTH_CHECK_SLEEP_SECONDS"
+    attempt=$((attempt + 1))
+  done
+}
+
 run_health_checks() {
   log "Running post-deploy health checks"
 
-  curl -fsS --max-time 15 http://127.0.0.1:8012/health/live >/dev/null
-  curl -fsS --max-time 15 http://127.0.0.1:3002/login >/dev/null
+  wait_for_http_endpoint "API" "http://127.0.0.1:8012/health/live"
+  wait_for_http_endpoint "Frontend" "http://127.0.0.1:3002/login"
 }
 
 main() {
