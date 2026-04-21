@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from types import SimpleNamespace
 from typing import Any
 
 from sqlalchemy import select
@@ -54,6 +55,8 @@ async def run_commerce_import_job(
     dataset = source.config_json.get("dataset", {})
     if not isinstance(dataset, dict):
         raise ValidationError("Commerce import source config requires a dataset object.")
+
+    tenant_slug, tenant_db_name = _tenant_context(db, tenant_id=tenant_id)
 
     report = _make_report(source=source, mode=mode, dataset=dataset)
     plan = await _build_commerce_import_plan(
@@ -213,21 +216,29 @@ async def _build_commerce_import_plan(
 
     # Use asyncio.gather for parallel lookups
     (
-        categories, brands, vendors, collections, 
-        warehouses, tax_profiles, 
-        attribute_sets, products, price_lists, coupons
+        categories,
+        brands,
+        vendors,
+        collections,
+        warehouses,
+        tax_profiles,
+        attribute_sets,
+        products_result,
+        price_lists,
+        coupons,
     ) = await asyncio.gather(
-        commerce_repository.list_categories(db, tenant_id=tenant_id),
-        commerce_repository.list_brands(db, tenant_id=tenant_id),
-        commerce_repository.list_vendors(db, tenant_id=tenant_id),
-        commerce_repository.list_collections(db, tenant_id=tenant_id),
-        commerce_repository.list_warehouses(db, tenant_id=tenant_id),
-        commerce_repository.list_tax_profiles(db, tenant_id=tenant_id),
-        commerce_repository.list_attribute_sets(db, tenant_id=tenant_id),
-        commerce_repository.list_products(db, tenant_id=tenant_id),
-        commerce_repository.list_price_lists(db, tenant_id=tenant_id),
-        commerce_repository.list_coupons(db, tenant_id=tenant_id),
+        _repo_call(db_name, "list_categories"),
+        _repo_call(db_name, "list_brands"),
+        _repo_call(db_name, "list_vendors"),
+        _repo_call(db_name, "list_collections"),
+        _repo_call(db_name, "list_warehouses"),
+        _repo_call(db_name, "list_tax_profiles"),
+        _repo_call(db_name, "list_attribute_sets"),
+        commerce_repository.list_products(db_name, skip=0, limit=5000),
+        _repo_call(db_name, "list_price_lists"),
+        _repo_call(db_name, "list_coupons"),
     )
+    products, _ = products_result
 
     existing_categories_by_slug = {_norm_slug(item["slug"]): item for item in categories}
     existing_brands_by_slug = {_norm_slug(item["slug"]): item for item in brands}
@@ -238,7 +249,9 @@ async def _build_commerce_import_plan(
     
 
     
-    existing_attribute_sets_by_slug = {_norm_slug(item["slug"]): item for item in attribute_sets}
+    existing_attribute_sets_by_slug = {
+        _norm_slug(item.get("slug") or item.get("key")): item for item in attribute_sets
+    }
     existing_products_by_slug = {_norm_slug(item["slug"]): item for item in products}
     
     existing_variants = await _repo_call(
@@ -656,6 +669,7 @@ async def _build_commerce_import_plan(
                     "price_minor": price_minor,
                     "currency": str(variant_item.get("currency", "INR")).strip().upper(),
                     "inventory_quantity": inventory_quantity,
+                    "warehouse_stock": warehouse_stock_payloads,
                 }
             )
             variant_attribute_payloads.append([])
@@ -838,8 +852,13 @@ async def _execute_commerce_import_plan(
                 "create_category",
                 name=item["name"],
                 slug=item["slug"],
-                description=item["description"],
-                parent_category_id=parent["id"] if parent is not None else None,
+                type="standard",
+                parentId=parent["id"] if parent is not None else None,
+                description=item["description"] or "",
+                pageStatus="published",
+                bannerImageUrl="",
+                metaTitle="",
+                metaDescription="",
             )
             category_lookup[item["slug"]] = created
             report["entities"]["categories"]["created"] += 1
@@ -932,24 +951,24 @@ async def _execute_commerce_import_plan(
 
 
     attribute_sets_list = await _repo_call(db_name, "list_attribute_sets")
-    attribute_set_lookup = {_norm_slug(item["slug"]): item for item in attribute_sets_list}
+    attribute_set_lookup = {
+        _norm_slug(item.get("slug") or item.get("key")): item for item in attribute_sets_list
+    }
     for item in plan["attribute_sets"]:
-        attrs = item["attributes"]
-        created = await commerce_repository.create_attribute_set(
-            db,
-            tenant_id=tenant_id,
+        created = await _repo_call(
+            db_name,
+            "create_attribute_set",
             name=item["name"],
-            slug=item["slug"],
+            key=item["slug"],
             appliesTo=item["appliesTo"],
             description=item["description"],
-            attributes=attrs,
+            attributes=item["attributes"],
             vertical_bindings=item["vertical_bindings"],
-            status=item["status"],
         )
         attribute_set_lookup[item["slug"]] = created
         report["entities"]["attribute_sets"]["created"] += 1
 
-    products_list = await _repo_call(db_name, "list_products")
+    products_list, _ = await commerce_repository.list_products(db_name, skip=0, limit=5000)
     product_lookup = {_norm_slug(item["slug"]): item for item in products_list}
     
     variants_list = await _repo_call(
@@ -1039,36 +1058,32 @@ async def _create_product_from_import(
     warehouse_lookup: dict[str, Any],
 ):
     attribute_set = attribute_set_lookup.get(payload["attribute_set_slug"]) if payload["attribute_set_slug"] else None
-
-    product = await _repo_call(
-        db_name,
-        "create_product",
-        name=payload["name"],
-        slug=payload["slug"],
-        description=payload["description"],
-        brand_id=brand_lookup[payload["brand_slug"]]["id"] if payload["brand_slug"] else None,
-        vendor_id=vendor_lookup[payload["vendor_slug"]]["id"] if payload["vendor_slug"] else None,
-        collection_ids=[collection_lookup[slug]["id"] for slug in payload["collection_slugs"]],
-        attribute_set_id=attribute_set["id"] if attribute_set is not None else None,
-        category_ids=[category_lookup[slug]["id"] for slug in payload["category_slugs"]],
-        seo_title=payload["seo_title"],
-        seo_description=payload["seo_description"],
-        status=payload["status"],
+    product = await commerce_service.create_product(
+        db,
+        db_name=db_name,
+        tenant_slug=str(tenant_id),
+        actor_user_id=actor_user_id,
+        payload={
+            "name": payload["name"],
+            "slug": payload["slug"],
+            "description": payload["description"],
+            "brand_id": brand_lookup[payload["brand_slug"]]["id"] if payload["brand_slug"] else None,
+            "vendor_id": vendor_lookup[payload["vendor_slug"]]["id"] if payload["vendor_slug"] else None,
+            "collection_ids": [collection_lookup[slug]["id"] for slug in payload["collection_slugs"]],
+            "attribute_set_id": attribute_set["id"] if attribute_set is not None else None,
+            "category_ids": [category_lookup[slug]["id"] for slug in payload["category_slugs"]],
+            "seo_title": payload["seo_title"],
+            "seo_description": payload["seo_description"],
+            "status": payload["status"],
+            "product_attributes": [],
+            "variants": payload["variants"],
+        },
     )
 
-    created_variants = []
+    created_variants = list(product["variants"])
+    variants_by_sku = {_norm_code(item["sku"]): item for item in created_variants}
     for variant_payload in payload["variants"]:
-        variant = await commerce_repository.create_variant(
-            db,
-            tenant_id=tenant_id,
-            product_id=product["id"],
-            sku=variant_payload["sku"],
-            label=variant_payload["label"],
-            price_minor=variant_payload["price_minor"],
-            currency=variant_payload["currency"],
-            inventory_quantity=variant_payload["inventory_quantity"],
-        )
-        created_variants.append(variant)
+        variant = variants_by_sku[_norm_code(variant_payload["sku"])]
         await _seed_variant_warehouse_stock(
             db,
             tenant_id=tenant_id,

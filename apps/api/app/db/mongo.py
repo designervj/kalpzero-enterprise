@@ -6,6 +6,7 @@ from typing import Protocol
 
 from pymongo import MongoClient
 from pymongo.database import Database
+from pymongo.errors import PyMongoError
 from motor.motor_asyncio import AsyncIOMotorClient
 from motor.core import AgnosticDatabase, AgnosticCollection
 from fastapi import Depends
@@ -323,8 +324,34 @@ def describe_runtime_document_store(settings: Settings) -> dict[str, object]:
     }
 
 
+def _drop_test_mongo_databases(settings: Settings) -> None:
+    if settings.env not in {"test", "testing"}:
+        return
+
+    base_runtime_db = _normalize_mongo_name_segment(settings.runtime_mongo_db)
+    tenant_prefix = f"{base_runtime_db}__tenant__"
+    target_names = {
+        settings.runtime_mongo_db,
+        settings.ai_mongo_db,
+        base_runtime_db,
+        _normalize_mongo_name_segment(settings.ai_mongo_db),
+    }
+
+    client = get_mongo_client(settings.runtime_mongo_url)
+
+    try:
+        for database_name in client.list_database_names():
+            if database_name in target_names or database_name.startswith(tenant_prefix):
+                client.drop_database(database_name)
+    except PyMongoError:
+        # Keep cache clearing resilient when Mongo is unavailable; tests that
+        # require Mongo will still fail at their actual call sites.
+        return
+
+
 def clear_mongo_cache() -> None:
+    settings = get_settings()
+    _drop_test_mongo_databases(settings)
     get_mongo_client.cache_clear()
     get_motor_client.cache_clear()
     get_memory_document_store.cache_clear()
-    _BEANE_INITIALIZED_TENANTS.clear()

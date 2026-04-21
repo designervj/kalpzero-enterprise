@@ -956,3 +956,755 @@ async def get_settlement(db_name: str, *, settlement_id: str) -> dict[str, Any] 
     doc = await db["commerce_settlements"].find_one({"_id": settlement_id})
     return _map_id(doc)
 
+
+def _id_candidates(document_id: str) -> list[object]:
+    candidates: list[object] = [document_id]
+    try:
+        from bson import ObjectId
+
+        candidates.insert(0, ObjectId(document_id))
+    except Exception:
+        pass
+    return candidates
+
+
+async def _find_one_by_id(db_name: str, collection_name: str, document_id: str) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    collection = db[collection_name]
+    for candidate in _id_candidates(document_id):
+        doc = await collection.find_one({"_id": candidate})
+        if doc is not None:
+            return _map_id(doc)
+    return None
+
+
+async def _update_by_id(
+    db_name: str,
+    collection_name: str,
+    *,
+    document_id: str,
+    data: dict[str, Any],
+) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    collection = db[collection_name]
+    update_data = dict(data)
+    update_data["updated_at"] = datetime.now(tz=UTC)
+    for candidate in _id_candidates(document_id):
+        result = await collection.update_one({"_id": candidate}, {"$set": update_data})
+        if result.matched_count:
+            return await _find_one_by_id(db_name, collection_name, document_id)
+    return None
+
+
+async def list_attributes(db_name: str) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    cursor = db["commerce_attributes"].find().sort("createdAt", -1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def aggregate_product_filters(db_name: str, query: dict[str, Any]) -> list[dict[str, Any]]:
+    return []
+
+
+async def list_products(
+    db_name: str,
+    *,
+    search: str | None = None,
+    category: str | None = None,
+    status: str | None = None,
+    product_type: str | None = None,
+    variant_filters: list[dict[str, Any]] | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> tuple[list[dict[str, Any]], int]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    query: dict[str, Any] = {}
+    if search:
+        query["name"] = {"$regex": search, "$options": "i"}
+    if category and category != "all":
+        query["category_ids"] = category
+    if status:
+        query["status"] = status
+    total = await db["commerce_products"].count_documents(query)
+    cursor = db["commerce_products"].find(query).sort("created_at", -1).skip(skip).limit(limit)
+    products = await cursor.to_list(length=limit)
+    return _map_ids(products), total
+
+
+async def get_product(db_name: str, *, product_id: str) -> dict[str, Any] | None:
+    return await _find_one_by_id(db_name, "commerce_products", product_id)
+
+
+async def find_product_by_slug(db_name: str, *, slug: str) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = await db["commerce_products"].find_one({"slug": slug})
+    return _map_id(doc)
+
+
+async def create_product(
+    db_name: str,
+    data: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    payload = dict(data or {})
+    payload.update(kwargs)
+    product_id = str(payload.pop("id", None) or uuid4())
+    doc = {
+        "_id": product_id,
+        "name": payload["name"],
+        "slug": payload["slug"],
+        "description": payload.get("description"),
+        "brand_id": payload.get("brand_id"),
+        "vendor_id": payload.get("vendor_id"),
+        "collection_ids": list(payload.get("collection_ids", [])),
+        "attribute_set_id": payload.get("attribute_set_id"),
+        "category_ids": list(payload.get("category_ids", [])),
+        "seo_title": payload.get("seo_title"),
+        "seo_description": payload.get("seo_description"),
+        "status": payload.get("status", "active"),
+        "product_attributes": list(payload.get("product_attributes", [])),
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_products"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def update_product(db_name: str, product_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_products", document_id=product_id, data=data)
+
+
+async def delete_variants_for_product(db_name: str, product_id: str) -> bool:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    result = await db["commerce_variants"].delete_many(
+        {"$or": [{"product_id": product_id}, {"productId": product_id}]}
+    )
+    return result.deleted_count > 0
+
+
+async def list_variants(db_name: str) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    cursor = db["commerce_variants"].find().sort("created_at", -1)
+    return _map_ids(await cursor.to_list(length=5000))
+
+
+async def list_variants_for_products(db_name: str, *, product_ids: list[str]) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    if not product_ids:
+        return []
+    cursor = db["commerce_variants"].find(
+        {"$or": [{"product_id": {"$in": product_ids}}, {"productId": {"$in": product_ids}}]}
+    ).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=5000))
+
+
+async def get_variant(db_name: str, *, variant_id: str) -> dict[str, Any] | None:
+    return await _find_one_by_id(db_name, "commerce_variants", variant_id)
+
+
+async def find_variant_by_sku(db_name: str, *, sku: str) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = await db["commerce_variants"].find_one({"sku": sku})
+    return _map_id(doc)
+
+
+async def create_variant(
+    db_name: str,
+    *,
+    product_id: str,
+    sku: str,
+    label: str,
+    price_minor: int,
+    currency: str,
+    inventory_quantity: int,
+    attribute_values: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "product_id": product_id,
+        "sku": sku,
+        "label": label,
+        "price_minor": price_minor,
+        "currency": currency,
+        "inventory_quantity": inventory_quantity,
+        "attribute_values": list(attribute_values or []),
+        "status": "active",
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_variants"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def update_variant(db_name: str, *, variant_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_variants", document_id=variant_id, data=data)
+
+
+async def sync_variants(db_name: str, product_id: str, variants_data: list[dict[str, Any]]) -> None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    await db["commerce_variants"].delete_many(
+        {"$or": [{"product_id": product_id}, {"productId": product_id}]}
+    )
+    for variant in variants_data:
+        await create_variant(
+            db_name,
+            product_id=product_id,
+            sku=str(variant["sku"]),
+            label=str(variant.get("label") or variant.get("title") or variant["sku"]),
+            price_minor=int(variant.get("price_minor", variant.get("price", 0))),
+            currency=str(variant.get("currency", "INR")).upper(),
+            inventory_quantity=int(variant.get("inventory_quantity", variant.get("stock", 0))),
+            attribute_values=list(variant.get("attribute_values", [])),
+        )
+
+
+async def update_warehouse(db_name: str, *, warehouse_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_warehouses", document_id=warehouse_id, data=data)
+
+
+async def update_warehouse_stock(db_name: str, *, stock_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_warehouse_stocks", document_id=stock_id, data=data)
+
+
+async def list_orders(db_name: str) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    cursor = db["commerce_orders"].find().sort("created_at", -1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def get_order(db_name: str, *, order_id: str) -> dict[str, Any] | None:
+    return await _find_one_by_id(db_name, "commerce_orders", order_id)
+
+
+async def list_order_lines_for_orders(db_name: str, *, order_ids: list[str]) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    if not order_ids:
+        return []
+    cursor = db["commerce_order_lines"].find({"order_id": {"$in": order_ids}}).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=5000))
+
+
+async def create_order(
+    db_name: str,
+    *,
+    customer_id: str,
+    price_list_id: str | None,
+    tax_profile_id: str | None,
+    coupon_code: str | None,
+    status: str,
+    currency: str,
+    subtotal_minor: int,
+    discount_minor: int,
+    tax_minor: int,
+    total_minor: int,
+    payment_status: str,
+    paid_minor: int,
+    refunded_minor: int,
+    balance_minor: int,
+    invoice_number: str | None,
+    invoice_issued_at: str | None,
+    inventory_reserved: bool,
+    placed_at: str | None,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "customer_id": customer_id,
+        "price_list_id": price_list_id,
+        "tax_profile_id": tax_profile_id,
+        "coupon_code": coupon_code,
+        "status": status,
+        "currency": currency,
+        "subtotal_minor": subtotal_minor,
+        "discount_minor": discount_minor,
+        "tax_minor": tax_minor,
+        "total_minor": total_minor,
+        "payment_status": payment_status,
+        "paid_minor": paid_minor,
+        "refunded_minor": refunded_minor,
+        "balance_minor": balance_minor,
+        "invoice_number": invoice_number,
+        "invoice_issued_at": invoice_issued_at,
+        "inventory_reserved": inventory_reserved,
+        "placed_at": placed_at,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_orders"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def create_order_line(
+    db_name: str,
+    *,
+    order_id: str,
+    product_id: str,
+    variant_id: str,
+    allocated_warehouse_id: str | None,
+    quantity: int,
+    fulfilled_quantity: int,
+    unit_price_minor: int,
+    line_total_minor: int,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "order_id": order_id,
+        "product_id": product_id,
+        "variant_id": variant_id,
+        "allocated_warehouse_id": allocated_warehouse_id,
+        "quantity": quantity,
+        "fulfilled_quantity": fulfilled_quantity,
+        "unit_price_minor": unit_price_minor,
+        "line_total_minor": line_total_minor,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_order_lines"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def update_order(db_name: str, *, order_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_orders", document_id=order_id, data=data)
+
+
+async def update_order_line(db_name: str, *, line_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_order_lines", document_id=line_id, data=data)
+
+
+async def list_fulfillments(db_name: str, *, order_id: str | None = None) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    query = {"order_id": order_id} if order_id else {}
+    cursor = db["commerce_fulfillments"].find(query).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def create_fulfillment(
+    db_name: str,
+    *,
+    order_id: str,
+    warehouse_id: str | None,
+    fulfillment_number: str,
+    status: str,
+    created_by_user_id: str,
+    packed_at: str | None,
+    shipped_at: str | None,
+    delivered_at: str | None,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "order_id": order_id,
+        "warehouse_id": warehouse_id,
+        "fulfillment_number": fulfillment_number,
+        "status": status,
+        "created_by_user_id": created_by_user_id,
+        "packed_at": packed_at,
+        "shipped_at": shipped_at,
+        "delivered_at": delivered_at,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_fulfillments"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def list_fulfillment_lines(db_name: str, *, fulfillment_ids: list[str]) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    if not fulfillment_ids:
+        return []
+    cursor = db["commerce_fulfillment_lines"].find({"fulfillment_id": {"$in": fulfillment_ids}}).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=5000))
+
+
+async def create_fulfillment_line(
+    db_name: str,
+    *,
+    fulfillment_id: str,
+    order_line_id: str,
+    variant_id: str,
+    quantity: int,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "fulfillment_id": fulfillment_id,
+        "order_line_id": order_line_id,
+        "variant_id": variant_id,
+        "quantity": quantity,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_fulfillment_lines"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def update_fulfillment(db_name: str, *, fulfillment_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_fulfillments", document_id=fulfillment_id, data=data)
+
+
+async def list_shipments(db_name: str, *, fulfillment_id: str | None = None) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    query = {"fulfillment_id": fulfillment_id} if fulfillment_id else {}
+    cursor = db["commerce_shipments"].find(query).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def create_shipment(
+    db_name: str,
+    *,
+    fulfillment_id: str,
+    carrier: str,
+    service_level: str | None,
+    tracking_number: str,
+    status: str,
+    shipped_at: str | None,
+    delivered_at: str | None,
+    metadata_json: dict[str, object],
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "fulfillment_id": fulfillment_id,
+        "carrier": carrier,
+        "service_level": service_level,
+        "tracking_number": tracking_number,
+        "status": status,
+        "shipped_at": shipped_at,
+        "delivered_at": delivered_at,
+        "metadata_json": metadata_json,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_shipments"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def update_shipment(db_name: str, *, shipment_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_shipments", document_id=shipment_id, data=data)
+
+
+async def list_payments(db_name: str, *, order_id: str | None = None) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    query = {"order_id": order_id} if order_id else {}
+    cursor = db["commerce_payments"].find(query).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def create_payment(
+    db_name: str,
+    *,
+    order_id: str,
+    amount_minor: int,
+    currency: str,
+    provider: str | None,
+    payment_method: str,
+    status: str,
+    reference: str | None,
+    notes: str | None,
+    received_at: str,
+    recorded_by_user_id: str,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "order_id": order_id,
+        "amount_minor": amount_minor,
+        "currency": currency,
+        "provider": provider,
+        "payment_method": payment_method,
+        "status": status,
+        "reference": reference,
+        "notes": notes,
+        "received_at": received_at,
+        "recorded_by_user_id": recorded_by_user_id,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_payments"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def update_payment(db_name: str, *, payment_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_payments", document_id=payment_id, data=data)
+
+
+async def list_refunds(db_name: str, *, order_id: str | None = None) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    query = {"order_id": order_id} if order_id else {}
+    cursor = db["commerce_refunds"].find(query).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def create_refund(
+    db_name: str,
+    *,
+    order_id: str,
+    payment_id: str,
+    amount_minor: int,
+    currency: str,
+    reason: str,
+    reference: str | None,
+    status: str,
+    refunded_at: str,
+    recorded_by_user_id: str,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "order_id": order_id,
+        "payment_id": payment_id,
+        "amount_minor": amount_minor,
+        "currency": currency,
+        "reason": reason,
+        "reference": reference,
+        "status": status,
+        "refunded_at": refunded_at,
+        "recorded_by_user_id": recorded_by_user_id,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_refunds"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def list_invoices(db_name: str, *, order_id: str | None = None) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    query = {"order_id": order_id} if order_id else {}
+    cursor = db["commerce_invoices"].find(query).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def create_invoice(
+    db_name: str,
+    *,
+    order_id: str,
+    customer_id: str,
+    invoice_number: str,
+    status: str,
+    currency: str,
+    subtotal_minor: int,
+    discount_minor: int,
+    tax_minor: int,
+    total_minor: int,
+    issued_at: str,
+    issued_by_user_id: str,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "order_id": order_id,
+        "customer_id": customer_id,
+        "invoice_number": invoice_number,
+        "status": status,
+        "currency": currency,
+        "subtotal_minor": subtotal_minor,
+        "discount_minor": discount_minor,
+        "tax_minor": tax_minor,
+        "total_minor": total_minor,
+        "issued_at": issued_at,
+        "issued_by_user_id": issued_by_user_id,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_invoices"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def list_returns(db_name: str, *, order_id: str | None = None) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    query = {"order_id": order_id} if order_id else {}
+    cursor = db["commerce_returns"].find(query).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def create_return(
+    db_name: str,
+    *,
+    order_id: str,
+    return_number: str,
+    status: str,
+    reason_summary: str | None,
+    notes: str | None,
+    inventory_restocked: bool,
+    requested_at: str,
+    approved_at: str | None,
+    received_at: str | None,
+    closed_at: str | None,
+    created_by_user_id: str,
+    closed_by_user_id: str | None,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "order_id": order_id,
+        "return_number": return_number,
+        "status": status,
+        "reason_summary": reason_summary,
+        "notes": notes,
+        "inventory_restocked": inventory_restocked,
+        "requested_at": requested_at,
+        "approved_at": approved_at,
+        "received_at": received_at,
+        "closed_at": closed_at,
+        "created_by_user_id": created_by_user_id,
+        "closed_by_user_id": closed_by_user_id,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_returns"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def list_return_lines(db_name: str, *, return_ids: list[str]) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    if not return_ids:
+        return []
+    cursor = db["commerce_return_lines"].find({"return_id": {"$in": return_ids}}).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=5000))
+
+
+async def create_return_line(
+    db_name: str,
+    *,
+    return_id: str,
+    order_line_id: str,
+    variant_id: str,
+    quantity: int,
+    resolution_type: str,
+    replacement_variant_id: str | None,
+    restock_on_receive: bool,
+    line_amount_minor: int,
+    notes: str | None,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "return_id": return_id,
+        "order_line_id": order_line_id,
+        "variant_id": variant_id,
+        "quantity": quantity,
+        "resolution_type": resolution_type,
+        "replacement_variant_id": replacement_variant_id,
+        "restock_on_receive": restock_on_receive,
+        "line_amount_minor": line_amount_minor,
+        "notes": notes,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_return_lines"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def update_return(db_name: str, *, return_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_returns", document_id=return_id, data=data)
+
+
+async def list_settlements(db_name: str) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    cursor = db["commerce_settlements"].find().sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=1000))
+
+
+async def create_settlement(
+    db_name: str,
+    *,
+    settlement_number: str,
+    provider: str,
+    settlement_reference: str | None,
+    currency: str,
+    status: str,
+    payments_minor: int,
+    refunds_minor: int,
+    fees_minor: int,
+    adjustments_minor: int,
+    net_minor: int,
+    reported_at: str,
+    reconciled_at: str | None,
+    closed_at: str | None,
+    notes: str | None,
+    created_by_user_id: str,
+    closed_by_user_id: str | None,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "settlement_number": settlement_number,
+        "provider": provider,
+        "settlement_reference": settlement_reference,
+        "currency": currency,
+        "status": status,
+        "payments_minor": payments_minor,
+        "refunds_minor": refunds_minor,
+        "fees_minor": fees_minor,
+        "adjustments_minor": adjustments_minor,
+        "net_minor": net_minor,
+        "reported_at": reported_at,
+        "reconciled_at": reconciled_at,
+        "closed_at": closed_at,
+        "notes": notes,
+        "created_by_user_id": created_by_user_id,
+        "closed_by_user_id": closed_by_user_id,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_settlements"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def list_settlement_entries(db_name: str, *, settlement_ids: list[str]) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    if not settlement_ids:
+        return []
+    cursor = db["commerce_settlement_entries"].find({"settlement_id": {"$in": settlement_ids}}).sort("created_at", 1)
+    return _map_ids(await cursor.to_list(length=5000))
+
+
+async def list_settlement_entries_for_payment_ids(db_name: str, *, payment_ids: list[str]) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    if not payment_ids:
+        return []
+    cursor = db["commerce_settlement_entries"].find({"payment_id": {"$in": payment_ids}})
+    return _map_ids(await cursor.to_list(length=5000))
+
+
+async def list_settlement_entries_for_refund_ids(db_name: str, *, refund_ids: list[str]) -> list[dict[str, Any]]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    if not refund_ids:
+        return []
+    cursor = db["commerce_settlement_entries"].find({"refund_id": {"$in": refund_ids}})
+    return _map_ids(await cursor.to_list(length=5000))
+
+
+async def create_settlement_entry(
+    db_name: str,
+    *,
+    settlement_id: str,
+    entry_type: str,
+    payment_id: str | None,
+    refund_id: str | None,
+    amount_minor: int,
+    label: str | None,
+    notes: str | None,
+) -> dict[str, Any]:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    doc = {
+        "_id": str(uuid4()),
+        "settlement_id": settlement_id,
+        "entry_type": entry_type,
+        "payment_id": payment_id,
+        "refund_id": refund_id,
+        "amount_minor": amount_minor,
+        "label": label,
+        "notes": notes,
+        "created_at": datetime.now(tz=UTC),
+        "updated_at": datetime.now(tz=UTC),
+    }
+    await db["commerce_settlement_entries"].insert_one(doc)
+    return _map_id(doc)
+
+
+async def update_settlement(db_name: str, *, settlement_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    return await _update_by_id(db_name, "commerce_settlements", document_id=settlement_id, data=data)
