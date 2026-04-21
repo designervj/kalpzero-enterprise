@@ -22,6 +22,46 @@ def _map_id(doc: dict | None) -> dict | None:
 def _map_ids(docs: list[dict]) -> list[dict]:
     return [_map_id(doc) for doc in docs]
 
+
+def _id_candidates(document_id: str) -> list[object]:
+    candidates: list[object] = [document_id]
+    try:
+        from bson import ObjectId
+
+        candidates.insert(0, ObjectId(document_id))
+    except Exception:
+        pass
+    return candidates
+
+
+async def _find_one_by_id(db_name: str, collection_name: str, document_id: str) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    collection = db[collection_name]
+    for candidate in _id_candidates(document_id):
+        doc = await collection.find_one({"_id": candidate})
+        if doc is not None:
+            return _map_id(doc)
+    return None
+
+
+async def _update_by_id(
+    db_name: str,
+    collection_name: str,
+    *,
+    document_id: str,
+    data: dict[str, Any],
+) -> dict[str, Any] | None:
+    db = get_runtime_motor_database(get_settings(), database_name=db_name)
+    collection = db[collection_name]
+    update_data = dict(data)
+    update_data["updatedAt"] = datetime.now(tz=UTC)
+    for candidate in _id_candidates(document_id):
+        result = await collection.update_one({"_id": candidate}, {"$set": update_data})
+        if result.matched_count:
+            return await _find_one_by_id(db_name, collection_name, document_id)
+    return None
+
+
 async def list_packages(db_name: str) -> list[TravelPackage]:
     db = get_runtime_motor_database(get_settings(), database_name=db_name)
     cursor = db["travel_packages"].find().sort("createdAt", -1)
@@ -159,8 +199,8 @@ async def create_departure(
     doc = {
         "_id": dep_id,
         "package_id": package_id,
-        "departure_date": departure_date,
-        "return_date": return_date,
+        "departure_date": departure_date.isoformat() if hasattr(departure_date, "isoformat") else departure_date,
+        "return_date": return_date.isoformat() if hasattr(return_date, "isoformat") else return_date,
         "seats_total": seats_total,
         "seats_available": seats_available,
         "price_override_minor": price_override_minor,
@@ -170,6 +210,11 @@ async def create_departure(
     }
     await db["travel_departures"].insert_one(doc)
     return TravelDeparture(**_map_id(doc))
+
+
+async def update_departure(db_name: str, *, departure_id: str, data: dict[str, Any]) -> TravelDeparture | None:
+    doc = await _update_by_id(db_name, "travel_departures", document_id=departure_id, data=data)
+    return TravelDeparture(**doc) if doc else None
 
 async def list_leads(
     db_name: str,
@@ -222,7 +267,7 @@ async def create_lead(
         "contact_name": contact_name,
         "contact_phone": contact_phone,
         "travelers_count": travelers_count,
-        "desired_departure_date": desired_departure_date,
+        "desired_departure_date": desired_departure_date.isoformat() if hasattr(desired_departure_date, "isoformat") else desired_departure_date,
         "budget_minor": budget_minor,
         "currency": currency,
         "status": status,
@@ -232,3 +277,8 @@ async def create_lead(
     }
     await db["travel_leads"].insert_one(doc)
     return TravelLead(**_map_id(doc))
+
+
+async def update_lead(db_name: str, *, lead_id: str, data: dict[str, Any]) -> TravelLead | None:
+    doc = await _update_by_id(db_name, "travel_leads", document_id=lead_id, data=data)
+    return TravelLead(**doc) if doc else None

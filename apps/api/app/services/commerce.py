@@ -15,6 +15,7 @@ from app.services.platform import get_tenant_or_raise
 
 
 COUPON_DISCOUNT_TYPES = {"fixed", "percent"}
+ATTRIBUTE_ACTIVE_STATUSES = {"active", "archived"}
 PAYMENT_RECORD_STATUSES = {"authorized", "captured", "failed"}
 WAREHOUSE_ACTIVE_STATUSES = {"active", "inactive"}
 STOCK_LEDGER_ENTRY_TYPES = {"adjustment", "reservation", "release", "fulfillment", "restock"}
@@ -39,6 +40,17 @@ SETTLEMENT_STATUS_TRANSITIONS: dict[str, set[str]] = {
     "disputed": {"reconciled", "closed"},
     "closed": set(),
 }
+
+
+def _value(model: dict[str, Any], *keys: str, default: Any = None) -> Any:
+    for key in keys:
+        if key in model and model[key] is not None:
+            return model[key]
+    return default
+
+
+def _iso(value: Any) -> Any:
+    return value.isoformat() if hasattr(value, "isoformat") else value
 
 
 def _dedupe_strings(values: list[str], *, default: list[str] | None = None) -> list[str]:
@@ -87,9 +99,10 @@ def _serialize_brand(model) -> dict[str, object]:
 
 
 def _serialize_vendor(model) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     return {
         "id": str(model["id"]),
-                "name": model["name"],
+        "name": model["name"],
         "slug": model["slug"],
         "code": model.get("code"),
         "description": model.get("description"),
@@ -97,58 +110,62 @@ def _serialize_vendor(model) -> dict[str, object]:
         "contact_email": model.get("contact_email"),
         "contact_phone": model.get("contact_phone"),
         "status": model["status"],
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
+        "created_at": _iso(created_at),
     }
 
 
 def _serialize_collection(model) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     return {
         "id": str(model["id"]),
-                "name": model["name"],
+        "name": model["name"],
         "slug": model["slug"],
         "description": model.get("description"),
         "status": model["status"],
         "sort_order": model.get("sort_order", 0),
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
+        "created_at": _iso(created_at),
     }
 
 
 def _serialize_warehouse(model) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     return {
         "id": str(model["id"]),
-                "name": model["name"],
+        "name": model["name"],
         "slug": model["slug"],
         "code": model.get("code"),
         "city": model.get("city"),
         "country": model.get("country"),
         "status": model["status"],
         "is_default": model.get("is_default", False),
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
+        "created_at": _iso(created_at),
     }
 
 
 def _serialize_warehouse_stock(model) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     on_hand = model.get("on_hand_quantity", 0)
     reserved = model.get("reserved_quantity", 0)
     low_stock_threshold = model.get("low_stock_threshold", 0)
     available_quantity = on_hand - reserved
     return {
         "id": str(model["id"]),
-                "warehouse_id": str(model["warehouse_id"]),
+        "warehouse_id": str(model["warehouse_id"]),
         "variant_id": str(model["variant_id"]),
         "on_hand_quantity": on_hand,
         "reserved_quantity": reserved,
         "available_quantity": available_quantity,
         "low_stock_threshold": low_stock_threshold,
         "is_below_threshold": available_quantity <= low_stock_threshold if low_stock_threshold > 0 else False,
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
+        "created_at": _iso(created_at),
     }
 
 
 def _serialize_stock_ledger_entry(model) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     return {
         "id": str(model["id"]),
-                "warehouse_id": str(model["warehouse_id"]),
+        "warehouse_id": str(model["warehouse_id"]),
         "variant_id": str(model["variant_id"]),
         "entry_type": model["entry_type"],
         "quantity_delta": model["quantity_delta"],
@@ -158,20 +175,21 @@ def _serialize_stock_ledger_entry(model) -> dict[str, object]:
         "reference_id": str(model.get("reference_id")) if model.get("reference_id") else None,
         "notes": model.get("notes"),
         "recorded_by_user_id": model["recorded_by_user_id"],
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
+        "created_at": _iso(created_at),
     }
 
 
 def _serialize_tax_profile(model) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     return {
         "id": str(model["id"]),
-                "name": model["name"],
+        "name": model["name"],
         "code": model.get("code"),
         "description": model.get("description"),
         "prices_include_tax": model.get("prices_include_tax", False),
         "rules": model.get("rules", model.get("rules_json", [])),
         "status": model["status"],
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
+        "created_at": _iso(created_at),
     }
 
 
@@ -185,23 +203,25 @@ def _serialize_price_list_item(model) -> dict[str, object]:
 
 
 def _serialize_price_list(model, items_by_price_list: dict[str, list[dict[str, object]]]) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     return {
         "id": str(model["id"]),
-                "name": model["name"],
+        "name": model["name"],
         "slug": model["slug"],
         "currency": model["currency"],
         "customer_segment": model.get("customer_segment"),
         "description": model.get("description"),
         "status": model["status"],
         "items": items_by_price_list.get(str(model["id"]), []),
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
+        "created_at": _iso(created_at),
     }
 
 
 def _serialize_coupon(model) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     return {
         "id": str(model["id"]),
-                "code": model["code"],
+        "code": model["code"],
         "description": model.get("description"),
         "discount_type": model["discount_type"],
         "discount_value": model["discount_value"],
@@ -210,7 +230,7 @@ def _serialize_coupon(model) -> dict[str, object]:
         "applicable_category_ids": [str(id) for id in model.get("applicable_category_ids", [])],
         "applicable_variant_ids": [str(id) for id in model.get("applicable_variant_ids", [])],
         "status": model["status"],
-        "created_at": model["created_at"].isoformat() if hasattr(model["created_at"], "isoformat") else model["created_at"],
+        "created_at": _iso(created_at),
     }
 
 
@@ -358,17 +378,18 @@ def _serialize_attribute_set(model) -> dict[str, object]:
 
 
 def _serialize_variant(model) -> dict[str, object]:
+    created_at = _value(model, "created_at", "createdAt")
     return {
         "id": str(model["id"]),
-        "productId": str(model["productId"]),
-        "title": model.get("title"),
-        "optionValues": model.get("optionValues", {}),
+        "product_id": str(_value(model, "product_id", "productId")),
         "sku": model["sku"],
-        "price": model.get("price", 0),
-        "stock": model.get("stock", 0),
+        "label": _value(model, "label", "title"),
+        "price_minor": _value(model, "price_minor", "price", default=0),
+        "currency": model.get("currency"),
+        "inventory_quantity": _value(model, "inventory_quantity", "stock", default=0),
+        "attribute_values": model.get("attribute_values", []),
         "status": model.get("status", "active"),
-        "createdAt": model["createdAt"].isoformat() if hasattr(model["createdAt"], "isoformat") else model["createdAt"],
-        "updatedAt": model["updatedAt"].isoformat() if hasattr(model["updatedAt"], "isoformat") else model["updatedAt"],
+        "created_at": _iso(created_at),
     }
 
 
@@ -377,34 +398,20 @@ def _serialize_product(model, variants_by_product: dict[str, list[dict[str, obje
     product_variants = variants_by_product.get(p_id, [])
     return {
         "id": p_id,
-        "type": model.get("type", "physical"),
         "name": model["name"],
         "slug": model["slug"],
-        "sku": model.get("sku"),
-        "price": model.get("price"),
         "description": model.get("description"),
+        "brand_id": str(model["brand_id"]) if model.get("brand_id") else None,
+        "vendor_id": str(model["vendor_id"]) if model.get("vendor_id") else None,
+        "collection_ids": [str(item) for item in model.get("collection_ids", [])],
+        "attribute_set_id": str(model["attribute_set_id"]) if model.get("attribute_set_id") else None,
+        "category_ids": [str(item) for item in model.get("category_ids", [])],
+        "seo_title": model.get("seo_title"),
+        "seo_description": model.get("seo_description"),
         "status": model["status"],
-        "categoryIds": model.get("categoryIds", []),
-        "primaryCategoryId": model.get("primaryCategoryId"),
-        "attributeSetIds": model.get("attributeSetIds", []),
-        "pricing": model.get("pricing"),
-        "options": model.get("options", []),
-        "gallery": model.get("gallery", []),
-        "primaryImageId": model.get("primaryImageId"),
-        "relatedProductIds": model.get("relatedProductIds", []),
-        "variantCount": len(product_variants),
-        "totalStock": sum(v.get("stock", 0) for v in product_variants),
+        "product_attributes": model.get("product_attributes", []),
         "variants": product_variants,
-        "createdAt": (
-            model["createdAt"].isoformat()
-            if model["createdAt"] and hasattr(model["createdAt"], "isoformat")
-            else model["createdAt"]
-        ),
-        "updatedAt": (
-            model["updatedAt"].isoformat()
-            if model["updatedAt"] and hasattr(model["updatedAt"], "isoformat")
-            else model["updatedAt"]
-        ),
+        "created_at": _iso(_value(model, "created_at", "createdAt")),
     }
 
 
@@ -715,7 +722,8 @@ async def _allocate_warehouse_stocks(db_name: str, *, tenant_id: str, variant_id
         candidate_stocks.sort(
             key=lambda item: (
                 0 if item["warehouse_id"] in default_warehouse_ids else 1,
-                item["created_at"].isoformat() if hasattr(item["created_at"], "isoformat") else item["created_at"])
+                _iso(_value(item, "created_at", "createdAt", default="")),
+            )
         )
         allocated = next(
             (
@@ -958,15 +966,15 @@ async def get_overview(db: Session, *, tenant_slug: str, db_name: str) -> dict[s
     coupons = await commerce_repository.list_coupons(db_name)
     attributes = await commerce_repository.list_attributes(db_name)
     attribute_sets = await commerce_repository.list_attribute_sets(db_name)
-    products = await commerce_repository.list_products(db_name)
+    products, _ = await commerce_repository.list_products(db_name, skip=0, limit=5000)
     variants = await commerce_repository.list_variants(db_name)
     orders = await commerce_repository.list_orders(db_name)
-    fulfillments = await commerce_repository.list_fulfillments(db_name)
-    shipments = await commerce_repository.list_shipments(db_name)
-    payments = await commerce_repository.list_payments(db_name)
-    refunds = await commerce_repository.list_refunds(db_name)
-    invoices = await commerce_repository.list_invoices(db_name)
-    return_requests = await commerce_repository.list_returns(db_name)
+    fulfillments = await commerce_repository.list_fulfillments(db_name, order_id=None)
+    shipments = await commerce_repository.list_shipments(db_name, fulfillment_id=None)
+    payments = await commerce_repository.list_payments(db_name, order_id=None)
+    refunds = await commerce_repository.list_refunds(db_name, order_id=None)
+    invoices = await commerce_repository.list_invoices(db_name, order_id=None)
+    return_requests = await commerce_repository.list_returns(db_name, order_id=None)
     settlements = await commerce_repository.list_settlements(db_name)
     settlement_entries = await commerce_repository.list_settlement_entries(db_name, settlement_ids=[item["id"] if isinstance(item, dict) else item.id for item in settlements])
 
@@ -1644,12 +1652,15 @@ async def list_products(
 
     variants_by_product: dict[str, list[dict[str, object]]] = defaultdict(list)
     for variant in variants:
-        variants_by_product[str(variant["productId"])].append(variant)
+        product_id = _value(variant, "product_id", "productId")
+        if product_id is not None:
+            variants_by_product[str(product_id)].append(_serialize_variant(variant))
 
     # Aggregated filters
     query = {}
     if search: query["name"] = {"$regex": search, "$options": "i"}
-    if category and category != "all": query["categoryIds"] = category
+    if category and category != "all":
+        query["category_ids"] = category
     if status: query["status"] = status
     if product_type: query["type"] = product_type
     if variant_filters: query["$and"] = variant_filters
@@ -1716,11 +1727,8 @@ async def get_product_detail(db: Session, *, db_name: str, product_id: str) -> d
         raise NotFoundError(f"Product '{product_id}' was not found.")
         
     variants = await commerce_repository.list_variants_for_products(db_name, product_ids=[product_id])
-    variants_by_product = {
-        product_id: [v for v in variants]
-    }
-    
-    return product, variants_by_product
+    variants_by_product = {product_id: [_serialize_variant(v) for v in variants]}
+    return _serialize_product(product, variants_by_product)
 
 
 async def delete_product(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, product_id: str) -> bool:
@@ -1799,8 +1807,8 @@ async def list_settlements(db: Session, *, tenant_slug: str, db_name: str) -> li
     entries_task = commerce_repository.list_settlement_entries(
         db_name,
         settlement_ids=[item["id"] for item in settlements])
-    payments_task = commerce_repository.list_payments(db_name)
-    refunds_task = commerce_repository.list_refunds(db_name)
+    payments_task = commerce_repository.list_payments(db_name, order_id=None)
+    refunds_task = commerce_repository.list_refunds(db_name, order_id=None)
 
     settlement_entries, payments, refunds = await asyncio.gather(entries_task, payments_task, refunds_task)
 
@@ -1827,8 +1835,8 @@ async def get_settlement_detail(db: Session, *, tenant_slug: str, db_name: str, 
     refund_ids = [item.get("refund_id") for item in entries if item.get("refund_id")]
 
     # Parallelize lookups
-    payment_task = commerce_repository.list_payments(db_name)
-    refund_task = commerce_repository.list_refunds(db_name)
+    payment_task = commerce_repository.list_payments(db_name, order_id=None)
+    refund_task = commerce_repository.list_refunds(db_name, order_id=None)
 
     payments, refunds = await asyncio.gather(payment_task, refund_task)
 
@@ -2313,7 +2321,7 @@ async def create_order(db: Session, *, db_name: str, tenant_slug: str, actor_use
             # "tax_minor": tax_minor,
             # "total_minor": total_minor,
         # })
-    await _outbox_order(db_name, tenant_id=tenant_slug, order=order)
+    await _outbox_order(db, db_name=db_name, tenant_id=tenant_slug, order=order)
     db.commit()
     
     fresh_lines = await commerce_repository.list_order_lines_for_orders(db_name, order_ids=[order["id"]])
@@ -2344,7 +2352,7 @@ async def record_payment(db: Session, *, db_name: str, tenant_slug: str, actor_u
         notes=notes,
         received_at=datetime.now(tz=UTC).isoformat(),
         recorded_by_user_id=actor_user_id)
-    await _recalculate_order_finance(db, order)
+    await _recalculate_order_finance(db_name, tenant_id=tenant_slug, order=order)
     # await _audit(
         # db, tenant_id=tenant_slug,
         # actor_user_id=actor_user_id,
@@ -2390,7 +2398,7 @@ async def record_refund(db: Session, *, db_name: str, tenant_slug: str, actor_us
     if amount_minor == refundable_balance_minor:
         await commerce_repository.update_payment(db_name, payment_id=payment["id"], data={"status": "refunded"})
     
-    await _recalculate_order_finance(db, order)
+    await _recalculate_order_finance(db_name, tenant_id=tenant_slug, order=order)
     # await _audit(
         # db, tenant_id=tenant_slug,
         # actor_user_id=actor_user_id,
@@ -2517,7 +2525,7 @@ async def create_return(db: Session, *, db_name: str, tenant_slug: str, actor_us
             # "return_number": created_return.get("return_number"),
             # "line_count": len(created_lines),
         # })
-    await _outbox_return(db_name, tenant_id=tenant_slug, return_request=created_return)
+    await _outbox_return(db, db_name=db_name, tenant_id=tenant_slug, return_request=created_return)
     db.commit()
     return await get_return_detail(
         db,
@@ -2603,7 +2611,7 @@ async def create_settlement(db: Session, *, db_name: str, tenant_slug: str, acto
 
     # Parallelize validations
     payments_task = asyncio.gather(*[_payment_or_raise(db_name, tenant_id=tenant_slug, payment_id=pid) for pid in normalized_payment_ids])
-    refunds_task = commerce_repository.list_refunds(db_name)
+    refunds_task = commerce_repository.list_refunds(db_name, order_id=None)
     dup_payments_task = commerce_repository.list_settlement_entries_for_payment_ids(db_name, payment_ids=normalized_payment_ids)
     dup_refunds_task = commerce_repository.list_settlement_entries_for_refund_ids(db_name, refund_ids=normalized_refund_ids)
     
@@ -2710,7 +2718,7 @@ async def create_settlement(db: Session, *, db_name: str, tenant_slug: str, acto
             # "refunds_minor": refunds_minor,
             # "net_minor": net_minor,
         # })
-    await _outbox_settlement(db_name, tenant_id=tenant_slug, settlement=settlement)
+    await _outbox_settlement(db, db_name=db_name, tenant_id=tenant_slug, settlement=settlement)
     db.commit()
     return await get_settlement_detail(
         db,
@@ -2755,7 +2763,7 @@ async def update_settlement_status(db: Session, *, db_name: str, tenant_slug: st
         # subject_type="commerce_settlement",
         # subject_id=str(settlement["id"]),
         # metadata={"status": normalized_status, "settlement_number": settlement.get("settlement_number")})
-    await _outbox_settlement(db_name, tenant_id=tenant_slug, settlement=settlement)
+    await _outbox_settlement(db, db_name=db_name, tenant_id=tenant_slug, settlement=settlement)
     db.commit()
     return await get_settlement_detail(
         db,
@@ -2802,7 +2810,7 @@ async def issue_order_invoice(db: Session, *, db_name: str, tenant_slug: str, ac
         # subject_type="commerce_order",
         # subject_id=str(order["id"]),
         # metadata={"invoice_number": invoice["invoice_number"], "customer_id": str(order.get("customer_id"))})
-    await _outbox_invoice(db_name, tenant_id=tenant_slug, order=order)
+    await _outbox_invoice(db, db_name=db_name, tenant_id=tenant_slug, order=order)
     db.commit()
     return await get_order_finance_detail(
         db,
@@ -2917,7 +2925,7 @@ async def create_fulfillment(db: Session, *, db_name: str, tenant_slug: str, act
             # "warehouse_id": str(fulfillment.get("warehouse_id")) if fulfillment.get("warehouse_id") else None,
             # "line_count": len(created_lines),
         # })
-    await _outbox_fulfillment(db_name, tenant_id=tenant_slug, fulfillment=fulfillment)
+    await _outbox_fulfillment(db, db_name=db_name, tenant_id=tenant_slug, fulfillment=fulfillment)
     db.commit()
     return _serialize_fulfillment(
         fulfillment,
@@ -2953,7 +2961,7 @@ async def update_fulfillment_status(db: Session, *, db_name: str, tenant_slug: s
         # subject_type="commerce_fulfillment",
         # subject_id=str(fulfillment["id"]),
         # metadata={"status": fulfillment.get("status")})
-    await _outbox_fulfillment(db_name, tenant_id=tenant_slug, fulfillment=fulfillment)
+    await _outbox_fulfillment(db, db_name=db_name, tenant_id=tenant_slug, fulfillment=fulfillment)
     db.commit()
     return _serialize_fulfillment(
         fulfillment,
@@ -3061,8 +3069,8 @@ async def create_shipment(db: Session, *, db_name: str, tenant_slug: str, actor_
             # "tracking_number": shipment.get("tracking_number"),
             # "carrier": shipment.get("carrier"),
         # })
-    await _outbox_shipment(db_name, tenant_id=tenant_slug, shipment=shipment)
-    await _outbox_fulfillment(db_name, tenant_id=tenant_slug, fulfillment=fulfillment)
+    await _outbox_shipment(db, db_name=db_name, tenant_id=tenant_slug, shipment=shipment)
+    await _outbox_fulfillment(db, db_name=db_name, tenant_id=tenant_slug, fulfillment=fulfillment)
     db.commit()
     return _serialize_shipment(shipment)
 
@@ -3094,8 +3102,8 @@ async def update_shipment_status(db: Session, *, db_name: str, tenant_slug: str,
         # subject_type="commerce_shipment",
         # subject_id=str(shipment["id"]),
         # metadata={"status": shipment.get("status"), "tracking_number": shipment.get("tracking_number")})
-    await _outbox_shipment(db_name, tenant_id=tenant_slug, shipment=shipment)
-    await _outbox_fulfillment(db_name, tenant_id=tenant_slug, fulfillment=fulfillment)
+    await _outbox_shipment(db, db_name=db_name, tenant_id=tenant_slug, shipment=shipment)
+    await _outbox_fulfillment(db, db_name=db_name, tenant_id=tenant_slug, fulfillment=fulfillment)
     db.commit()
     return _serialize_shipment(shipment)
 

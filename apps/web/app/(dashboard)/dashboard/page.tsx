@@ -23,7 +23,6 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   applyWorkspaceItemCustomization,
   mergeAdminWorkspace,
@@ -69,9 +68,9 @@ function humanizeToken(value: string | null | undefined, fallback: string): stri
 }
 
 const dashboardPanelClass =
-  'rounded-xl border border-slate-800 bg-slate-900/40 backdrop-blur-md shadow-[0_16px_40px_rgba(2,6,23,0.35)]';
+  'rounded-[28px] border border-slate-800/80 bg-slate-950/60 backdrop-blur-xl shadow-[0_24px_80px_-36px_rgba(34,211,238,0.35)]';
 const dashboardWidgetClass =
-  'rounded-2xl border border-slate-800/90 bg-slate-900/50 backdrop-blur-md overflow-hidden shadow-[0_16px_40px_rgba(2,6,23,0.35)]';
+  'rounded-[28px] border border-slate-800/80 bg-slate-950/70 backdrop-blur-xl overflow-hidden shadow-[0_24px_80px_-36px_rgba(34,211,238,0.32)]';
 
 export default function DashboardPage() {
   const auth = useAuth();
@@ -381,10 +380,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 text-slate-100">
       <div className={layoutClasses.hero}>
         <div className={`${dashboardPanelClass} relative overflow-hidden p-6 md:p-7`}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.12),transparent_38%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.18),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(129,140,248,0.16),transparent_38%)]" />
           <div className="relative flex flex-col gap-6">
             <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-start">
               <div className="flex gap-4">
@@ -406,25 +405,27 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild variant="secondary">
-                  <Link href="/settings/admin-theme">
-                    <Palette size={14} />
-                    Admin Theme
-                  </Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/settings/admin-workspace">
-                    <SlidersHorizontal size={14} />
-                    Workspace Customization
-                  </Link>
-                </Button>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/settings/admin-theme"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/85 px-4 py-3 text-sm font-semibold text-slate-100 shadow-[0_18px_40px_-28px_rgba(14,165,233,0.45)] transition hover:border-cyan-400/40 hover:bg-slate-900/95 hover:text-white"
+                >
+                  <Palette size={14} />
+                  Admin Theme
+                </Link>
+                <Link
+                  href="/settings/admin-workspace"
+                  className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/12 px-4 py-3 text-sm font-semibold text-amber-50 shadow-[0_18px_40px_-28px_rgba(217,119,6,0.48)] transition hover:border-amber-400/50 hover:bg-amber-500/18"
+                >
+                  <SlidersHorizontal size={14} />
+                  Workspace Customization
+                </Link>
               </div>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {summaryPills.map((item) => (
-                <div key={item.label} className="rounded-xl border border-slate-800/80 bg-slate-950/35 px-4 py-3">
+                <div key={item.label} className="rounded-2xl border border-slate-800/80 bg-slate-950/75 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{item.label}</p>
                   <p className="mt-2 text-sm font-semibold text-white">{item.value}</p>
                 </div>
@@ -469,7 +470,7 @@ export default function DashboardPage() {
             >
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
               <div className="flex items-start justify-between gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-black/20 ${iconClass}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-slate-950/90 ${iconClass}`}>
                   <Icon size={18} />
                 </div>
                 <ArrowRight size={15} className="mt-1 text-slate-600 transition-colors group-hover:text-cyan-400" />

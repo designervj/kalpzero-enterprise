@@ -1425,17 +1425,42 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   }
 
 
-  const handlelogout=()=>{
-     authCtx.logout()
-    router.push("/")
-  }
+  const handlelogout = () => {
+    authCtx.logout();
+    router.push("/");
+  };
+  const isDashboardHome = pathname === "/dashboard";
+  const shellStyle: React.CSSProperties = isDashboardHome
+    ? {
+        color: "#e2e8f0",
+        background:
+          "radial-gradient(circle at top left, rgba(34,211,238,0.12), transparent 24%), radial-gradient(circle at top right, rgba(129,140,248,0.12), transparent 28%), linear-gradient(180deg, #020617 0%, #020817 42%, #030712 100%)",
+      }
+    : { backgroundColor: "var(--background)", color: "var(--text)" };
+  const chromeSurfaceStyle: React.CSSProperties = isDashboardHome
+    ? {
+        backgroundColor: "rgba(2, 6, 23, 0.82)",
+        borderColor: "rgba(51, 65, 85, 0.72)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+      }
+    : {
+        backgroundColor: "var(--surface)",
+        borderColor: "var(--border)",
+      };
+  const mainStyle: React.CSSProperties = isDashboardHome
+    ? {
+        padding: "var(--admin-main-padding)",
+        background:
+          "linear-gradient(180deg, rgba(2,6,23,0.24) 0%, rgba(2,6,23,0.56) 100%)",
+      }
+    : { padding: "var(--admin-main-padding)" };
   return (
     <>
       {/* get all tenant */}
       <GetAllTenant />
       <div
         className="kalp-admin-shell h-screen flex w-full text-slate-100 selection:bg-cyan-500/30 overflow-hidden relative"
-        style={{ backgroundColor: "var(--background)", color: "var(--text)" }}
+        style={shellStyle}
       >
         {/* Background Mesh Gradients */}
         <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
@@ -1459,10 +1484,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
             ${sidebarCollapsed && !isMobileMenuOpen ? "w-20" : "w-72"}
             ${isMobileMenuOpen ? "translate-x-0 shadow-2xl shadow-cyan-500/10" : "-translate-x-full md:translate-x-0"}
           `}
-          style={{
-            backgroundColor: "var(--surface)",
-            borderColor: "var(--border)",
-          }}
+          style={chromeSurfaceStyle}
         >
           {/* Logo Header */}
           <div
@@ -1788,10 +1810,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
           {/* Glass Topbar */}
           <header
             className="h-16 bg-slate-950/50 backdrop-blur-md border-b border-slate-800/80 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30"
-            style={{
-              backgroundColor: "var(--surface)",
-              borderColor: "var(--border)",
-            }}
+            style={chromeSurfaceStyle}
           >
             <div className="flex items-center gap-3">
               {/* Mobile Toggle */}
@@ -1884,7 +1903,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
           {/* Page Content */}
           <main
             className="kalp-admin-main flex-1 min-h-0 overflow-y-auto relative"
-            style={{ padding: "var(--admin-main-padding)" }}
+            style={mainStyle}
           >
             <div className="kalp-admin-page">{children}</div>
           </main>

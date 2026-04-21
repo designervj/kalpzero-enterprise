@@ -87,7 +87,6 @@ async def _staff_member_or_raise(db_name: str, *, tenant_id: str, staff_member_i
 
 
 async def _housekeeping_or_raise(db_name: str, *, tenant_id: str, task_id: str):
-    db_name = await _db_name(tenant_id, db_name)
     task = await hotel_repository.get_housekeeping_task(db_name, task_id=task_id)
     if task is None:
         raise NotFoundError(f"Housekeeping task '{task_id}' was not found.")
@@ -95,7 +94,6 @@ async def _housekeeping_or_raise(db_name: str, *, tenant_id: str, task_id: str):
 
 
 async def _maintenance_or_raise(db_name: str, *, tenant_id: str, ticket_id: str):
-    db_name = await _db_name(tenant_id, db_name)
     ticket = await hotel_repository.get_maintenance_ticket(db_name, ticket_id=ticket_id)
     if ticket is None:
         raise NotFoundError(f"Maintenance ticket '{ticket_id}' was not found.")
@@ -561,7 +559,23 @@ async def _recalculate_folio_totals(db: Session, folio, db_name: str) -> None:
     folio.total_minor = total_minor
     folio.paid_minor = paid_minor - refunded_minor
     folio.balance_minor = total_minor - folio.paid_minor
-    await folio.save()
+    updated_folio = await hotel_repository.update_folio(
+        db_name,
+        folio_id=str(folio.id),
+        data={
+            "subtotal_minor": folio.subtotal_minor,
+            "tax_minor": folio.tax_minor,
+            "total_minor": folio.total_minor,
+            "paid_minor": folio.paid_minor,
+            "balance_minor": folio.balance_minor,
+        },
+    )
+    if updated_folio is not None:
+        folio.subtotal_minor = updated_folio.subtotal_minor
+        folio.tax_minor = updated_folio.tax_minor
+        folio.total_minor = updated_folio.total_minor
+        folio.paid_minor = updated_folio.paid_minor
+        folio.balance_minor = updated_folio.balance_minor
 
 
 def _hotel_doc_key(property_id: str) -> str:
@@ -1085,8 +1099,6 @@ async def create_reservation(db: Session, *, tenant_slug: str, db_name: str, act
         currency=currency,
         adults=adults,
         children=children)
-    reservation.booking_reference = _booking_reference(reservation)
-    await reservation.save()
     folio = await hotel_repository.create_folio(
         db_name,
         property_id=property_id,
@@ -1117,7 +1129,7 @@ async def create_reservation(db: Session, *, tenant_slug: str, db_name: str, act
             tax_amount_minor=0,
             notes="Auto-generated from reservation quoted total.",
             created_by_user_id=actor_user_id)
-        await _recalculate_folio_totals(db, folio)
+        await _recalculate_folio_totals(db, folio, db_name)
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1193,6 +1205,52 @@ async def record_room_move(db: Session, *, tenant_slug: str, db_name: str, actor
     stay.room_type_id = to_room.room_type_id
     reservation.room_id = to_room.id
     reservation.room_type_id = to_room.room_type_id
+    updated_from_room = await hotel_repository.update_room(
+        db_name,
+        room_id=str(from_room.id),
+        data={
+            "status": from_room.status,
+            "occupancy_status": from_room.occupancy_status,
+            "housekeeping_status": from_room.housekeeping_status,
+            "sell_status": from_room.sell_status,
+            "last_cleaned_at": from_room.last_cleaned_at,
+        },
+    )
+    if updated_from_room is not None:
+        from_room = updated_from_room
+    updated_to_room = await hotel_repository.update_room(
+        db_name,
+        room_id=str(to_room.id),
+        data={
+            "status": to_room.status,
+            "occupancy_status": to_room.occupancy_status,
+            "housekeeping_status": to_room.housekeeping_status,
+            "sell_status": to_room.sell_status,
+            "last_cleaned_at": to_room.last_cleaned_at,
+        },
+    )
+    if updated_to_room is not None:
+        to_room = updated_to_room
+    updated_stay = await hotel_repository.update_stay(
+        db_name,
+        stay_id=str(stay.id),
+        data={
+            "room_id": str(to_room.id),
+            "room_type_id": str(to_room.room_type_id),
+        },
+    )
+    if updated_stay is not None:
+        stay = updated_stay
+    updated_reservation = await hotel_repository.update_reservation(
+        db_name,
+        reservation_id=str(reservation.id),
+        data={
+            "room_id": str(to_room.id),
+            "room_type_id": str(to_room.room_type_id),
+        },
+    )
+    if updated_reservation is not None:
+        reservation = updated_reservation
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1252,7 +1310,7 @@ async def add_folio_charge(db: Session, *, tenant_slug: str, db_name: str, actor
         tax_amount_minor=tax_amount_minor,
         notes=notes,
         created_by_user_id=actor_user_id)
-    await _recalculate_folio_totals(db, folio)
+    await _recalculate_folio_totals(db, folio, db_name)
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1286,7 +1344,7 @@ async def record_payment(db: Session, *, tenant_slug: str, db_name: str, actor_u
         notes=notes,
         received_at=datetime.now(tz=UTC).isoformat(),
         recorded_by_user_id=actor_user_id)
-    await _recalculate_folio_totals(db, folio)
+    await _recalculate_folio_totals(db, folio, db_name)
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1340,7 +1398,7 @@ async def record_refund(db: Session, *, tenant_slug: str, db_name: str, actor_us
         status="processed",
         refunded_at=datetime.now(tz=UTC).isoformat(),
         recorded_by_user_id=actor_user_id)
-    await _recalculate_folio_totals(db, folio)
+    await _recalculate_folio_totals(db, folio, db_name)
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1365,6 +1423,13 @@ async def close_folio(db: Session, *, tenant_slug: str, db_name: str, actor_user
 
     folio.status = "closed"
     folio.closed_at = folio.closed_at or datetime.now(tz=UTC).isoformat()
+    updated_folio = await hotel_repository.update_folio(
+        db_name,
+        folio_id=str(folio.id),
+        data={"status": folio.status, "closed_at": folio.closed_at},
+    )
+    if updated_folio is not None:
+        folio = updated_folio
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1391,6 +1456,18 @@ async def issue_folio_invoice(db: Session, *, tenant_slug: str, db_name: str, ac
     folio.status = "invoiced"
     folio.invoice_number = _invoice_number(folio)
     folio.invoice_issued_at = datetime.now(tz=UTC).isoformat()
+    updated_folio = await hotel_repository.update_folio(
+        db_name,
+        folio_id=str(folio.id),
+        data={
+            "closed_at": folio.closed_at,
+            "status": folio.status,
+            "invoice_number": folio.invoice_number,
+            "invoice_issued_at": folio.invoice_issued_at,
+        },
+    )
+    if updated_folio is not None:
+        folio = updated_folio
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1544,14 +1621,15 @@ async def run_night_audit(db: Session, *, tenant_slug: str, db_name: str, actor_
     }
     audit_status = "attention_required" if due_departure_blockers or open_balance_folios else "completed"
 
-    # audit = hotel_repository.create_night_audit(
-        # db,
-        # property_id=property_id,
-        # audit_date=audit_date,
-        # status=audit_status,
-        # report_json=report,
-        # completed_at=datetime.now(tz=UTC).isoformat(),
-        # completed_by_user_id=actor_user_id)
+    audit = await hotel_repository.create_night_audit(
+        db_name,
+        property_id=property_id,
+        audit_date=audit_date,
+        status=audit_status,
+        report_json=report,
+        completed_at=datetime.now(tz=UTC).isoformat(),
+        completed_by_user_id=actor_user_id,
+    )
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1583,6 +1661,13 @@ async def assign_reservation_room(db: Session, *, tenant_slug: str, db_name: str
         raise ConflictError("Assigned room has an overlapping active reservation.")
 
     reservation.room_id = room_id
+    updated_reservation = await hotel_repository.update_reservation(
+        db_name,
+        reservation_id=str(reservation.id),
+        data={"room_id": room_id},
+    )
+    if updated_reservation is not None:
+        reservation = updated_reservation
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -1600,6 +1685,8 @@ async def update_reservation_status(db: Session, *, tenant_slug: str, db_name: s
     reservation = await _reservation_or_raise(db_name, tenant_id=tenant_slug, reservation_id=reservation_id)
     room = await _room_or_raise(db_name, tenant_id=tenant_slug, room_id=reservation.room_id) if reservation.room_id else None
     stay = await hotel_repository.find_stay_by_reservation(db_name, reservation_id=reservation.id)
+    room_updates: dict[str, object] | None = None
+    stay_updates: dict[str, object] | None = None
 
     if status == "checked_in":
         if reservation.status != "reserved":
@@ -1613,6 +1700,13 @@ async def update_reservation_status(db: Session, *, tenant_slug: str, db_name: s
         reservation.status = "checked_in"
         reservation.actual_check_in_at = reservation.actual_check_in_at or datetime.now(tz=UTC).isoformat()
         _set_room_state(room, occupancy_status="occupied")
+        room_updates = {
+            "status": room.status,
+            "occupancy_status": room.occupancy_status,
+            "housekeeping_status": room.housekeeping_status,
+            "sell_status": room.sell_status,
+            "last_cleaned_at": room.last_cleaned_at,
+        }
         if stay is None:
             stay = await hotel_repository.create_stay(
                 db_name,
@@ -1629,7 +1723,14 @@ async def update_reservation_status(db: Session, *, tenant_slug: str, db_name: s
         else:
             stay.status = "in_house"
             stay.room_id = room.id
+            stay.room_type_id = room.room_type_id
             stay.checked_in_at = reservation.actual_check_in_at
+            stay_updates = {
+                "status": stay.status,
+                "room_id": str(room.id),
+                "room_type_id": str(room.room_type_id),
+                "checked_in_at": stay.checked_in_at,
+            }
     elif status == "checked_out":
         if reservation.status != "checked_in":
             raise ConflictError("Only checked-in bookings can be checked out.")
@@ -1643,8 +1744,19 @@ async def update_reservation_status(db: Session, *, tenant_slug: str, db_name: s
             room,
             occupancy_status="vacant",
             housekeeping_status="dirty")
+        room_updates = {
+            "status": room.status,
+            "occupancy_status": room.occupancy_status,
+            "housekeeping_status": room.housekeeping_status,
+            "sell_status": room.sell_status,
+            "last_cleaned_at": room.last_cleaned_at,
+        }
         stay.status = "checked_out"
         stay.checked_out_at = reservation.actual_check_out_at
+        stay_updates = {
+            "status": stay.status,
+            "checked_out_at": stay.checked_out_at,
+        }
         if not await hotel_repository.find_open_housekeeping_task(db_name, room_id=room.id):
             await hotel_repository.create_housekeeping_task(
                 db_name,
@@ -1669,6 +1781,38 @@ async def update_reservation_status(db: Session, *, tenant_slug: str, db_name: s
         reservation.status = "no_show"
     else:
         raise ConflictError(f"Reservation status '{status}' is not supported.")
+
+    if room is not None and room_updates is not None:
+        updated_room = await hotel_repository.update_room(
+            db_name,
+            room_id=str(room.id),
+            data=room_updates,
+        )
+        if updated_room is not None:
+            room = updated_room
+
+    updated_reservation = await hotel_repository.update_reservation(
+        db_name,
+        reservation_id=str(reservation.id),
+        data={
+            "status": reservation.status,
+            "room_id": str(reservation.room_id) if reservation.room_id else None,
+            "room_type_id": str(reservation.room_type_id),
+            "actual_check_in_at": reservation.actual_check_in_at,
+            "actual_check_out_at": reservation.actual_check_out_at,
+        },
+    )
+    if updated_reservation is not None:
+        reservation = updated_reservation
+
+    if stay is not None and stay_updates is not None:
+        updated_stay = await hotel_repository.update_stay(
+            db_name,
+            stay_id=str(stay.id),
+            data=stay_updates,
+        )
+        if updated_stay is not None:
+            stay = updated_stay
 
     # _audit(
         # db,
@@ -1728,7 +1872,7 @@ async def create_housekeeping_task(db: Session, *, tenant_slug: str, db_name: st
 
 
 async def update_housekeeping_status(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, task_id: str, status: str) -> dict[str, object]:
-    task = _housekeeping_or_raise(db, tenant_id=tenant_slug, task_id=task_id)
+    task = await _housekeeping_or_raise(db_name, tenant_id=tenant_slug, task_id=task_id)
     room = await _room_or_raise(db_name, tenant_id=tenant_slug, room_id=task.room_id)
     task.status = status
 
@@ -1739,6 +1883,27 @@ async def update_housekeeping_status(db: Session, *, tenant_slug: str, db_name: 
             last_cleaned_at=datetime.now(tz=UTC).isoformat())
     elif status == "in_progress" and room.housekeeping_status == "clean":
         _set_room_state(room, housekeeping_status="dirty")
+
+    updated_task = await hotel_repository.update_housekeeping_task(
+        db_name,
+        task_id=str(task.id),
+        data={"status": task.status},
+    )
+    if updated_task is not None:
+        task = updated_task
+    updated_room = await hotel_repository.update_room(
+        db_name,
+        room_id=str(room.id),
+        data={
+            "status": room.status,
+            "occupancy_status": room.occupancy_status,
+            "housekeeping_status": room.housekeeping_status,
+            "sell_status": room.sell_status,
+            "last_cleaned_at": room.last_cleaned_at,
+        },
+    )
+    if updated_room is not None:
+        room = updated_room
 
     # _audit(
         # db,
@@ -1771,7 +1936,19 @@ async def create_maintenance_ticket(db: Session, *, tenant_slug: str, db_name: s
         if room.property_id != property_id:
             raise ConflictError("Room does not belong to the provided property.")
         _set_room_state(room, sell_status="maintenance")
-        await room.save()
+        updated_room = await hotel_repository.update_room(
+            db_name,
+            room_id=str(room.id),
+            data={
+                "status": room.status,
+                "occupancy_status": room.occupancy_status,
+                "housekeeping_status": room.housekeeping_status,
+                "sell_status": room.sell_status,
+                "last_cleaned_at": room.last_cleaned_at,
+            },
+        )
+        if updated_room is not None:
+            room = updated_room
     staff_member = None
     resolved_assigned_to = assigned_to
     if assigned_staff_id is not None:
@@ -1803,7 +1980,7 @@ async def create_maintenance_ticket(db: Session, *, tenant_slug: str, db_name: s
 
 
 async def update_maintenance_status(db: Session, *, tenant_slug: str, db_name: str, actor_user_id: str, ticket_id: str, status: str) -> dict[str, object]:
-    ticket = _maintenance_or_raise(db, tenant_id=tenant_slug, ticket_id=ticket_id)
+    ticket = await _maintenance_or_raise(db_name, tenant_id=tenant_slug, ticket_id=ticket_id)
     ticket.status = status
 
     if ticket.room_id and status == "resolved":
@@ -1814,7 +1991,27 @@ async def update_maintenance_status(db: Session, *, tenant_slug: str, db_name: s
         ]
         if not other_open_tickets and room.sell_status == "maintenance":
             _set_room_state(room, sell_status="sellable")
-            await room.save()
+            updated_room = await hotel_repository.update_room(
+                db_name,
+                room_id=str(room.id),
+                data={
+                    "status": room.status,
+                    "occupancy_status": room.occupancy_status,
+                    "housekeeping_status": room.housekeeping_status,
+                    "sell_status": room.sell_status,
+                    "last_cleaned_at": room.last_cleaned_at,
+                },
+            )
+            if updated_room is not None:
+                room = updated_room
+
+    updated_ticket = await hotel_repository.update_maintenance_ticket(
+        db_name,
+        ticket_id=str(ticket.id),
+        data={"status": ticket.status},
+    )
+    if updated_ticket is not None:
+        ticket = updated_ticket
 
     # _audit(
         # db,
@@ -1829,7 +2026,6 @@ async def update_maintenance_status(db: Session, *, tenant_slug: str, db_name: s
 
 
 async def get_property_profile(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, property_id: str) -> dict[str, object]:
-    db_name = tenant.mongo_db_name
     property_model = await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_PROFILE_COLLECTION,
@@ -1851,7 +2047,6 @@ async def get_property_profile(db: Session, store: RuntimeDocumentStore, *, tena
 
 
 async def upsert_property_profile(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, payload: dict[str, object]) -> dict[str, object]:
-    db_name = tenant.mongo_db_name
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     profile_payload = {
         "property_id": property_id,
@@ -1875,7 +2070,7 @@ async def upsert_property_profile(db: Session, store: RuntimeDocumentStore, *, t
         # metadata={"property_id": str(property_id)})
     platform_repository.enqueue_outbox_event(
         db,
-        tenant_id=tenant_slug,
+        tenant_id=str(get_tenant_or_raise(db, tenant_slug=tenant_slug).id),
         aggregate_id=str(property_id),
         event_name="publishing.content.published",
         payload_json={"page_slug": "stay", "route_path": "/stay", "property_id": str(property_id)})
@@ -1884,7 +2079,6 @@ async def upsert_property_profile(db: Session, store: RuntimeDocumentStore, *, t
 
 
 async def get_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, property_id: str) -> dict[str, object]:
-    db_name = tenant.mongo_db_name
     property_model = await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_AMENITY_COLLECTION,
@@ -1906,7 +2100,6 @@ async def get_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, tenan
 
 
 async def upsert_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, payload: dict[str, object]) -> dict[str, object]:
-    db_name = tenant.mongo_db_name
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     amenity_payload = {
         "property_id": property_id,
@@ -1933,7 +2126,6 @@ async def upsert_amenity_catalog(db: Session, store: RuntimeDocumentStore, *, te
 
 
 async def get_nearby_places(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, property_id: str) -> dict[str, object]:
-    db_name = tenant.mongo_db_name
     property_model = await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     document = store.get_document(
         collection=HOTEL_NEARBY_COLLECTION,
@@ -1955,7 +2147,6 @@ async def get_nearby_places(db: Session, store: RuntimeDocumentStore, *, tenant_
 
 
 async def upsert_nearby_places(db: Session, store: RuntimeDocumentStore, *, tenant_slug: str, db_name: str, actor_user_id: str, property_id: str, payload: dict[str, object]) -> dict[str, object]:
-    db_name = tenant.mongo_db_name
     await _property_or_raise(db_name, tenant_id=tenant_slug, property_id=property_id)
     nearby_payload = {
         "property_id": property_id,

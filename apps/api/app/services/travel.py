@@ -11,6 +11,10 @@ from app.services.errors import ConflictError, NotFoundError
 from app.services.platform import get_tenant_or_raise
 
 
+def _tenant(db: Session, tenant_slug: str):
+    return get_tenant_or_raise(db, tenant_slug=tenant_slug)
+
+
 async def _package_or_raise(db_name: str, *, tenant_id: str, package_id: str):
     package = await travel_repository.get_package(db_name, package_id=package_id)
     if package is None:
@@ -287,7 +291,15 @@ async def update_departure_status(db: Session, *, db_name: str, tenant_slug: str
     if status == "scheduled" and departure.seats_available == 0:
         raise ConflictError("A departure with zero available seats cannot be scheduled.")
 
-    departure.status = _normalize_departure_status(requested_status=status, seats_available=departure.seats_available)
+    departure = await travel_repository.update_departure(
+        db_name,
+        departure_id=str(departure.id),
+        data={
+            "status": _normalize_departure_status(requested_status=status, seats_available=departure.seats_available),
+        },
+    )
+    if departure is None:
+        raise NotFoundError(f"Travel departure '{departure_id}' was not found.")
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -346,7 +358,7 @@ async def create_lead(db: Session, *, db_name: str, tenant_slug: str, actor_user
         # subject_type="travel_lead",
         # subject_id=str(lead.id),
         # metadata={"source": source, "status": status})
-    _outbox_lead(db, tenant_id=tenant_slug, lead=lead)
+    _outbox_lead(db, tenant_id=str(tenant.id), lead=lead)
     db.commit()
     return _serialize_lead(lead)
 
@@ -354,7 +366,13 @@ async def create_lead(db: Session, *, db_name: str, tenant_slug: str, actor_user
 async def update_lead_status(db: Session, *, db_name: str, tenant_slug: str, actor_user_id: str, lead_id: str, status: str) -> dict[str, object]:
     tenant = _tenant(db, tenant_slug)
     lead = await _lead_or_raise(db_name, tenant_id=tenant_slug, lead_id=lead_id)
-    lead.status = status
+    lead = await travel_repository.update_lead(
+        db_name,
+        lead_id=str(lead.id),
+        data={"status": status},
+    )
+    if lead is None:
+        raise NotFoundError(f"Travel lead '{lead_id}' was not found.")
     # _audit(
         # db,
         # tenant_id=tenant_slug,
@@ -363,7 +381,7 @@ async def update_lead_status(db: Session, *, db_name: str, tenant_slug: str, act
         # subject_type="travel_lead",
         # subject_id=str(lead.id),
         # metadata={"status": status})
-    _outbox_lead(db, tenant_id=tenant_slug, lead=lead)
+    _outbox_lead(db, tenant_id=str(tenant.id), lead=lead)
     db.commit()
     return _serialize_lead(lead)
 

@@ -121,8 +121,14 @@ async def commerce_categories(
     db: Session = Depends(get_db_session),
 ):
     try:
-        return {"message": "Categories fetched successfully", "data": await list_categories(db, tenant_slug=session.tenant_id, db_name=session.tenant_db_name)
-        , "tenant_id": session.tenant_id}
+        return {
+            "tenant_id": session.tenant_id,
+            "categories": await list_categories(
+                db,
+                tenant_slug=session.tenant_id,
+                db_name=session.tenant_db_name,
+            ),
+        }
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -624,8 +630,7 @@ async def commerce_products(
         )
         return {
             "tenant_id": session.tenant_id,
-            "message": "Products fetched successfully",
-            "data": data["data"],
+            "products": data["data"],
             "totalProducts": data["total"],
             "filters": data["filters"]
         }
@@ -645,15 +650,12 @@ async def commerce_product_detail(
             db_name=session.tenant_db_name,
             product_id=product_id
         )
-        return {
-            "tenant_id": session.tenant_id,
-            "message": "Product detail fetched successfully",
-            "data": data
-        }
+        return data
     except Exception as exc:
         _raise_http_error(exc)
 
 
+@router.post("/products", status_code=status.HTTP_201_CREATED)
 async def commerce_products_create(
     payload: CreateCommerceProductRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
@@ -667,11 +669,7 @@ async def commerce_products_create(
             actor_user_id=session.user_id,
             payload=payload.model_dump()
         )
-        return {
-            "tenant_id": session.tenant_id,
-            "message": "Product created successfully",
-            "data": data
-        }
+        return data
     except Exception as exc:
         _raise_http_error(exc)
 
