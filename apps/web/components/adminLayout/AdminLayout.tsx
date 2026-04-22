@@ -1003,30 +1003,20 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
     router.push("/");
   };
   const isDashboardHome = pathname === "/dashboard";
-  const shellStyle: React.CSSProperties = isDashboardHome
-    ? {
-      color: "#e2e8f0",
-      background:
-        "radial-gradient(circle at top left, rgba(34,211,238,0.12), transparent 24%), radial-gradient(circle at top right, rgba(129,140,248,0.12), transparent 28%), linear-gradient(180deg, #020617 0%, #020817 42%, #030712 100%)",
-    }
-    : { backgroundColor: "var(--background)", color: "var(--text)" };
-  const chromeSurfaceStyle: React.CSSProperties = isDashboardHome
-    ? {
-      backgroundColor: "rgba(2, 6, 23, 0.82)",
-      borderColor: "rgba(51, 65, 85, 0.72)",
-      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
-    }
-    : {
-      backgroundColor: "var(--surface)",
-      borderColor: "var(--border)",
-    };
-  const mainStyle: React.CSSProperties = isDashboardHome
-    ? {
-      padding: "var(--admin-main-padding)",
-      background:
-        "linear-gradient(180deg, rgba(2,6,23,0.24) 0%, rgba(2,6,23,0.56) 100%)",
-    }
-    : { padding: "var(--admin-main-padding)" };
+  const shellStyle: React.CSSProperties = {
+    color: "#e2e8f0",
+    background:
+      "radial-gradient(circle at top left, rgba(34,211,238,0.12), transparent 24%), radial-gradient(circle at top right, rgba(129,140,248,0.12), transparent 28%), linear-gradient(180deg, #020617 0%, #020817 42%, #030712 100%)",
+  };
+  const chromeSurfaceStyle: React.CSSProperties = {
+    backgroundColor: "rgba(2, 6, 23, 0.82)",
+    borderColor: "rgba(51, 65, 85, 0.72)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+  };
+  const mainStyle: React.CSSProperties = {
+    background:
+      "linear-gradient(180deg, rgba(2,6,23,0.24) 0%, rgba(2,6,23,0.56) 100%)",
+  };
   return (
     <>
       {/* get all tenant */}
@@ -1082,10 +1072,9 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                 // <Activity className="w-4 h-4 text-cyan-400" />
                 <div className='w-14 h-14'>
                   <img
-                    src="/img/favicon.svg"
+                    src="/img/img.svg"
                     alt="KalpTree Logo"
                     className="h-full w-auto object-contain"
-
                   />
                 </div>
               )}
@@ -1435,7 +1424,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
 
           {/* Page Content */}
           <main
-            className="kalp-admin-main flex-1 min-h-0 overflow-y-auto relative"
+            className="kalp-admin-main flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative px-8 py-6"
             style={mainStyle}
           >
             <div className="kalp-admin-page">{children}</div>

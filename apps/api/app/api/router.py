@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import ai, auth, commerce, commerce_cart, forms, health, hotel, imports, messaging, platform, publishing, travel
+from app.api.routes import ai, auth, commerce, commerce_cart, forms, health, hotel, imports, messaging, platform, publishing, theme, travel
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])

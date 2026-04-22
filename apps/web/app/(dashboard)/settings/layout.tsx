@@ -7,11 +7,12 @@ import { useAuth } from '@/components/AuthProvider';
 import {
     Shield, Building2, UserCircle, Palette,
     LayoutDashboard,
-    Settings, Users, Database, Globe, BarChart3, ChevronRight
+    Settings, Users, Database, Globe, BarChart3, ChevronRight, Sparkles
 } from 'lucide-react';
 import { canRoleAccessAdminPath } from '@/lib/role-scope';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store';
+import { motion, Variants } from 'framer-motion';
 
 interface ControlCenterGroup {
     title: string;
@@ -116,48 +117,103 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     }
 
 
-    return (
-        <div className="max-w-6xl mx-auto space-y-8 mt-6 relative z-10 animate-in fade-in duration-500">
-            <header className="px-2">
-                <h2 className="text-3xl font-bold tracking-tight text-white drop-shadow-md">
-                    Control <span className="text-cyan-400">Center</span>
-                </h2>
-                <p className="text-slate-400 mt-2 text-sm max-w-2xl leading-relaxed">
-                    Manage configuration, business profiles, and ecosystem settings. Access is governed by your active Role.
-                </p>
-            </header>
+    // Animation variants
+    const containerVariants: Variants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
 
-            <div className="space-y-10">
+    const itemVariants: Variants = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto space-y-10 mt-4 relative z-10">
+            {/* Background decorative elements */}
+            <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+            <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+
+            <motion.header 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="px-6 py-8 border-b border-slate-800/50 bg-slate-900/20 backdrop-blur-md rounded-3xl"
+            >
+                <div className="flex items-center gap-4 mb-3">
+                    <div className="p-3 bg-cyan-500/10 rounded-2xl border border-cyan-500/20 shadow-sm">
+                        <Settings className="w-8 h-8 text-cyan-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-4xl font-black tracking-tight text-white drop-shadow-sm flex items-center gap-3">
+                            Control <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400">Center</span>
+                        </h2>
+                    </div>
+                </div>
+                <p className="text-slate-400 mt-2 text-base max-w-3xl leading-relaxed ml-1 font-medium">
+                    Manage configuration, business profiles, and ecosystem settings. Your access and visible controls are governed dynamically by your active Role.
+                </p>
+            </motion.header>
+
+            <motion.div 
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+                className="space-y-12 px-2"
+            >
                 {groups.map((group, idx) => (
-                    <div key={idx} className="space-y-4">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 px-2 flex items-center gap-3">
-                            {group.title}
-                            <div className="h-px flex-1 bg-slate-800/60 mt-1"></div>
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <motion.div variants={itemVariants} key={idx} className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-cyan-400" />
+                                {group.title}
+                            </h3>
+                            <div className="h-[1px] flex-1 bg-gradient-to-r from-slate-700/50 to-transparent"></div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                             {group.items.map((item) => (
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className="p-5 flex flex-col gap-3 rounded-xl bg-slate-900/40 border border-slate-800/80 hover:bg-slate-800/80 hover:border-slate-700 transition-all duration-300 group shadow-sm hover:shadow-md"
+                                    className="group relative p-6 rounded-2xl bg-slate-900/40 backdrop-blur-md border border-slate-800/80 hover:bg-slate-800/60 hover:border-slate-700 hover:shadow-lg transition-all duration-500 overflow-hidden"
                                 >
-                                    <div className={`p-2.5 rounded-lg bg-slate-950/50 w-fit ring-1 ring-slate-800/50 group-hover:scale-110 transition-transform ${item.colorClass}`}>
-                                        {item.icon}
-                                    </div>
-                                    <div>
-                                        <h4 className="text-base font-semibold text-slate-200 group-hover:text-white transition-colors">
-                                            {item.label}
-                                        </h4>
-                                        <p className="text-xs text-slate-500 mt-1.5 leading-relaxed group-hover:text-slate-400 transition-colors">
-                                            {item.description}
-                                        </p>
+                                    {/* Hover gradient background */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                    
+                                    {/* Hover glow effect */}
+                                    <div className="absolute -inset-px rounded-2xl border border-white/0 group-hover:border-white/5 transition-colors duration-500 pointer-events-none"></div>
+
+                                    <div className="relative z-10 flex flex-col gap-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className={`p-3 rounded-xl bg-slate-950/80 shadow-inner border border-slate-800/80 group-hover:scale-110 transition-transform duration-500 ${item.colorClass}`}>
+                                                {item.icon}
+                                            </div>
+                                            <div className="w-8 h-8 rounded-full bg-slate-800/50 flex items-center justify-center opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-500">
+                                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <h4 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors duration-300">
+                                                {item.label}
+                                            </h4>
+                                            <p className="text-sm text-slate-400 mt-2 leading-relaxed group-hover:text-slate-300 transition-colors duration-300 font-medium">
+                                                {item.description}
+                                            </p>
+                                        </div>
                                     </div>
                                 </Link>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
         </div>
     );
 }

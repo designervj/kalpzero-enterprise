@@ -140,7 +140,7 @@ export const adminvertical={
                 {
                     "label": "Manage Users",
                     "key": "manage-users",
-                    "route": "/users/manage"
+                    "route": "/users"
                 }
             ]
         },
