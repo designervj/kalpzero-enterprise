@@ -35,6 +35,21 @@ class Settings(BaseSettings):
     public_api_url: str = Field(alias="KALPZERO_PUBLIC_API_URL")
     openai_provider: str = Field(default="openai", alias="KALPZERO_OPENAI_PROVIDER")
     openai_api_key: str | None = Field(default=None, alias="KALPZERO_OPENAI_API_KEY")
+    github_token: str | None = Field(default=None, alias="KALPZERO_GITHUB_TOKEN")
+    github_repo_owner: str | None = Field(default=None, alias="KALPZERO_GITHUB_REPO_OWNER")
+    github_template_owner: str | None = Field(default=None, alias="KALPZERO_GITHUB_TEMPLATE_OWNER")
+    github_template_repo: str | None = Field(default=None, alias="KALPZERO_GITHUB_TEMPLATE_REPO")
+    github_repo_prefix: str = Field(default="kalp-biz", alias="KALPZERO_GITHUB_REPO_PREFIX")
+    github_default_branch: str = Field(default="main", alias="KALPZERO_GITHUB_DEFAULT_BRANCH")
+    website_repo_private: bool = Field(default=True, alias="KALPZERO_WEBSITE_REPO_PRIVATE")
+    vercel_token: str | None = Field(default=None, alias="KALPZERO_VERCEL_TOKEN")
+    vercel_team_id: str | None = Field(default=None, alias="KALPZERO_VERCEL_TEAM_ID")
+    vercel_team_slug: str | None = Field(default=None, alias="KALPZERO_VERCEL_TEAM_SLUG")
+    vercel_project_prefix: str = Field(default="kalp-biz", alias="KALPZERO_VERCEL_PROJECT_PREFIX")
+    vercel_root_directory: str | None = Field(default=None, alias="KALPZERO_VERCEL_ROOT_DIRECTORY")
+    vercel_install_command: str | None = Field(default=None, alias="KALPZERO_VERCEL_INSTALL_COMMAND")
+    vercel_build_command: str | None = Field(default=None, alias="KALPZERO_VERCEL_BUILD_COMMAND")
+    vercel_output_directory: str | None = Field(default=None, alias="KALPZERO_VERCEL_OUTPUT_DIRECTORY")
 
     model_config = SettingsConfigDict(
         env_file=str(ROOT_ENV_FILE),

@@ -1,7 +1,13 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import AgencyModel, AuditEventModel, OutboxEventModel, TenantModel
+from app.db.models import (
+    AgencyModel,
+    AuditEventModel,
+    OutboxEventModel,
+    TenantModel,
+    TenantWebsiteDeploymentModel,
+)
 
 
 def list_agencies(db: Session) -> list[AgencyModel]:
@@ -36,6 +42,40 @@ def get_tenant_by_slug(db: Session, slug: str) -> TenantModel | None:
 
 def get_tenant_by_id(db: Session, id: str) -> TenantModel | None:
     return db.scalar(select(TenantModel).where(TenantModel.id == id))
+
+
+def get_tenant_website_deployment(db: Session, *, tenant_id: str) -> TenantWebsiteDeploymentModel | None:
+    return db.scalar(select(TenantWebsiteDeploymentModel).where(TenantWebsiteDeploymentModel.tenant_id == tenant_id))
+
+
+def get_or_create_tenant_website_deployment(
+    db: Session,
+    *,
+    tenant_id: str,
+    provider: str = "github_vercel",
+) -> TenantWebsiteDeploymentModel:
+    deployment = get_tenant_website_deployment(db, tenant_id=tenant_id)
+    if deployment is not None:
+        return deployment
+
+    deployment = TenantWebsiteDeploymentModel(tenant_id=tenant_id, provider=provider)
+    db.add(deployment)
+    db.flush()
+    return deployment
+
+
+def update_tenant_website_deployment(
+    db: Session,
+    deployment: TenantWebsiteDeploymentModel,
+    **fields,
+) -> TenantWebsiteDeploymentModel:
+    for key, value in fields.items():
+        setattr(deployment, key, value)
+
+    db.add(deployment)
+    db.flush()
+    return deployment
+
 
 def create_tenant(
     db: Session,

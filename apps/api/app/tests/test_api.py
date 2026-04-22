@@ -125,6 +125,8 @@ def test_platform_admin_can_create_agency_and_tenant(client: TestClient) -> None
     assert tenant_payload["vertical_packs"] == ["commerce"]
     assert tenant_payload["runtime_documents"]["database"] == "kalpzero_runtime_test__tenant__enterprise_tenant"
     assert tenant_payload["runtime_documents"]["bootstrap"]["seeded_document_count"] >= 5
+    assert tenant_payload["website_deployment"]["status"] == "disabled"
+    assert "KALPZERO_GITHUB_TOKEN" in tenant_payload["website_deployment"]["message"]
 
     response = client.get(
         "/platform/tenants",
@@ -134,6 +136,135 @@ def test_platform_admin_can_create_agency_and_tenant(client: TestClient) -> None
     tenants = response.json()["tenants"]
     assert len(tenants) == 1
     assert tenants[0]["runtime_documents"]["database"] == "kalpzero_runtime_test__tenant__enterprise_tenant"
+    assert tenants[0]["website_deployment"]["status"] == "disabled"
+
+
+def test_platform_admin_can_provision_business_website_repo_and_vercel_project(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("KALPZERO_GITHUB_TOKEN", "ghs_test_token")
+    monkeypatch.setenv("KALPZERO_GITHUB_REPO_OWNER", "kalp-sites")
+    monkeypatch.setenv("KALPZERO_GITHUB_TEMPLATE_OWNER", "kalp-templates")
+    monkeypatch.setenv("KALPZERO_GITHUB_TEMPLATE_REPO", "business-site-template")
+    monkeypatch.setenv("KALPZERO_GITHUB_REPO_PREFIX", "kalp-biz")
+    monkeypatch.setenv("KALPZERO_VERCEL_TOKEN", "vercel_test_token")
+    monkeypatch.setenv("KALPZERO_VERCEL_PROJECT_PREFIX", "kalp-biz")
+
+    from app.core.config import get_settings
+    from app.services import website_provisioning
+
+    get_settings.cache_clear()
+
+    def fake_request(method: str, url: str, *, headers: dict[str, str], payload=None) -> dict[str, object]:
+        if url == "https://api.github.com/repos/kalp-templates/business-site-template/generate":
+            assert method == "POST"
+            assert payload == {
+                "owner": "kalp-sites",
+                "name": "kalp-biz-vercel-tenant",
+                "description": "Business website for Vercel Tenant",
+                "include_all_branches": False,
+                "private": True,
+            }
+            return {
+                "id": 101,
+                "name": "kalp-biz-vercel-tenant",
+                "full_name": "kalp-sites/kalp-biz-vercel-tenant",
+                "html_url": "https://github.com/kalp-sites/kalp-biz-vercel-tenant",
+                "default_branch": "main",
+            }
+
+        if url == "https://api.vercel.com/v11/projects":
+            assert method == "POST"
+            assert payload == {
+                "name": "kalp-biz-vercel-tenant",
+                "framework": "nextjs",
+                "gitRepository": {
+                    "type": "github",
+                    "repo": "kalp-biz-vercel-tenant",
+                    "org": "kalp-sites",
+                },
+            }
+            return {
+                "id": "prj_101",
+                "name": "kalp-biz-vercel-tenant",
+                "link": {
+                    "type": "github",
+                    "repo": "kalp-biz-vercel-tenant",
+                },
+            }
+
+        if url == "https://api.vercel.com/v10/projects/kalp-biz-vercel-tenant/env?upsert=true":
+            assert method == "POST"
+            assert payload is not None
+            env_items = list(payload)
+            assert any(item["key"] == "NEXT_PUBLIC_KALPZERO_TENANT_SLUG" and item["value"] == "vercel-tenant" for item in env_items)
+            assert any(item["key"] == "KALPZERO_OWNER_ADMIN_EMAIL" and item["value"] == "owner@tenant.com" for item in env_items)
+            return {"created": env_items, "failed": []}
+
+        if (
+            url
+            == "https://api.vercel.com/v13/deployments?forceNew=1&skipAutoDetectionConfirmation=1"
+        ):
+            assert method == "POST"
+            assert payload == {
+                "name": "kalp-biz-vercel-tenant",
+                "project": "kalp-biz-vercel-tenant",
+                "target": "production",
+                "gitSource": {
+                    "type": "github",
+                    "repo": "kalp-biz-vercel-tenant",
+                    "ref": "main",
+                    "org": "kalp-sites",
+                },
+            }
+            return {
+                "id": "dpl_101",
+                "status": "READY",
+                "url": "kalp-biz-vercel-tenant-branch123-upendrasingh12s-projects.vercel.app",
+                "alias": ["kalp-biz-vercel-tenant.vercel.app"],
+            }
+
+        raise AssertionError(f"Unexpected external request: {method} {url}")
+
+    monkeypatch.setattr(website_provisioning, "_request_json", fake_request)
+
+    platform_token = login(client, email="founder@kalpzero.com")
+    agency_response = client.post(
+        "/platform/agencies",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "slug": "vercel-agency",
+            "name": "Vercel Agency",
+            "region": "in",
+            "owner_user_id": "founder@kalpzero.com",
+        },
+    )
+    assert agency_response.status_code == 201
+
+    tenant_response = client.post(
+        "/platform/tenants",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "agency_slug": "vercel-agency",
+            "slug": "vercel-tenant",
+            "display_name": "Vercel Tenant",
+            "infra_mode": "shared",
+            "vertical_pack": "commerce",
+            "admin_email": "owner@tenant.com",
+            "feature_flags": ["seo-suite"],
+        },
+    )
+
+    assert tenant_response.status_code == 201
+    website_deployment = tenant_response.json()["website_deployment"]
+    assert website_deployment["status"] == "ready"
+    assert website_deployment["repo_url"] == "https://github.com/kalp-sites/kalp-biz-vercel-tenant"
+    assert website_deployment["repo_name"] == "kalp-biz-vercel-tenant"
+    assert website_deployment["vercel_project_name"] == "kalp-biz-vercel-tenant"
+    assert website_deployment["deployment_id"] == "dpl_101"
+    assert website_deployment["production_url"] == "https://kalp-biz-vercel-tenant.vercel.app"
+    assert website_deployment["message"] == "Business website repo created and the first Vercel production deployment is live."
 
 
 def test_platform_admin_can_filter_audit_and_outbox_by_tenant_scope(client: TestClient) -> None:

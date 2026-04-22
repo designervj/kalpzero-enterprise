@@ -179,8 +179,21 @@ export function PlatformDashboard() {
                     <div className="mt-4 grid gap-3 md:grid-cols-3">
                       <StatPill label="Seeded docs" value={String(tenant.runtime_documents?.bootstrap.seeded_document_count ?? 0)} />
                       <StatPill label="Pages" value={(tenant.runtime_documents?.bootstrap.page_slugs ?? []).join(", ") || "none"} />
-                      <StatPill label="Flags" value={tenant.feature_flags.join(", ") || "none"} />
+                      <StatPill label="Website" value={tenant.website_deployment?.status ?? "disabled"} />
                     </div>
+                    {tenant.website_deployment?.production_url ? (
+                      <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
+                        <span>Vercel URL:</span>
+                        <a
+                          className="font-medium text-foreground underline-offset-4 hover:underline"
+                          href={tenant.website_deployment.production_url}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          {tenant.website_deployment.production_url}
+                        </a>
+                      </div>
+                    ) : null}
                   </div>
                 ))
               )}

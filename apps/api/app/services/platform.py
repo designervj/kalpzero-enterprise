@@ -11,6 +11,11 @@ from app.db.mongo import (
 )
 from app.repositories import platform as platform_repository
 from app.services.errors import ConflictError, NotFoundError, ValidationError
+from app.services.website_provisioning import (
+    get_missing_website_automation_settings,
+    provision_business_website,
+    serialize_website_deployment,
+)
 
 BASE_MODULES = [
     "platform.auth",
@@ -98,7 +103,13 @@ def serialize_agency(agency) -> dict[str, object]:
     }
 
 
-def serialize_tenant(tenant, *, settings: Settings | None = None, bootstrap: dict[str, object] | None = None) -> dict[str, object]:
+def serialize_tenant(
+    tenant,
+    *,
+    settings: Settings | None = None,
+    bootstrap: dict[str, object] | None = None,
+    website_deployment=None,
+) -> dict[str, object]:
     vertical_packs = tenant.vertical_packs if isinstance(tenant.vertical_packs, list) else [tenant.vertical_packs]
     payload = {
         "id": str(tenant.id),
@@ -128,6 +139,7 @@ def serialize_tenant(tenant, *, settings: Settings | None = None, bootstrap: dic
             **describe_tenant_runtime_document_store(settings, tenant_slug=tenant.slug),
             "bootstrap": resolved_bootstrap,
         }
+    payload["website_deployment"] = serialize_website_deployment(website_deployment)
     return payload
 
 
@@ -231,6 +243,20 @@ def get_onboarding_readiness(
     if settings.env != "production":
         warnings.append(
             f"Environment is '{settings.env}'. Use production-grade infra and secrets before onboarding external businesses."
+        )
+
+    missing_website_settings = get_missing_website_automation_settings(settings)
+    if missing_website_settings:
+        detail = "Business website automation is not configured. Missing: " + ", ".join(missing_website_settings) + "."
+        warnings.append(detail)
+        checks.append({"key": "website_automation", "status": "warn", "detail": detail})
+    else:
+        checks.append(
+            {
+                "key": "website_automation",
+                "status": "pass",
+                "detail": "GitHub template repo automation and Vercel deployment automation are configured.",
+            }
         )
 
     return {
@@ -404,6 +430,13 @@ def create_tenant(
         },
     )
     db.commit()
+    website_deployment = provision_business_website(
+        db,
+        settings,
+        tenant=tenant,
+        actor_user_id=actor_user_id,
+        admin_email=admin_email,
+    )
     return serialize_tenant(
         tenant,
         settings=settings,
@@ -411,11 +444,12 @@ def create_tenant(
             **runtime_provisioning,
             **runtime_bootstrap,
         },
+        website_deployment=website_deployment,
     )
 
 
 def list_all_tenants(db: Session, settings: Settings) -> list[dict[str, object]]:
-    return [serialize_tenant(item, settings=settings) for item in platform_repository.list_tenants(db)]
+    return [_serialize_tenant_with_details(db, settings, item) for item in platform_repository.list_tenants(db)]
 
 
 def get_onboarding_readiness_report(
@@ -468,7 +502,7 @@ def get_registry_snapshot(db: Session, *, tenant_slug: str) -> dict[str, object]
 
 def get_current_tenant_summary(db: Session, settings: Settings, *, tenant_slug: str) -> dict[str, object]:
     tenant = get_tenant_or_raise(db, tenant_slug=tenant_slug)
-    return serialize_tenant(tenant, settings=settings)
+    return _serialize_tenant_with_details(db, settings, tenant)
 
 
 def list_audit_events_for_scope(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
@@ -479,3 +513,19 @@ def list_audit_events_for_scope(db: Session, *, tenant_slug: str) -> list[dict[s
 def list_outbox_events_for_scope(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
     tenant_id = None if tenant_slug == "platform_control" else get_tenant_or_raise(db, tenant_slug=tenant_slug).id
     return [serialize_outbox_event(item) for item in platform_repository.list_outbox_events(db, tenant_id=tenant_id)]
+
+
+def _serialize_tenant_with_details(
+    db: Session,
+    settings: Settings,
+    tenant,
+    *,
+    bootstrap: dict[str, object] | None = None,
+) -> dict[str, object]:
+    website_deployment = platform_repository.get_tenant_website_deployment(db, tenant_id=str(tenant.id))
+    return serialize_tenant(
+        tenant,
+        settings=settings,
+        bootstrap=bootstrap,
+        website_deployment=website_deployment,
+    )

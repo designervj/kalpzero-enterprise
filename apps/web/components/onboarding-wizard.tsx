@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Database, Layers3, Rocket } from "lucide-react";
+import { CheckCircle2, Database, Globe, Layers3, Rocket } from "lucide-react";
 
 import { ConsoleShell } from "@/components/console-shell";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -227,6 +227,11 @@ export function OnboardingWizard() {
                 title="Publishing seeded"
                 description="Blueprint, site pages, and discovery documents are inserted so the public runtime is usable immediately."
               />
+              <QuickStep
+                icon={Globe}
+                title="Business website automation"
+                description="If GitHub and Vercel are configured, Kalp also creates a dedicated website repo, connects it to Vercel, and starts the first production deploy."
+              />
             </CardContent>
           </Card>
 
@@ -300,6 +305,23 @@ export function OnboardingWizard() {
                     ).join(", ") || "none"
                   }
                 />
+                <InfoRow
+                  label="Website deploy"
+                  value={createdTenant.website_deployment?.status ?? "not configured"}
+                />
+                <InfoRow
+                  label="Website URL"
+                  value={createdTenant.website_deployment?.production_url ?? "pending"}
+                />
+                <InfoRow
+                  label="Website repo"
+                  value={createdTenant.website_deployment?.repo_url ?? "pending"}
+                />
+                {createdTenant.website_deployment?.message ? (
+                  <p className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                    {createdTenant.website_deployment.message}
+                  </p>
+                ) : null}
                 <div className="flex gap-2 pt-3">
                   <Button asChild>
                     <Link href="/platform">Back to Super Admin</Link>
@@ -307,6 +329,17 @@ export function OnboardingWizard() {
                   <Button asChild variant="outline">
                     <Link href="/login">Open login</Link>
                   </Button>
+                  {createdTenant.website_deployment?.production_url ? (
+                    <Button asChild variant="outline">
+                      <a
+                        href={createdTenant.website_deployment.production_url}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Open website
+                      </a>
+                    </Button>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>

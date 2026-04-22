@@ -50,6 +50,25 @@ export interface RuntimeBootstrapDto {
   page_slugs: string[];
 }
 
+export interface TenantWebsiteDeploymentDto {
+  id: string;
+  provider: string;
+  status: string;
+  repo_name: string | null;
+  repo_url: string | null;
+  repo_id: string | null;
+  vercel_project_id: string | null;
+  vercel_project_name: string | null;
+  deployment_id: string | null;
+  deployment_url: string | null;
+  production_url: string | null;
+  message: string | null;
+  last_error: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface TenantDto {
   id: string;
   agency_id: string;
@@ -69,6 +88,7 @@ export interface TenantDto {
     collections: Record<string, string>;
     bootstrap: RuntimeBootstrapDto;
   };
+  website_deployment?: TenantWebsiteDeploymentDto | null;
 }
 
 export interface OnboardingReadinessDto {

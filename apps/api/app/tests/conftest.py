@@ -25,6 +25,24 @@ def _set_default_env(db_path: Path) -> None:
     os.environ["KALPZERO_OPS_REDIS_URL"] = "redis://localhost:6379/0"
     os.environ["KALPZERO_PUBLIC_WEB_URL"] = "http://localhost:3000"
     os.environ["KALPZERO_PUBLIC_API_URL"] = "http://localhost:8000"
+    for variable in (
+        "KALPZERO_GITHUB_TOKEN",
+        "KALPZERO_GITHUB_REPO_OWNER",
+        "KALPZERO_GITHUB_TEMPLATE_OWNER",
+        "KALPZERO_GITHUB_TEMPLATE_REPO",
+        "KALPZERO_GITHUB_REPO_PREFIX",
+        "KALPZERO_GITHUB_DEFAULT_BRANCH",
+        "KALPZERO_WEBSITE_REPO_PRIVATE",
+        "KALPZERO_VERCEL_TOKEN",
+        "KALPZERO_VERCEL_TEAM_ID",
+        "KALPZERO_VERCEL_TEAM_SLUG",
+        "KALPZERO_VERCEL_PROJECT_PREFIX",
+        "KALPZERO_VERCEL_ROOT_DIRECTORY",
+        "KALPZERO_VERCEL_INSTALL_COMMAND",
+        "KALPZERO_VERCEL_BUILD_COMMAND",
+        "KALPZERO_VERCEL_OUTPUT_DIRECTORY",
+    ):
+        os.environ.pop(variable, None)
 
 
 def _redact_headers(headers: dict[str, object] | None) -> dict[str, object]:

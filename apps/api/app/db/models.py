@@ -1,12 +1,12 @@
 from typing import Any
 
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON
 
-from app.db.base import Base, TimestampMixin, generate_uuid
+from app.db.base import Base, TimestampMixin, generate_uuid, utc_now
 
 
 class UserModel(TimestampMixin, Base):
@@ -44,6 +44,36 @@ class TenantModel(TimestampMixin, Base):
     feature_flags: Mapped[list[str]] = mapped_column(JSON, default=list)
     dedicated_profile_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     mongo_db_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class TenantWebsiteDeploymentModel(Base):
+    __tablename__ = "tenant_website_deployments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(32), default="github_vercel")
+    status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
+    repo_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    repo_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    repo_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    vercel_project_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    vercel_project_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    deployment_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    deployment_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    production_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        onupdate=utc_now,
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", name="uq_tenant_website_deployments_tenant"),
+    )
 
 
 class CustomerModel(TimestampMixin, Base):
@@ -512,7 +542,5 @@ class HotelMaintenanceTicketModel(TimestampMixin, Base):
     priority: Mapped[str] = mapped_column(String(32), default="medium")
     assigned_staff_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("hotel_staff_members.id"), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
-
-
 
 

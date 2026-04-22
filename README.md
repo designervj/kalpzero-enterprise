@@ -163,6 +163,44 @@ Important:
   and `8010` where documented. Those are local-only development ports, not the
   live deployment ports.
 
+## Business Website Automation
+
+New tenant onboarding can now also automate a dedicated business website repo
+and a first Vercel deployment. This is optional and does not block tenant
+creation if the external credentials are missing.
+
+Required root `.env` keys:
+
+- `KALPZERO_GITHUB_TOKEN`
+- `KALPZERO_GITHUB_REPO_OWNER`
+- `KALPZERO_GITHUB_TEMPLATE_OWNER`
+- `KALPZERO_GITHUB_TEMPLATE_REPO`
+- `KALPZERO_VERCEL_TOKEN`
+
+Optional root `.env` keys:
+
+- `KALPZERO_GITHUB_REPO_PREFIX`
+- `KALPZERO_GITHUB_DEFAULT_BRANCH`
+- `KALPZERO_WEBSITE_REPO_PRIVATE`
+- `KALPZERO_VERCEL_TEAM_ID`
+- `KALPZERO_VERCEL_TEAM_SLUG`
+- `KALPZERO_VERCEL_PROJECT_PREFIX`
+- `KALPZERO_VERCEL_ROOT_DIRECTORY`
+- `KALPZERO_VERCEL_INSTALL_COMMAND`
+- `KALPZERO_VERCEL_BUILD_COMMAND`
+- `KALPZERO_VERCEL_OUTPUT_DIRECTORY`
+
+Expected setup:
+
+- Create a dedicated website template repository in GitHub and mark it as a
+  template.
+- Ensure the Vercel account or team behind `KALPZERO_VERCEL_TOKEN` already has
+  GitHub integration access to repositories created under
+  `KALPZERO_GITHUB_REPO_OWNER`.
+- Make the template app read the tenant-specific Vercel env vars:
+  `NEXT_PUBLIC_KALPZERO_API_URL`, `NEXT_PUBLIC_KALPZERO_TENANT_SLUG`,
+  `KALPZERO_TENANT_SLUG`, and `NEXT_PUBLIC_KALPZERO_TENANT_DISPLAY_NAME`.
+
 ## Setup
 
 Run these first:
