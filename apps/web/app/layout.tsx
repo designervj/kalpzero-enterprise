@@ -21,7 +21,10 @@ const bodyFont = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: "KalpZero Enterprise",
-  description: "Canonical rebuild workspace for the KalpZero enterprise platform."
+  description: "Canonical rebuild workspace for the KalpZero enterprise platform.",
+  icons: {
+    icon: '/img/favicon-img.svg',
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
