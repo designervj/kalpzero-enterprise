@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
-    "dev": "next dev",
+    "build": "bash ../../scripts/with-root-env.sh next build",
+    "dev": "bash ../../scripts/with-root-env.sh next dev",
     "lint": "eslint . --max-warnings=0",
+    "start": "bash ../../scripts/with-root-env.sh next start",
     "test": "echo \"No web tests yet\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

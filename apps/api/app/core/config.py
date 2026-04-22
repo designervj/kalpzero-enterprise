@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -9,6 +10,7 @@ FORBIDDEN_SECRET_VALUES = {
     "replace-me",
     "kalp-zero-default-secret-change-in-production",
 }
+ROOT_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
 
 
 class Settings(BaseSettings):
@@ -35,7 +37,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="KALPZERO_OPENAI_API_KEY")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(ROOT_ENV_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
         populate_by_name=True,

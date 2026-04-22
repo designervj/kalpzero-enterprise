@@ -174,15 +174,12 @@ class KalpGraphAgent:
         return OpenAI(api_key=api_key)
 
     def _find_api_key(self) -> str | None:
-        env_key = os.getenv("OPENAI_API_KEY")
+        env_key = os.getenv("OPENAI_API_KEY") or os.getenv("KALPZERO_OPENAI_API_KEY")
         if env_key:
             return env_key
 
         candidate_files = [
             self.project_path / ".env",
-            self.project_path / ".env.local",
-            self.project_path / "apps/api/.env",
-            self.project_path / "apps/api/.env.local",
         ]
         for path in candidate_files:
             if not path.exists():
@@ -192,7 +189,7 @@ class KalpGraphAgent:
                 if not line or line.startswith("#") or "=" not in line:
                     continue
                 key, value = line.split("=", 1)
-                if key.strip() == "OPENAI_API_KEY":
+                if key.strip() in {"OPENAI_API_KEY", "KALPZERO_OPENAI_API_KEY"}:
                     return value.strip().strip("\"'")
         return None
 

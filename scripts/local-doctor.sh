@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 API_DIR="$ROOT_DIR/apps/api"
-ENV_FILE="$API_DIR/.env"
+ENV_FILE="$ROOT_DIR/.env"
 VENV_PY="$API_DIR/.venv/bin/python"
 
 status=0

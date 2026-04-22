@@ -2,12 +2,15 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TARGET_ROOT="${TARGET_ROOT:-$SCRIPT_ROOT}"
 DEPLOY_REMOTE="${DEPLOY_REMOTE:-origin}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 DEPLOY_PM2_APPS="${DEPLOY_PM2_APPS:-kalpzero-api,kalpzero-web}"
 HEALTH_CHECK_ATTEMPTS="${HEALTH_CHECK_ATTEMPTS:-20}"
 HEALTH_CHECK_SLEEP_SECONDS="${HEALTH_CHECK_SLEEP_SECONDS:-2}"
+DEPLOY_FORCE_SYNC="${DEPLOY_FORCE_SYNC:-0}"
+DEPLOY_CLEAN_UNTRACKED="${DEPLOY_CLEAN_UNTRACKED:-0}"
 SKIP_PULL=0
 
 for arg in "$@"; do
@@ -35,7 +38,14 @@ require_cmd() {
 
 ensure_clean_repo() {
   if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "Refusing to deploy with uncommitted changes in $ROOT_DIR" >&2
+    echo "Refusing to deploy with uncommitted changes in $TARGET_ROOT" >&2
+    exit 1
+  fi
+}
+
+ensure_target_repo() {
+  if [[ ! -d "$TARGET_ROOT/.git" ]]; then
+    echo "Missing git checkout at $TARGET_ROOT" >&2
     exit 1
   fi
 }
@@ -54,33 +64,59 @@ ensure_pnpm() {
   require_cmd pnpm
 }
 
-ensure_api_env() {
-  if [[ ! -f "$ROOT_DIR/apps/api/.env" ]]; then
-    echo "Missing $ROOT_DIR/apps/api/.env on the deploy server" >&2
+ensure_root_env() {
+  if [[ ! -f "$TARGET_ROOT/.env" ]]; then
+    echo "Missing $TARGET_ROOT/.env on the deploy server" >&2
     exit 1
   fi
 }
 
 ensure_api_venv() {
-  if [[ ! -x "$ROOT_DIR/apps/api/.venv/bin/python" ]]; then
+  if [[ ! -x "$TARGET_ROOT/apps/api/.venv/bin/python" ]]; then
     log "Creating API virtual environment"
-    python3 -m venv "$ROOT_DIR/apps/api/.venv"
+    python3 -m venv "$TARGET_ROOT/apps/api/.venv"
   fi
 
   log "Syncing API dependencies"
-  "$ROOT_DIR/apps/api/.venv/bin/pip" install --upgrade pip
-  "$ROOT_DIR/apps/api/.venv/bin/pip" install -e "$ROOT_DIR/apps/api"
+  "$TARGET_ROOT/apps/api/.venv/bin/pip" install --upgrade pip
+  "$TARGET_ROOT/apps/api/.venv/bin/pip" install -e "$TARGET_ROOT/apps/api"
 }
 
 update_code() {
   local current_branch
+  local remote_ref
 
   log "Updating repository from $DEPLOY_REMOTE/$DEPLOY_BRANCH"
   git fetch "$DEPLOY_REMOTE" "$DEPLOY_BRANCH"
-  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+  remote_ref="$DEPLOY_REMOTE/$DEPLOY_BRANCH"
+  current_branch="$(git symbolic-ref --short -q HEAD || echo HEAD)"
+
+  if [[ "$DEPLOY_FORCE_SYNC" == "1" ]]; then
+    if [[ "$current_branch" != "$DEPLOY_BRANCH" ]]; then
+      log "Checking out $DEPLOY_BRANCH before force-sync"
+      git checkout -B "$DEPLOY_BRANCH" "$remote_ref"
+    fi
+
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+      log "Discarding tracked local changes in deploy checkout before sync"
+    fi
+
+    git reset --hard "$remote_ref"
+
+    if [[ "$DEPLOY_CLEAN_UNTRACKED" == "1" ]]; then
+      log "Cleaning untracked files in deploy checkout"
+      git clean -fd
+    fi
+
+    return
+  fi
 
   if [[ "$current_branch" != "$DEPLOY_BRANCH" ]]; then
-    git checkout "$DEPLOY_BRANCH"
+    if git show-ref --verify --quiet "refs/heads/$DEPLOY_BRANCH"; then
+      git checkout "$DEPLOY_BRANCH"
+    else
+      git checkout -B "$DEPLOY_BRANCH" "$remote_ref"
+    fi
   fi
 
   git pull --ff-only "$DEPLOY_REMOTE" "$DEPLOY_BRANCH"
@@ -88,7 +124,7 @@ update_code() {
 
 restart_services() {
   log "Refreshing PM2 apps: $DEPLOY_PM2_APPS"
-  pm2 startOrRestart "$ROOT_DIR/ecosystem.config.cjs" --only "$DEPLOY_PM2_APPS" --update-env
+  pm2 startOrRestart "$TARGET_ROOT/ecosystem.config.cjs" --only "$DEPLOY_PM2_APPS" --update-env
   pm2 save
 }
 
@@ -122,18 +158,25 @@ run_health_checks() {
 }
 
 main() {
-  cd "$ROOT_DIR"
+  cd "$TARGET_ROOT"
 
   require_cmd git
   require_cmd python3
   require_cmd curl
   require_cmd pm2
   ensure_pnpm
-  ensure_api_env
-  ensure_clean_repo
+  ensure_target_repo
+  ensure_root_env
+
+  log "Deploy target: $TARGET_ROOT"
+  log "Deploy mode: $( [[ "$DEPLOY_FORCE_SYNC" == "1" ]] && printf 'force-sync' || printf 'fast-forward' )"
 
   if [[ "$SKIP_PULL" -eq 0 ]]; then
+    if [[ "$DEPLOY_FORCE_SYNC" != "1" ]]; then
+      ensure_clean_repo
+    fi
     update_code
+    log "Repository now at commit $(git rev-parse HEAD)"
   else
     log "Skipping git pull"
   fi

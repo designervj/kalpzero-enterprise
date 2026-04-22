@@ -16,6 +16,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout latest repository state
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Validate deploy path
         shell: bash
         run: |
@@ -32,10 +37,23 @@ jobs:
 
       - name: Deploy live repo
         shell: bash
-        working-directory: /mnt/data/kalpzero-enterprise
         env:
+          TARGET_ROOT: /mnt/data/kalpzero-enterprise
           DEPLOY_BRANCH: main
           DEPLOY_REMOTE: origin
+          DEPLOY_FORCE_SYNC: "1"
+          DEPLOY_CLEAN_UNTRACKED: "1"
         run: |
           set -euo pipefail
           ./scripts/auto-deploy-live.sh
+
+      - name: Show deploy log on failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f /tmp/kalpzero-auto-deploy.log ]]; then
+            tail -n 200 /tmp/kalpzero-auto-deploy.log
+          else
+            echo "No auto-deploy log found at /tmp/kalpzero-auto-deploy.log"
+          fi

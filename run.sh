@@ -74,17 +74,11 @@ if id postgres &> /dev/null; then
 fi
 
 # 5. Environment File setup
-if [ ! -f "apps/api/.env" ]; then
-    echo "apps/api/.env is missing. Creating from .env.example..."
-    cp .env.example apps/api/.env
+if [ ! -f ".env" ]; then
+    echo "Missing $ROOT_DIR/.env. Create the repo-root .env before starting the stack."
+    exit 1
 else
-    echo " [OK] apps/api/.env already exists."
-fi
-
-# 6. Database URL patch for local Postgres Unix socket peer connection
-if grep -q "postgresql+psycopg://postgres:postgres@localhost/kalpzero_enterprise" apps/api/.env; then
-    echo "Adapting postgres connection in .env for native local Unix socket..."
-    sed -i 's|postgresql+psycopg://postgres:postgres@localhost/kalpzero_enterprise|postgresql+psycopg:///kalpzero_enterprise|g' apps/api/.env
+    echo " [OK] Root environment file found at $ROOT_DIR/.env."
 fi
 
 # Workspace internal dependencies

@@ -18,7 +18,7 @@ module.exports = {
       name: "kalpzero-web",
       cwd: "/mnt/data/kalpzero-enterprise/apps/web",
       script: "pnpm",
-      args: "exec next start --hostname 127.0.0.1 --port 3002",
+      args: "run start -- --hostname 127.0.0.1 --port 3002",
       interpreter: "none",
       autorestart: true,
       restart_delay: 5000,

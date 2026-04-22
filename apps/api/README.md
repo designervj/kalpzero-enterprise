@@ -9,5 +9,5 @@ Local notes:
 
 - use `pnpm dev:api:local` from the repo root for SQLite + memory-doc mode
 - use `pnpm dev:api:infra` from the repo root for Postgres + Mongo + Redis mode
-- `apps/api/.env` is now configured for local services, not remote ones
+- the repo-root `.env` is the only environment file used at runtime
 - Postgres URLs should prefer `postgresql+psycopg://...`

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/index.ts",
+    "dev": "bash ../../scripts/with-root-env.sh tsx watch src/index.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"No worker tests yet\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"

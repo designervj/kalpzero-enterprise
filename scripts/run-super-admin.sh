@@ -126,7 +126,10 @@ ensure_web() {
   fi
 
   echo "Starting web app on $WEB_URL ..."
-  nohup bash -lc "cd '$ROOT_DIR/apps/web' && NEXT_PUBLIC_KALPZERO_API_URL='$API_URL' pnpm exec next dev --hostname 127.0.0.1 --port $WEB_PORT" >"$WEB_LOG" 2>&1 &
+  nohup bash "$ROOT_DIR/scripts/with-root-env.sh" \
+    env NEXT_PUBLIC_KALPZERO_API_URL="$API_URL" \
+    pnpm --dir "$ROOT_DIR/apps/web" run dev -- --hostname 127.0.0.1 --port "$WEB_PORT" \
+    >"$WEB_LOG" 2>&1 &
   local web_pid=$!
   echo "$web_pid" >"$RUN_DIR/super-admin-web.pid"
   STARTED_PIDS+=("$web_pid")

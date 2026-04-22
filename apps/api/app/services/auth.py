@@ -1,7 +1,6 @@
 import base64
 import hashlib
 import hmac
-import os
 import secrets
 
 try:
@@ -12,7 +11,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import Settings
+from app.core.config import get_settings
 from app.db.models import CustomerModel, TenantModel, UserModel
 from app.repositories import auth as auth_repository
 from app.schemas.requests import CreateCustomerRequest, RegisterRequest
@@ -28,7 +27,7 @@ def _b64decode(raw: str) -> bytes:
 
 
 def hash_password(password: str) -> str:
-    if bcrypt is not None and os.getenv("KALPZERO_ENV") not in {"test", "testing"}:
+    if bcrypt is not None and get_settings().env not in {"test", "testing"}:
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 

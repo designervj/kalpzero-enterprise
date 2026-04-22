@@ -150,6 +150,12 @@ Current live deployment on this server uses:
 - Auto-deploy log: `/tmp/kalpzero-auto-deploy.log`
 - Server operations guide: `OPERATIONS.md`
 
+GitHub Actions live deploy behavior:
+
+- the workflow checks out the latest pushed commit on the runner
+- the checked-out deploy scripts target the live repo at `/mnt/data/kalpzero-enterprise`
+- the live repo is force-synced to `origin/main`, then `pnpm build` runs and PM2 restarts `kalpzero-web` and `kalpzero-api`
+
 Important:
 
 - These are the live server ports behind Nginx and PM2.
@@ -203,8 +209,7 @@ createdb kalpzero_enterprise
 pnpm doctor:local
 ```
 
-The local API env is already configured in
-[`apps/api/.env`](apps/api/.env) for the Homebrew local path:
+The shared root env in [`.env`](.env) is the source of truth for local services:
 
 - Postgres: `postgresql+psycopg:///kalpzero_enterprise`
 - MongoDB: `mongodb://localhost:27017`
@@ -221,7 +226,7 @@ pnpm doctor:local
 
 It checks:
 
-- `apps/api/.env`
+- `.env`
 - the API virtualenv
 - Python modules required by the backend
 - local `psql`, `redis-cli`, and `mongosh` availability
@@ -247,13 +252,8 @@ Verified result:
 
 ### API With Real Infra
 
-For onboarding-grade behavior, copy the env template and point it at real
-services:
-
-```bash
-cd "$REPO_ROOT"
-cp .env.example apps/api/.env
-```
+For onboarding-grade behavior, configure the repo-root `.env` with real
+service URLs and secrets before starting the API against live infrastructure.
 
 The repo now expects the psycopg v3 driver path for Postgres:
 
@@ -376,7 +376,7 @@ Recommended local infra prerequisites:
 ### If You See `role "postgres" does not exist`
 
 Your local Postgres is using the default macOS user role, not a `postgres`
-role. Use one of these forms in `apps/api/.env`:
+role. Use one of these forms in the repo-root `.env`:
 
 - `postgresql+psycopg:///kalpzero_enterprise`
 - `postgresql+psycopg://YOUR_LOCAL_USER@localhost:5432/kalpzero_enterprise`
@@ -493,7 +493,7 @@ curl http://127.0.0.1:8010/health/live
 ```
 
 For pilot onboarding with real infra, replace `pnpm dev:api:local` with the
-real-infra API boot command after configuring `apps/api/.env`.
+real-infra API boot command after configuring the repo-root `.env`.
 
 ## Manual Pilot Validation
 
