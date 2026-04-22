@@ -13,6 +13,8 @@ import {
     RefreshCw,
     ChevronDown,
     ChevronRight,
+    Eye,
+    EyeOff,
 } from 'lucide-react';
 
 type MigrationAction = 'dry_run' | 'apply' | 'rollback';
@@ -114,6 +116,12 @@ export default function AgenciesPage() {
     const [selectedMigrationByAgency, setSelectedMigrationByAgency] = useState<Record<string, MigrationJob | null>>({});
     const [selectedMigrationItemByAgency, setSelectedMigrationItemByAgency] = useState<Record<string, string>>({});
     const [detailsLoadingByAgency, setDetailsLoadingByAgency] = useState<Record<string, boolean>>({});
+    const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({
+        owner: false,
+        mongo: false,
+        aws: false,
+        ai: false,
+    });
     const [formData, setFormData] = useState({
         name: '',
         customDomain: '',
@@ -636,13 +644,22 @@ export default function AgenciesPage() {
                                     </div>
                                     <div className="col-span-2 sm:col-span-1">
                                         <label className="mb-1 block text-sm text-slate-300">Owner Password</label>
-                                        <input
-                                            type="password"
-                                            value={formData.ownerAdminPassword}
-                                            onChange={e => setFormData({ ...formData, ownerAdminPassword: e.target.value })}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-cyan-500 focus:outline-none"
-                                            placeholder="Minimum 8 characters"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type={showPasswords.owner ? "text" : "password"}
+                                                value={formData.ownerAdminPassword}
+                                                onChange={e => setFormData({ ...formData, ownerAdminPassword: e.target.value })}
+                                                className="w-full rounded-lg border border-slate-700 bg-slate-950 pl-3 pr-10 py-2 text-white focus:border-cyan-500 focus:outline-none"
+                                                placeholder="Minimum 8 characters"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPasswords(prev => ({ ...prev, owner: !prev.owner }))}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-cyan-400 transition-colors"
+                                            >
+                                                {showPasswords.owner ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="col-span-2 sm:col-span-1">
                                         <label className="mb-1 block text-sm text-slate-300">Agency Workspace Tenant Key (Optional)</label>
@@ -700,13 +717,22 @@ export default function AgenciesPage() {
                                     <div className="grid grid-cols-2 gap-4 pt-1">
                                         <div className="col-span-2">
                                             <label className="mb-1 block text-xs text-slate-300">Mongo URI</label>
-                                            <input
-                                                type="password"
-                                                value={formData.mongoUri}
-                                                onChange={e => setFormData({ ...formData, mongoUri: e.target.value })}
-                                                placeholder="mongodb+srv://..."
-                                                className="w-full rounded-lg border border-fuchsia-900 bg-slate-900 px-3 py-2 text-sm text-white focus:border-fuchsia-500 focus:outline-none"
-                                            />
+                                            <div className="relative">
+                                                <input
+                                                    type={showPasswords.mongo ? "text" : "password"}
+                                                    value={formData.mongoUri}
+                                                    onChange={e => setFormData({ ...formData, mongoUri: e.target.value })}
+                                                    placeholder="mongodb+srv://..."
+                                                    className="w-full rounded-lg border border-fuchsia-900 bg-slate-900 pl-3 pr-10 py-2 text-sm text-white focus:border-fuchsia-500 focus:outline-none"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPasswords(prev => ({ ...prev, mongo: !prev.mongo }))}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-fuchsia-400 transition-colors"
+                                                >
+                                                    {showPasswords.mongo ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="col-span-2">
                                             <label className="mb-1 block text-xs text-slate-300">Database Name Pattern</label>
@@ -753,9 +779,21 @@ export default function AgenciesPage() {
                                                 className="w-full rounded-lg border border-indigo-900 bg-slate-900 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none" />
                                         </div>
                                         <div className="col-span-2 sm:col-span-1">
-                                            <label className="mb-1 block text-xs text-slate-300">AWS Secret Access Key</label>
-                                            <input type="password" value={formData.awsSecretAccessKey} onChange={e => setFormData({ ...formData, awsSecretAccessKey: e.target.value })}
-                                                className="w-full rounded-lg border border-indigo-900 bg-slate-900 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                                            <div className="relative">
+                                                <input
+                                                    type={showPasswords.aws ? "text" : "password"}
+                                                    value={formData.awsSecretAccessKey}
+                                                    onChange={e => setFormData({ ...formData, awsSecretAccessKey: e.target.value })}
+                                                    className="w-full rounded-lg border border-indigo-900 bg-slate-900 pl-3 pr-10 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPasswords(prev => ({ ...prev, aws: !prev.aws }))}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors"
+                                                >
+                                                    {showPasswords.aws ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="col-span-2 sm:col-span-1">
                                             <label className="mb-1 block text-xs text-slate-300">Region</label>
@@ -820,12 +858,21 @@ export default function AgenciesPage() {
                                         </div>
                                         <div className="col-span-2">
                                             <label className="mb-1 block text-xs text-slate-300">API Key</label>
-                                            <input
-                                                type="password"
-                                                value={formData.aiApiKey}
-                                                onChange={e => setFormData({ ...formData, aiApiKey: e.target.value })}
-                                                className="w-full rounded-lg border border-cyan-900 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
-                                            />
+                                            <div className="relative">
+                                                <input
+                                                    type={showPasswords.ai ? "text" : "password"}
+                                                    value={formData.aiApiKey}
+                                                    onChange={e => setFormData({ ...formData, aiApiKey: e.target.value })}
+                                                    className="w-full rounded-lg border border-cyan-900 bg-slate-900 pl-3 pr-10 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPasswords(prev => ({ ...prev, ai: !prev.ai }))}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-cyan-400 transition-colors"
+                                                >
+                                                    {showPasswords.ai ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}

@@ -132,6 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (payload: LoginPayload) => {
     const response = await loginRequest(payload);
+
+    console.log("update logion",response)
     const userData: AuthUser = {
       id: response.session?.email ?? "",
       name: response.session?.name ?? "",

@@ -185,7 +185,7 @@ function getBrowserApiBaseUrl() {
   return normalizeApiBaseUrl(
     process.env.NEXT_PUBLIC_KALPZERO_API_URL ??
     process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "/api"
+    "http://127.0.0.1:8000"
   );
 }
 
@@ -198,7 +198,7 @@ function getServerApiBaseUrl() {
     return normalizeApiBaseUrl(publicApiBaseUrl);
   }
 
-  return "http://127.0.0.1:8012";
+  return "http://127.0.0.1:8000";
 }
 
 function resolveApiBaseUrl() {
@@ -266,6 +266,7 @@ export interface RegisterResponseDto {
 }
 
 export async function login(payload: LoginPayload) {
+  debugger
   return request<LoginResponseDto>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload)
