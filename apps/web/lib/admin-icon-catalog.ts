@@ -108,6 +108,7 @@ import {
     Wifi,
     Workflow,
     Wrench,
+    FileText,
 } from 'lucide-react';
 
 export type AdminIconOption = {
@@ -242,6 +243,7 @@ const ICON_CATALOG: IconCatalogEntry[] = [
     { key: 'Heart', icon: Heart, keywords: ['favorites', 'likes'] },
     { key: 'Wifi', icon: Wifi, keywords: ['network', 'online'] },
     { key: 'ListChecks', icon: ListChecks, keywords: ['todos', 'tasks'] },
+    { key: 'FileText', icon: FileText, keywords: ['document', 'page', 'form', 'text'] },
 ];
 
 export const ADMIN_ICON_OPTIONS: AdminIconOption[] = ICON_CATALOG.map((entry) => {
@@ -265,6 +267,11 @@ export const ADMIN_ICON_COMPONENTS: Record<string, LucideIcon> = ADMIN_ICON_OPTI
 
 const ICON_ALIASES: Record<string, string> = {
     FolderIcon: 'Folder',
+    dashboard: 'LayoutDashboard',
+    settings: 'Settings',
+    users: 'Users',
+    layout: 'LayoutGrid',
+    'file-text': 'FileText',
 };
 
 export function resolveAdminIcon(icon?: string): LucideIcon | null {

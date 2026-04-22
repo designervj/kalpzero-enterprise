@@ -8,16 +8,16 @@ import { getMagicOptions, type MagicUser } from '@/lib/api';
 import { resolvePostLoginRoute } from '@/lib/auth-routing';
 
 const roleModes = [
-  {
-    key: "platform",
-    label: "Super Admin",
-    description: "Control agencies, tenants, onboarding, and visibility from Kalp."
-  },
-  {
-    key: "tenant",
-    label: "Tenant Admin",
-    description: "Open the tenant dashboard, modules, and blueprint workspace."
-  }
+    {
+        key: "platform",
+        label: "Super Admin",
+        description: "Control agencies, tenants, onboarding, and visibility from Kalp."
+    },
+    {
+        key: "tenant",
+        label: "Tenant Admin",
+        description: "Open the tenant dashboard, modules, and blueprint workspace."
+    }
 ] as const;
 type RoleMode = (typeof roleModes)[number]["key"];
 export default function LoginPage() {
@@ -27,9 +27,9 @@ export default function LoginPage() {
         tenantKey: 'demo-tenant',
     };
     const tenantDefaults = {
-        email: 'ops@tenant.com',
-        password: 'very-secure-password',
-        tenantKey: 'demo-tenant',
+        email: 'allied@admin.com',
+        password: '1234567899',
+
     };
     const router = useRouter();
     const [isRegister, setIsRegister] = useState(false);
@@ -40,7 +40,7 @@ export default function LoginPage() {
     const [magicUsers, setMagicUsers] = useState<MagicUser[]>([]);
     const [showMagic, setShowMagic] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
-    
+
     const [form, setForm] = useState({
         email: platformDefaults.email,
         password: platformDefaults.password,
@@ -62,16 +62,16 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        debugger
+
         setLoading(true);
         setError('');
         try {
             const session = await login({
                 email: form.email,
                 password: form.password,
-                tenant_slug: mode === "tenant" ? form.tenantKey.trim() : undefined
+                // tenant_slug: mode === "tenant" ? form.tenantKey.trim() : undefined
             });
-         
+
             if (session?.role) {
                 startTransition(() => {
                     router.push(resolvePostLoginRoute(session.role));
@@ -84,22 +84,7 @@ export default function LoginPage() {
         }
     };
 
-    const handleMagicLogin = async (userId: string) => {
-        setLoading(true);
-        setError('');
-        try {
-            const session = await magicLogin(userId);
-            if (session?.role) {
-                startTransition(() => {
-                    router.push(resolvePostLoginRoute(session.role));
-                });
-            }
-        } catch (submissionError) {
-            setError(submissionError instanceof Error ? submissionError.message : "Magic login failed.");
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     return (
         <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#030712]">
@@ -120,13 +105,13 @@ export default function LoginPage() {
                        
                     </div> */}
                     <div className='w-14 h-14'>
-                     <img
+                        <img
                             src="/img/favicon.svg"
                             alt="KalpTree Logo"
                             className="h-full w-auto object-contain"
 
                         />
-                        </div>
+                    </div>
                     <h1 className="text-2xl font-black tracking-normal  text-white">Kalp<span className="text-cyan-400 font-light">ZERO</span></h1>
                 </div>
 
@@ -148,37 +133,6 @@ export default function LoginPage() {
                         </div>
                     )}
 
-                    {showMagic && magicUsers.length > 0 && (
-                        <div className="mb-8 p-4 bg-cyan-950/20 border border-cyan-500/20 rounded-xl">
-                            <div className="flex items-center gap-2 mb-4 text-cyan-400">
-                                <Fingerprint size={16} />
-                                <span className="text-xs font-bold uppercase tracking-wider">Magic Login (Testing)</span>
-                            </div>
-                            <div className="grid grid-cols-1 gap-2">
-                                {magicUsers.map((user) => (
-                                    <button
-                                        key={user.id}
-                                        onClick={() => handleMagicLogin(user.id)}
-                                        disabled={loading}
-                                        className="group relative flex items-center justify-between p-3 rounded-lg bg-slate-800/40 border border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800 transition-all text-left"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-lg ${user.role === 'platform_admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
-                                                {user.role === 'platform_admin' ? <ShieldCheck size={18} /> : <Building2 size={18} />}
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">{user.name}</div>
-                                                <div className="text-[10px] text-slate-500 uppercase tracking-tight">
-                                                    {user.role} {user.tenant_slug ? `• ${user.tenant_slug}` : ''}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <ArrowRight size={14} className="text-slate-600 group-hover:text-cyan-400 transform group-hover:translate-x-1 transition-all" />
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
 
                     <div className="relative mb-8 text-center">
                         <div className="absolute inset-0 flex items-center">
@@ -203,11 +157,10 @@ export default function LoginPage() {
                                             ...(roleMode.key === "platform" ? platformDefaults : tenantDefaults),
                                         }));
                                     }}
-                                    className={`rounded-lg px-4 py-3 text-left transition ${
-                                        mode === roleMode.key
+                                    className={`rounded-lg px-4 py-3 text-left transition ${mode === roleMode.key
                                             ? 'bg-slate-800 text-white shadow-[0_0_20px_rgba(14,165,233,0.15)]'
                                             : 'text-slate-400 hover:bg-slate-900/70 hover:text-slate-200'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="text-xs font-bold uppercase tracking-wider">{roleMode.label}</div>
                                     <div className="mt-1 text-[11px] leading-relaxed text-slate-500">
@@ -272,7 +225,7 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        {mode === "tenant" && (
+                        {/* {mode === "tenant" && (
                             <div>
                                 <label className="block text-xs uppercase tracking-widest text-slate-500 font-semibold mb-2">Tenant Workspace</label>
                                 <div className="relative">
@@ -287,7 +240,7 @@ export default function LoginPage() {
                                     />
                                 </div>
                             </div>
-                        )}
+                        )} */}
 
                         <button
                             type="submit"
@@ -302,16 +255,16 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-             
-                        <div className="mt-6 text-center">
-                            <button
-                                onClick={() => { setIsRegister(!isRegister); setError(''); }}
-                                className="text-sm text-slate-400 hover:text-cyan-400 transition-colors"
-                            >
-                                {isRegister ? 'Already have an account? Sign In' : "Don't have an account? Register"}
-                            </button>
-                        </div>
-                    
+
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={() => { setIsRegister(!isRegister); setError(''); }}
+                            className="text-sm text-slate-400 hover:text-cyan-400 transition-colors"
+                        >
+                            {isRegister ? 'Already have an account? Sign In' : "Don't have an account? Register"}
+                        </button>
+                    </div>
+
                 </div>
 
                 <p className="text-center text-xs text-slate-600 mt-6 font-mono">Kalp-Zero v0.11 • Secure Multi-Tenant Platform</p>

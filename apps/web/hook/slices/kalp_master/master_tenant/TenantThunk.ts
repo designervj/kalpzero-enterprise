@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { TenantSwitcherOption } from "@/components/adminLayout/AdminLayout";
 import { Tenant } from "@/app/(dashboard)/settings/tenant/tenantType";
+import { getApiBaseUrl } from "@/lib/api";
 
 // Fetch all tenants
 export const fetchTenants = createAsyncThunk<
@@ -100,3 +101,34 @@ export const deleteTenant = createAsyncThunk<
     }
   },
 );
+
+// Fetch a single tenant by ID
+export const  fetchTenantById = createAsyncThunk<
+  Tenant,
+  { id: string; auth_token: string },
+  { rejectValue: string }
+>("tenant/fetchTenantById", async ({ id, auth_token }, { rejectWithValue }) => {
+  try {
+    const url = new URL(`${getApiBaseUrl()}/platform/tenant`);
+    url.searchParams.append("id", id); // May not be strictly necessary, but keeping it to not break interfaces
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth_token}` // the backend accepts this based on api.ts 'request' fn
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to fetch tenant");
+    }
+  
+    const data = await response.json();
+      console.log("fetch tenant by id-->", data);
+    return data as Tenant;
+  } catch (error: any) {
+    return rejectWithValue(error.message || "Failed to fetch tenant");
+  }
+});

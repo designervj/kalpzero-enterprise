@@ -5,6 +5,6 @@ export function resolvePostLoginRoute(role: string | null | undefined): string {
     case "platform_owner":
       return "/dashboard";
     default:
-      return "/tenant";
+      return "/dashboard";
   }
 }

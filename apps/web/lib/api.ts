@@ -9,7 +9,7 @@ export interface SessionDto {
 export interface LoginPayload {
   email: string;
   password: string;
-  tenant_slug?: string;
+  // tenant_slug?: string;
 }
 
 export interface LoginResponseDto {
@@ -286,7 +286,7 @@ export interface RegisterResponseDto {
 }
 
 export async function login(payload: LoginPayload) {
-  debugger
+
   return request<LoginResponseDto>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload)

@@ -95,7 +95,7 @@ export function PlatformDashboard() {
       await login({
         email: "ops@tenant.com",
         password: "very-secure-password",
-        tenant_slug: tenantSlug
+        // tenant_slug: tenantSlug
       });
       router.push("/tenant");
     } catch (loginError) {

@@ -110,7 +110,7 @@ export const pagesSlice = createSlice({
             })
             .addCase(updatePage.fulfilled, (state, action) => {
                 state.loading = false;
-                debugger
+
                 if (state.currentPage && state.currentPage._id === action.payload._id) {
                     state.currentPage = action.payload;
                 }
@@ -143,6 +143,6 @@ export const pagesSlice = createSlice({
     },
 });
 
-export const { setCurrentPage, clearPagesState,setAllPages } = pagesSlice.actions;
+export const { setCurrentPage, clearPagesState, setAllPages } = pagesSlice.actions;
 
 export default pagesSlice.reducer;

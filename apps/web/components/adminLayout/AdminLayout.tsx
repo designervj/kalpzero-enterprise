@@ -9,10 +9,6 @@ import {
   LayoutDashboard,
   FileText,
   Settings,
-  Database,
-  Activity,
-  Globe,
-  Languages,
   Bot,
   Wand2,
   ChevronsLeft,
@@ -57,6 +53,9 @@ import {
   SECTION_ORDER,
   FALLBACK_MODULE_NAVS,
 } from "./util/constants";
+import { adminvertical, commerce_vertical } from "./vertical/businessVertical";
+import { CollapsibleNavGroup } from "./CollapsibleNavGroup";
+import GetTenant from "./GetTenant";
 
 
 
@@ -111,6 +110,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   const authCtx = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const {authUser}= useSelector((state:RootState)=>state.auth)
   const { setActiveContext } = useKoshie();
   const { t } = useTranslation();
   const [snapshot, setSnapshot] = useState<RuntimeRegistrySnapshot | null>(
@@ -290,55 +290,55 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   const isSidebarCollapseLocked =
     pathname === "/admin/registry" || pathname.startsWith("/admin/registry/");
   const pathnameSegments = pathname.split("/").filter(Boolean);
-  const reservedTopLevelRoutes = new Set([
-    "admin",
-    "blog",
-    "bookings",
-    "branding",
-    "business",
-    "catalog",
-    "catalog-builder",
-    "c",
-    "cart",
-    "checkout",
-    "claim",
-    "commerce",
-    "customers",
-    "dashboard",
-    "discover",
-    "ecommerce",
-    "forms",
-    "front-builder",
-    "front-builder-v2",
-    "invoices",
-    "kalpbodh",
-    "login",
-    "marketing",
-    "media",
-    "onboarding",
-    "p",
-    "packages",
-    "page",
-    "pages",
-    "portfolio",
-    "product",
-    "proposal",
-    "proposal-builder",
-    "profile",
-    "portfolio-profile-builder",
-    "real-estate",
-    "resume",
-    "resume-builder",
-    "settings",
-    "sources",
-    "tenants",
-    "terminal",
-    "travel",
-    "users",
-  ]);
-  const isLikelyPublicSlugRoute =
-    pathnameSegments.length === 1 &&
-    !reservedTopLevelRoutes.has(pathnameSegments[0]);
+  // const reservedTopLevelRoutes = new Set([
+  //   "admin",
+  //   "blog",
+  //   "bookings",
+  //   "branding",
+  //   "business",
+  //   "catalog",
+  //   "catalog-builder",
+  //   "c",
+  //   "cart",
+  //   "checkout",
+  //   "claim",
+  //   "commerce",
+  //   "customers",
+  //   "dashboard",
+  //   "discover",
+  //   "ecommerce",
+  //   "forms",
+  //   "front-builder",
+  //   "front-builder-v2",
+  //   "invoices",
+  //   "kalpbodh",
+  //   "login",
+  //   "marketing",
+  //   "media",
+  //   "onboarding",
+  //   "p",
+  //   "packages",
+  //   "page",
+  //   "pages",
+  //   "portfolio",
+  //   "product",
+  //   "proposal",
+  //   "proposal-builder",
+  //   "profile",
+  //   "portfolio-profile-builder",
+  //   "real-estate",
+  //   "resume",
+  //   "resume-builder",
+  //   "settings",
+  //   "sources",
+  //   "tenants",
+  //   "terminal",
+  //   "travel",
+  //   "users",
+  // ]);
+  // const isLikelyPublicSlugRoute =
+  //   pathnameSegments.length === 1 &&
+  //   !reservedTopLevelRoutes.has(pathnameSegments[0]);
 
   const activeBusinessContextSet = useMemo(
     () =>
@@ -597,6 +597,17 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
       setTenantOptions(allTenant);
     }
   }, [allTenant]);
+
+
+  const tenantAdminNavItems = useMemo(()=>{
+    if(authUser?.role === "tenant_admin" &&
+      currentTenant && 
+      currentTenant?.vertical_packs?.[0] === "commerce"){
+      return commerce_vertical
+    }
+    return adminvertical
+  },[commerce_vertical,adminvertical,authUser,currentTenant])
+    
   // useEffect(() => {
   //   if (!authCtx.user || !canSwitchTenant) {
   //     setTenantOptions([]);
@@ -744,106 +755,24 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
     [t, workspaceConfig.sidebar],
   );
 
-  const customizedPlatformNavItems = useMemo(
-    () =>
-      applyWorkspaceItemCustomization<SidebarRenderableItem>(
-        platformNavItems.map((item) => ({
-          id: buildWorkspaceRouteItemId(item.href),
-          href: item.href,
-          icon: item.icon,
-          label: item.label,
-        })),
-        {
-          order: workspaceConfig.sidebar.itemOrder,
-          hidden: workspaceConfig.sidebar.hiddenItems,
-          labelOverrides: workspaceConfig.sidebar.labelOverrides,
-        },
-      ),
-    [platformNavItems, workspaceConfig.sidebar],
-  );
+  // const customizedPlatformNavItems = useMemo(
+  //   () =>
+  //     applyWorkspaceItemCustomization<SidebarRenderableItem>(
+  //       platformNavItems.map((item) => ({
+  //         id: buildWorkspaceRouteItemId(item.href),
+  //         href: item.href,
+  //         icon: item.icon,
+  //         label: item.label,
+  //       })),
+  //       {
+  //         order: workspaceConfig.sidebar.itemOrder,
+  //         hidden: workspaceConfig.sidebar.hiddenItems,
+  //         labelOverrides: workspaceConfig.sidebar.labelOverrides,
+  //       },
+  //     ),
+  //   [platformNavItems, workspaceConfig.sidebar],
+  // );
 
-  const frontendNavItems = useMemo(() => {
-    const items = [
-      {
-        href: "/pages",
-        icon: <FileText size={16} />,
-        label: t("nav.websitePages", "Website Pages"),
-      },
-      {
-        href: "/front-builder-v2",
-        icon: <Wand2 size={16} />,
-        label: t("nav.websiteBuilderV2", "Website Builder V2"),
-      },
-      {
-        href: "/front-builder",
-        icon: <Globe size={16} />,
-        label: t("nav.frontBuilder", "Front Builder (Legacy)"),
-      },
-    ];
-    if (canShowCatalogBuilder) {
-      items.push({
-        href: "/catalog-builder",
-        icon: <Folder size={16} />,
-        label: t("nav.catalogBuilder", "Catalog Builder"),
-      });
-    }
-    if (canShowProposalBuilder) {
-      items.push({
-        href: "/proposal-builder",
-        icon: <FileText size={16} />,
-        label: t("nav.proposalBuilder", "Proposal Builder"),
-      });
-    }
-    if (canShowResumeBuilder) {
-      items.push({
-        href: "/resume-builder",
-        icon: <FileText size={16} />,
-        label: t("nav.resumeBuilder", "Resume Builder"),
-      });
-    }
-    if (canShowPortfolioProfileBuilder) {
-      items.push({
-        href: "/portfolio-profile-builder",
-        icon: <FileText size={16} />,
-        label: t("nav.portfolioProfileBuilder", "Portfolio Builder"),
-      });
-    }
-    if (activeRole === "platform_owner" || activeRole === "platform_admin") {
-      items.push({
-        href: "/discover/qa",
-        icon: <Database size={16} />,
-        label: t("nav.discoveryQa", "Discovery QA"),
-      });
-    }
-    return items.filter((item) =>
-      canRoleAccessAdminPath(activeRole, item.href),
-    );
-  }, [
-    activeRole,
-    canShowCatalogBuilder,
-    canShowPortfolioProfileBuilder,
-    canShowProposalBuilder,
-    canShowResumeBuilder,
-    t,
-  ]);
-
-  const customizedFrontendNavItems = useMemo(
-    () =>
-      applyWorkspaceItemCustomization<SidebarRenderableItem>(
-        frontendNavItems.map((item) => ({
-          id: buildWorkspaceRouteItemId(item.href),
-          href: item.href,
-          icon: item.icon,
-          label: item.label,
-        })),
-        {
-          order: workspaceConfig.sidebar.itemOrder,
-          hidden: workspaceConfig.sidebar.hiddenItems,
-          labelOverrides: workspaceConfig.sidebar.labelOverrides,
-        },
-      ),
-    [frontendNavItems, workspaceConfig.sidebar],
-  );
 
   const customizedRuntimeNavGroups = useMemo(
     () => {
@@ -894,114 +823,114 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   );
 
   // Route affordance guard: if a module route is not enabled/allowed in runtime snapshot, redirect home.
-  useEffect(() => {
-    if (!snapshot || authCtx.isLoading) return;
-    if (pathname === "/proposal-builder" && !canShowProposalBuilder) {
-      router.replace(canShowCatalogBuilder ? "/catalog-builder" : "/dashboard");
-      return;
-    }
-    if (pathname === "/catalog-builder" && !canShowCatalogBuilder) {
-      router.replace(
-        canShowProposalBuilder ? "/proposal-builder" : "/dashboard",
-      );
-      return;
-    }
-    if (pathname === "/resume-builder" && !canShowResumeBuilder) {
-      router.replace("/dashboard");
-      return;
-    }
-    if (
-      pathname === "/portfolio-profile-builder" &&
-      !canShowPortfolioProfileBuilder
-    ) {
-      router.replace("/dashboard");
-      return;
-    }
-    if (
-      pathname === "/onboarding" ||
-      pathname === "/login" ||
-      pathname === "/" ||
-      pathname === "/claim" ||
-      pathname.startsWith("/claim/") ||
-      pathname === "/pages" ||
-      pathname.startsWith("/pages/") ||
-      pathname === "/front-builder" ||
-      pathname === "/front-builder-v2" ||
-      pathname === "/catalog-builder" ||
-      pathname === "/proposal-builder" ||
-      pathname === "/resume-builder" ||
-      pathname === "/portfolio-profile-builder" ||
-      pathname.startsWith("/packages/") ||
-      pathname.startsWith("/business/") ||
-      pathname.startsWith("/catalog/") ||
-      pathname.startsWith("/proposal/") ||
-      pathname.startsWith("/resume/") ||
-      pathname.startsWith("/profile/") ||
-      pathname.startsWith("/product/") ||
-      pathname.startsWith("/c/") ||
-      pathname.startsWith("/cart/") ||
-      pathname.startsWith("/checkout/") ||
-      pathname === "/discover" ||
-      pathname.startsWith("/discover/") ||
-      isLikelyPublicSlugRoute
-    )
-      return;
+  // useEffect(() => {
+  //   if (!snapshot || authCtx.isLoading) return;
+  //   if (pathname === "/proposal-builder" && !canShowProposalBuilder) {
+  //     router.replace(canShowCatalogBuilder ? "/catalog-builder" : "/dashboard");
+  //     return;
+  //   }
+  //   if (pathname === "/catalog-builder" && !canShowCatalogBuilder) {
+  //     router.replace(
+  //       canShowProposalBuilder ? "/proposal-builder" : "/dashboard",
+  //     );
+  //     return;
+  //   }
+  //   if (pathname === "/resume-builder" && !canShowResumeBuilder) {
+  //     router.replace("/dashboard");
+  //     return;
+  //   }
+  //   if (
+  //     pathname === "/portfolio-profile-builder" &&
+  //     !canShowPortfolioProfileBuilder
+  //   ) {
+  //     router.replace("/dashboard");
+  //     return;
+  //   }
+  //   if (
+  //     pathname === "/onboarding" ||
+  //     pathname === "/login" ||
+  //     pathname === "/" ||
+  //     pathname === "/claim" ||
+  //     pathname.startsWith("/claim/") ||
+  //     pathname === "/pages" ||
+  //     pathname.startsWith("/pages/") ||
+  //     pathname === "/front-builder" ||
+  //     pathname === "/front-builder-v2" ||
+  //     pathname === "/catalog-builder" ||
+  //     pathname === "/proposal-builder" ||
+  //     pathname === "/resume-builder" ||
+  //     pathname === "/portfolio-profile-builder" ||
+  //     pathname.startsWith("/packages/") ||
+  //     pathname.startsWith("/business/") ||
+  //     pathname.startsWith("/catalog/") ||
+  //     pathname.startsWith("/proposal/") ||
+  //     pathname.startsWith("/resume/") ||
+  //     pathname.startsWith("/profile/") ||
+  //     pathname.startsWith("/product/") ||
+  //     pathname.startsWith("/c/") ||
+  //     pathname.startsWith("/cart/") ||
+  //     pathname.startsWith("/checkout/") ||
+  //     pathname === "/discover" ||
+  //     pathname.startsWith("/discover/") ||
+  //     isLikelyPublicSlugRoute
+  //   )
+  //     return;
 
-    if (!canRoleAccessAdminPath(activeRole, pathname)) {
-      const fallback = runtimeAllowedNavPaths[0] || "/";
-      if (pathname !== fallback) {
-        router.replace(fallback);
-      }
-      return;
-    }
+  //   if (!canRoleAccessAdminPath(activeRole, pathname)) {
+  //     const fallback = runtimeAllowedNavPaths[0] || "/";
+  //     if (pathname !== fallback) {
+  //       router.replace(fallback);
+  //     }
+  //     return;
+  //   }
 
-    const routeIndex = Array.isArray(snapshot.moduleRouteIndex)
-      ? snapshot.moduleRouteIndex
-      : [];
-    if (routeIndex.length === 0) return;
+  //   const routeIndex = Array.isArray(snapshot.moduleRouteIndex)
+  //     ? snapshot.moduleRouteIndex
+  //     : [];
+  //   if (routeIndex.length === 0) return;
 
-    const matchedRoute = routeIndex
-      .filter((entry) => isPathActive(pathname, entry.path))
-      .sort((a, b) => b.path.length - a.path.length)[0];
-    if (!matchedRoute) {
-      // Guard context-overridden travel routes that may not exist in raw module route index.
-      if (pathname.startsWith("/travel/")) {
-        const isAllowedTravelNav = runtimeAllowedNavPaths.some((path) =>
-          isPathActive(pathname, path),
-        );
-        if (!isAllowedTravelNav) {
-          router.replace("/dashboard");
-        }
-      }
-      return;
-    }
+  //   const matchedRoute = routeIndex
+  //     .filter((entry) => isPathActive(pathname, entry.path))
+  //     .sort((a, b) => b.path.length - a.path.length)[0];
+  //   if (!matchedRoute) {
+  //     // Guard context-overridden travel routes that may not exist in raw module route index.
+  //     if (pathname.startsWith("/travel/")) {
+  //       const isAllowedTravelNav = runtimeAllowedNavPaths.some((path) =>
+  //         isPathActive(pathname, path),
+  //       );
+  //       if (!isAllowedTravelNav) {
+  //         router.replace("/dashboard");
+  //       }
+  //     }
+  //     return;
+  //   }
 
-    const enabledSet = new Set(tenantModules);
-    if (!enabledSet.has(matchedRoute.moduleKey)) {
-      router.replace("/dashboard");
-      return;
-    }
+  //   const enabledSet = new Set(tenantModules);
+  //   if (!enabledSet.has(matchedRoute.moduleKey)) {
+  //     router.replace("/dashboard");
+  //     return;
+  //   }
 
-    const isAllowedByRuntimeNav = runtimeAllowedNavPaths.some((path) =>
-      isPathActive(pathname, path),
-    );
-    if (!isAllowedByRuntimeNav) {
-      router.replace("/dashboard");
-    }
-  }, [
-    snapshot,
-    authCtx.isLoading,
-    pathname,
-    router,
-    tenantModules,
-    runtimeAllowedNavPaths,
-    activeRole,
-    isLikelyPublicSlugRoute,
-    canShowProposalBuilder,
-    canShowCatalogBuilder,
-    canShowResumeBuilder,
-    canShowPortfolioProfileBuilder,
-  ]);
+  //   const isAllowedByRuntimeNav = runtimeAllowedNavPaths.some((path) =>
+  //     isPathActive(pathname, path),
+  //   );
+  //   if (!isAllowedByRuntimeNav) {
+  //     router.replace("/dashboard");
+  //   }
+  // }, [
+  //   snapshot,
+  //   authCtx.isLoading,
+  //   pathname,
+  //   router,
+  //   tenantModules,
+  //   runtimeAllowedNavPaths,
+  //   activeRole,
+  //   isLikelyPublicSlugRoute,
+  //   canShowProposalBuilder,
+  //   canShowCatalogBuilder,
+  //   canShowResumeBuilder,
+  //   canShowPortfolioProfileBuilder,
+  // ]);
 
   const isQuickBodhDrawerOpen = canOpenKalpBodhDrawer && quickBodhOpen;
   const sidebarCollapsed = isQuickBodhDrawerOpen
@@ -1010,46 +939,46 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
       ? false
       : isSidebarCollapsed;
 
-  const isPublicWorkspacePage =
-    pathname.startsWith("/packages/") ||
-    pathname.startsWith("/business/") ||
-    pathname.startsWith("/product/") ||
-    pathname.startsWith("/c/") ||
-    pathname.startsWith("/cart/") ||
-    pathname.startsWith("/checkout/") ||
-    pathname.startsWith("/p/") ||
-    pathname === "/" ||
-    pathname === "/claim" ||
-    pathname.startsWith("/claim/") ||
-    pathname === "/front-builder" ||
-    pathname === "/front-builder-v2" ||
-    pathname === "/catalog-builder" ||
-    pathname === "/proposal-builder" ||
-    pathname === "/resume-builder" ||
-    pathname === "/portfolio-profile-builder" ||
-    pathname.startsWith("/catalog/") ||
-    pathname.startsWith("/proposal/") ||
-    pathname.startsWith("/resume/") ||
-    pathname.startsWith("/profile/") ||
-    pathname === "/discover" ||
-    pathname.startsWith("/discover/") ||
-    isLikelyPublicSlugRoute;
+  // const isPublicWorkspacePage =
+  //   pathname.startsWith("/packages/") ||
+  //   pathname.startsWith("/business/") ||
+  //   pathname.startsWith("/product/") ||
+  //   pathname.startsWith("/c/") ||
+  //   pathname.startsWith("/cart/") ||
+  //   pathname.startsWith("/checkout/") ||
+  //   pathname.startsWith("/p/") ||
+  //   pathname === "/" ||
+  //   pathname === "/claim" ||
+  //   pathname.startsWith("/claim/") ||
+  //   pathname === "/front-builder" ||
+  //   pathname === "/front-builder-v2" ||
+  //   pathname === "/catalog-builder" ||
+  //   pathname === "/proposal-builder" ||
+  //   pathname === "/resume-builder" ||
+  //   pathname === "/portfolio-profile-builder" ||
+  //   pathname.startsWith("/catalog/") ||
+  //   pathname.startsWith("/proposal/") ||
+  //   pathname.startsWith("/resume/") ||
+  //   pathname.startsWith("/profile/") ||
+  //   pathname === "/discover" ||
+  //   pathname.startsWith("/discover/") ||
+  //   isLikelyPublicSlugRoute;
 
   // Bypass layout for full-screen/public pages
-  if (
-    pathname === "/onboarding" ||
-    pathname === "/login" ||
-    isPublicWorkspacePage
-  ) {
-    return (
-      <div
-        className="min-h-screen text-slate-100 selection:bg-cyan-500/30 font-sans"
-        style={{ backgroundColor: "var(--background)", color: "var(--text)" }}
-      >
-        {children}
-      </div>
-    );
-  }
+  // if (
+  //   pathname === "/onboarding" ||
+  //   pathname === "/login" ||
+  //   isPublicWorkspacePage
+  // ) {
+  //   return (
+  //     <div
+  //       className="min-h-screen text-slate-100 selection:bg-cyan-500/30 font-sans"
+  //       style={{ backgroundColor: "var(--background)", color: "var(--text)" }}
+  //     >
+  //       {children}
+  //     </div>
+  //   );
+  // }
 
   // Loading state while auth is initializing
   if (authCtx.isLoading) {
@@ -1102,6 +1031,8 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
     <>
       {/* get all tenant */}
       <GetAllTenant />
+      <GetTenant />
+
       <div
         className="kalp-admin-shell h-screen flex w-full text-slate-100 selection:bg-cyan-500/30 overflow-hidden relative"
         style={shellStyle}
@@ -1204,7 +1135,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
           {/* Navigation */}
           <div className="p-4 flex-1 overflow-y-auto space-y-6 scrollbar-hide mt-4">
             {/* ── OVERVIEW ── */}
-            {customizedOverviewNavItems.length > 0 && (
+            {/* {customizedOverviewNavItems.length > 0 && (
               <div className="space-y-1">
                 <h3
                   className={`text-[10px] uppercase text-slate-500 tracking-[0.2em] font-bold mb-3 flex items-center gap-2 ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"}`}
@@ -1228,30 +1159,99 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                   />
                 ))}
               </div>
-            )}
-            {customizedFrontendNavItems.length > 0 && (
+            )} */}
+            {authUser?.role === "platform_owner" && (
               <div className="space-y-1">
-                <h3
-                  className={`text-[10px] uppercase text-cyan-500/70 tracking-[0.2em] font-bold mb-3 flex items-center gap-2 ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"}`}
+                {/* <h3
+                  className={`flex items-center gap-2 mb-3 font-bold uppercase tracking-[0.2em] text-cyan-500/70 text-[10px] ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"}`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(0,240,255,0.8)]"></span>
                   {(!sidebarCollapsed || isMobileMenuOpen) &&
                     (workspaceConfig.sidebar.sectionLabels.frontend !==
-                      DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.frontend
+                    DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.frontend
                       ? workspaceConfig.sidebar.sectionLabels.frontend
                       : t("section.frontend", "Frontend"))}
-                </h3>
-                {customizedFrontendNavItems.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    href={item.href}
-                    icon={item.icon}
-                    label={item.label}
-                    active={isPathActive(pathname, item.href)}
-                    collapsed={sidebarCollapsed && !isMobileMenuOpen}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  />
-                ))}
+                </h3> */}
+                {adminvertical.sidebar.map((group) => {
+                  const IconComponent = resolveNavIcon(group.icon);
+                  const hasChildren =
+                    Array.isArray(group.children) && group.children.length > 0;
+
+                  if (hasChildren) {
+                    return (
+                      <CollapsibleNavGroup
+                        key={group.key}
+                        label={group.label}
+                        icon={<IconComponent size={16} />}
+                        collapsed={sidebarCollapsed && !isMobileMenuOpen}
+                        children={(group.children || []).map((child: any) => ({
+                          ...child,
+                          label: child.label,
+                        }))}
+                      />
+                    );
+                  }
+
+                  const route = (group as any).route || "/dashboard";
+                  return (
+                    <NavItem
+                      key={group.key}
+                      href={route}
+                      icon={<IconComponent size={16} />}
+                      label={group.label}
+                      active={isPathActive(pathname, route)}
+                      collapsed={sidebarCollapsed && !isMobileMenuOpen}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+              {authUser?.role === "tenant_admin" && (
+              <div className="space-y-1">
+                {/* <h3
+                  className={`flex items-center gap-2 mb-3 font-bold uppercase tracking-[0.2em] text-cyan-500/70 text-[10px] ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(0,240,255,0.8)]"></span>
+                  {(!sidebarCollapsed || isMobileMenuOpen) &&
+                    (workspaceConfig.sidebar.sectionLabels.frontend !==
+                    DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.frontend
+                      ? workspaceConfig.sidebar.sectionLabels.frontend
+                      : t("section.frontend", "Frontend"))}
+                </h3> */}
+                {tenantAdminNavItems.sidebar.map((group) => {
+                  const IconComponent = resolveNavIcon(group.icon);
+                  const hasChildren =
+                    Array.isArray(group.children) && group.children.length > 0;
+
+                  if (hasChildren) {
+                    return (
+                      <CollapsibleNavGroup
+                        key={group.key}
+                        label={group.label}
+                        icon={<IconComponent size={16} />}
+                        collapsed={sidebarCollapsed && !isMobileMenuOpen}
+                        children={(group.children || []).map((child: any) => ({
+                          ...child,
+                          label: child.label,
+                        }))}
+                      />
+                    );
+                  }
+
+                  const route = (group as any).route || "/dashboard";
+                  return (
+                    <NavItem
+                      key={group.key}
+                      href={route}
+                      icon={<IconComponent size={16} />}
+                      label={group.label}
+                      active={isPathActive(pathname, route)}
+                      collapsed={sidebarCollapsed && !isMobileMenuOpen}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                  );
+                })}
               </div>
             )}
 
@@ -1292,8 +1292,8 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
               );
             })}
 
-            {/* ── PLATFORM (strict role-scope items) ── */}
-            {customizedPlatformNavItems.length > 0 && (
+            {/* ── PLATFORM (strict role-scope items)setting  ── */ }
+            {/* {customizedPlatformNavItems.length > 0 && (
               <div className="space-y-1">
                 <h3
                   className={`text-[10px] uppercase text-cyan-500/70 tracking-[0.2em] font-bold mb-3 flex items-center gap-2 ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"}`}
@@ -1317,7 +1317,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                   />
                 ))}
               </div>
-            )}
+            )} */}
           </div>
 
           <SidebarFooter

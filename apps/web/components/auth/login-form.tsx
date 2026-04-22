@@ -64,7 +64,7 @@ export function LoginForm() {
       const session = await login({
         email,
         password,
-        tenant_slug: mode === "tenant" ? tenantSlug : undefined
+        // tenant_slug: mode === "tenant" ? tenantSlug : undefined
       });
       startTransition(() => {
         router.push(resolvePostLoginRoute(session.role));

@@ -1,16 +1,16 @@
 function collectFragments(content: string, pattern: RegExp): string {
-    const matches = content.match(pattern);
-    if (!matches || matches.length === 0) return '';
-    return matches.join('\n').trim();
+  const matches = content.match(pattern);
+  if (!matches || matches.length === 0) return '';
+  return matches.join('\n').trim();
 }
 
 export function stripHtmlScripts(raw: string): string {
-    if (typeof raw !== 'string') return '';
-    return raw
-        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '') // Remove <script> blocks
-        .replace(/\son\w+="[^"]*"/gi, '') // Remove inline handlers like onclick="..."
-        .replace(/\son\w+='[^']*'/gi, '') // Remove inline handlers like onclick='...'
-        .trim();
+  if (typeof raw !== 'string') return '';
+  return raw
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '') // Remove <script> blocks
+    .replace(/\son\w+="[^"]*"/gi, '') // Remove inline handlers like onclick="..."
+    .replace(/\son\w+='[^']*'/gi, '') // Remove inline handlers like onclick='...'
+    .trim();
 }
 
 /**
@@ -18,36 +18,36 @@ export function stripHtmlScripts(raw: string): string {
  * inside the public page container and edited in GrapesJS.
  */
 export function normalizeTemplateHtml(
-    raw: string,
-    options?: { includeScripts?: boolean },
+  raw: string,
+  options?: { includeScripts?: boolean },
 ): string {
-    const source = typeof raw === 'string' ? raw.trim() : '';
-    if (!source) return '';
-    const includeScripts = options?.includeScripts !== false;
+  const source = typeof raw === 'string' ? raw.trim() : '';
+  if (!source) return '';
+  const includeScripts = options?.includeScripts !== false;
 
-    const headMatch = source.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
-    const headContent = headMatch ? headMatch[1] : '';
-    const stylesFromHead = collectFragments(headContent, /<style[\s\S]*?<\/style>/gi);
-    const scriptsFromHead = collectFragments(headContent, /<script[\s\S]*?<\/script>/gi);
-    const bodyMatch = source.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const headMatch = source.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+  const headContent = headMatch ? headMatch[1] : '';
+  const stylesFromHead = collectFragments(headContent, /<style[\s\S]*?<\/style>/gi);
+  const scriptsFromHead = collectFragments(headContent, /<script[\s\S]*?<\/script>/gi);
+  const bodyMatch = source.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
 
-    if (bodyMatch) {
-        const bodyContent = bodyMatch[1].trim();
-        const combined = [stylesFromHead, bodyContent, includeScripts ? scriptsFromHead : '']
-            .filter(Boolean)
-            .join('\n\n')
-            .trim();
-        return includeScripts ? combined : stripHtmlScripts(combined);
-    }
+  if (bodyMatch) {
+    const bodyContent = bodyMatch[1].trim();
+    const combined = [stylesFromHead, bodyContent, includeScripts ? scriptsFromHead : '']
+      .filter(Boolean)
+      .join('\n\n')
+      .trim();
+    return includeScripts ? combined : stripHtmlScripts(combined);
+  }
 
-    const normalized = source
-        .replace(/<!doctype[^>]*>/gi, '')
-        .replace(/<\/?html[^>]*>/gi, '')
-        .replace(/<\/?head[^>]*>/gi, '')
-        .replace(/<\/?body[^>]*>/gi, '')
-        .trim();
+  const normalized = source
+    .replace(/<!doctype[^>]*>/gi, '')
+    .replace(/<\/?html[^>]*>/gi, '')
+    .replace(/<\/?head[^>]*>/gi, '')
+    .replace(/<\/?body[^>]*>/gi, '')
+    .trim();
 
-    return includeScripts ? normalized : stripHtmlScripts(normalized);
+  return includeScripts ? normalized : stripHtmlScripts(normalized);
 }
 
 /**
@@ -80,8 +80,8 @@ export type CodeDraft = {
  * Useful for code editors and runtime previews.
  */
 export function splitBuilderCode(input: string): CodeDraft {
-  if (!input || !input.trim() ) {
-    debugger
+  if (!input || !input.trim()) {
+
     return { html: "", css: "", js: "" };
   }
 

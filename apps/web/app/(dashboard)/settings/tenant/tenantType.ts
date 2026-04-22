@@ -80,6 +80,27 @@ export type BrandAssetSpec = {
 };
 
 export interface Tenant {
+    // Fields from the updated backend API
+    id?: string;
+    agency_id?: string;
+    slug?: string;
+    display_name?: string;
+    infra_mode?: string;
+    business_type?: string | null;
+    created_at?: string;
+    dedicated_profile_id?: string | null;
+    feature_flags?: string[];
+    mongo_db_name?: string;
+    runtime_documents?: {
+        kind: string;
+        mode: string;
+        database: string;
+        collection_count: number;
+        collections: Record<string, any>;
+    };
+    vertical_packs?: string[];
+
+    // Legacy fields
     _id?: string;
     key?: string;
     name?: string;

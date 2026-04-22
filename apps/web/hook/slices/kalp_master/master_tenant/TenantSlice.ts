@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { fetchTenants, createTenant, updateTenant, deleteTenant } from './TenantThunk';
+import { fetchTenants, createTenant, updateTenant, deleteTenant, fetchTenantById } from './TenantThunk';
 import { TenantSwitcherOption } from '@/components/adminLayout/AdminLayout';
 import { Tenant } from '@/app/(dashboard)/settings/tenant/tenantType';
 
@@ -80,7 +80,20 @@ export const tenantSlice = createSlice({
                 state.error = action.payload || 'Unknown Error';
             })
 
-        // Delete
+        // update current tenant
+        .addCase(fetchTenantById.pending, (state) => {
+            state.loading = true;
+            state.error = null;
+        })
+        .addCase(fetchTenantById.fulfilled, (state, action) => {
+          
+            state.loading = false;
+            state.currentTenant = action.payload;
+        })
+        .addCase(fetchTenantById.rejected, (state, action) => {
+            state.loading = false;
+            state.error = action.payload || 'Unknown Error';
+        })
 
     },
 });
