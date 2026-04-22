@@ -2,7 +2,7 @@
 
 import { useState, startTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck, Building2, Fingerprint } from 'lucide-react';
+import { Activity, Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck, Building2, Fingerprint, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getMagicOptions, type MagicUser } from '@/lib/api';
 import { resolvePostLoginRoute } from '@/lib/auth-routing';
@@ -22,8 +22,8 @@ const roleModes = [
 type RoleMode = (typeof roleModes)[number]["key"];
 export default function LoginPage() {
     const platformDefaults = {
-        email: 'founder@kalpzero.com',
-        password: 'very-secure-password',
+        email: 'admin@kalpzero.com',
+        password: '1234567899',
         tenantKey: 'demo-tenant',
     };
     const tenantDefaults = {
@@ -39,6 +39,7 @@ export default function LoginPage() {
     const [mode, setMode] = useState<RoleMode>("platform");
     const [magicUsers, setMagicUsers] = useState<MagicUser[]>([]);
     const [showMagic, setShowMagic] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
     
     const [form, setForm] = useState({
         email: platformDefaults.email,
@@ -61,9 +62,9 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        debugger
         setLoading(true);
         setError('');
-
         try {
             const session = await login({
                 email: form.email,
@@ -253,14 +254,21 @@ export default function LoginPage() {
                             <div className="relative">
                                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={form.password}
                                     onChange={e => setForm({ ...form, password: e.target.value })}
-                                    className="w-full bg-black/50 border border-slate-700/80 rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                                    className="w-full bg-black/50 border border-slate-700/80 rounded-lg pl-10 pr-12 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
                                     placeholder="••••••••"
                                     required
                                     minLength={6}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-cyan-400 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
                             </div>
                         </div>
 

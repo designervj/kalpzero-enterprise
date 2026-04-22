@@ -28,6 +28,8 @@ import {
   Map,
   Upload,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   enforceModuleSelectionRules,
@@ -214,6 +216,7 @@ export default function OnboardingWizard() {
   const [isDeploying, setIsDeploying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wizardShellRef = useRef<HTMLDivElement>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Data loaded from kalp_system
   const [industries, setIndustries] = useState<any[]>([]);
@@ -1304,18 +1307,27 @@ export default function OnboardingWizard() {
                             className="w-full bg-black/50 border border-slate-700/80 rounded-lg px-3 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                             placeholder="owner@business.com"
                           />
-                          <input
-                            type="password"
-                            value={formData.ownerAdminPassword}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                ownerAdminPassword: e.target.value,
-                              })
-                            }
-                            className="w-full bg-black/50 border border-slate-700/80 rounded-lg px-3 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                            placeholder="Minimum 8 characters"
-                          />
+                          <div className="relative">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              value={formData.ownerAdminPassword}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  ownerAdminPassword: e.target.value,
+                                })
+                              }
+                              className="w-full bg-black/50 border border-slate-700/80 rounded-lg pl-3 pr-10 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                              placeholder="Minimum 8 characters"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-cyan-400 Transition-colors"
+                            >
+                              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                          </div>
                         </div>
                         <p className="text-[10px] text-slate-400">
                           This account becomes the primary Business Admin for
