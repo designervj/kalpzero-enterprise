@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "bash ../../scripts/with-root-env.sh next build",
-    "dev": "bash ../../scripts/with-root-env.sh next dev",
+    "build": "bash ../../scripts/with-root-env-next.sh build",
+    "dev": "bash ../../scripts/with-root-env-next.sh dev",
     "lint": "eslint . --max-warnings=0",
-    "start": "bash ../../scripts/with-root-env.sh next start",
+    "start": "bash ../../scripts/with-root-env-next.sh start",
     "test": "echo \"No web tests yet\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
