@@ -10,6 +10,7 @@ import optionReducer from "@/hook/slices/system/optionSlice/OptionSlice";
 import featureReducer from "@/hook/slices/system/featureSlice/FeatureSlice";
 import productReducer from "@/hook/slices/prodoductSlice/productSlice";
 import categoryReducer from "@/hook/slices/commerce/category/categorySlice";
+import attributeReducer from "@/hook/slices/commerce/attribute/attributeSlice";
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +25,7 @@ export const store = configureStore({
     feature: featureReducer,
     product: productReducer,
     category: categoryReducer,
+    attribute: attributeReducer,
   },
 });
 

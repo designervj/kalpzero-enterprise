@@ -1,7 +1,7 @@
 "use client"
 import GetTenant from "@/components/adminLayout/GetTenant";
-import GetAllCategories from "@/components/categories/GetAllCategories";
-import ShowCategoryTable from "@/components/categories/ShowCategoryTable";
+import GetAllCategories from "@/components/commerce/categories/GetAllCategories";
+import ShowCategoryTable from "@/components/commerce/categories/ShowCategoryTable";
 
 export default function CommercePage() {
     return (
@@ -10,7 +10,7 @@ export default function CommercePage() {
                 <h1 className="text-2xl font-bold tracking-tight text-slate-100">Categories</h1>
                 <p className="text-slate-500">Manage your commerce categories, slugs, and visibility status.</p>
             </div>
-            
+
             <GetTenant />
             <GetAllCategories />
             <ShowCategoryTable />
