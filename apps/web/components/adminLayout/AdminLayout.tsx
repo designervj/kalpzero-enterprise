@@ -175,47 +175,47 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
     }
   }, [pathname, setActiveContext]);
 
-  useEffect(() => {
-    let isCancelled = false;
+  // useEffect(() => {
+  //   let isCancelled = false;
 
-    fetch("/api/agency/terminology")
-      .then(async (res) => (res.ok ? await res.json() : null))
-      .then((data) => {
-        if (isCancelled || !data || typeof data !== "object") return;
-        const whiteLabel =
-          data.whiteLabel && typeof data.whiteLabel === "object"
-            ? (data.whiteLabel as Record<string, unknown>)
-            : {};
-        const brandName =
-          typeof whiteLabel.brandName === "string" &&
-            whiteLabel.brandName.trim()
-            ? whiteLabel.brandName.trim()
-            : "KalpZERO";
-        const shortName =
-          typeof whiteLabel.shortName === "string" &&
-            whiteLabel.shortName.trim()
-            ? whiteLabel.shortName.trim()
-            : brandName;
-        setAgencyBranding({
-          agencyName:
-            typeof data.agencyName === "string" ? data.agencyName : "",
-          brandName,
-          shortName,
-          logoUrl:
-            typeof whiteLabel.logoUrl === "string"
-              ? whiteLabel.logoUrl.trim()
-              : "",
-          compactLogoUrl:
-            typeof whiteLabel.compactLogoUrl === "string"
-              ? whiteLabel.compactLogoUrl.trim()
-              : "",
-        });
-      })
-      .catch(() => undefined);
-    return () => {
-      isCancelled = true;
-    };
-  }, [activeTenant, authCtx.user?.email]);
+  //   fetch("/api/agency/terminology")
+  //     .then(async (res) => (res.ok ? await res.json() : null))
+  //     .then((data) => {
+  //       if (isCancelled || !data || typeof data !== "object") return;
+  //       const whiteLabel =
+  //         data.whiteLabel && typeof data.whiteLabel === "object"
+  //           ? (data.whiteLabel as Record<string, unknown>)
+  //           : {};
+  //       const brandName =
+  //         typeof whiteLabel.brandName === "string" &&
+  //           whiteLabel.brandName.trim()
+  //           ? whiteLabel.brandName.trim()
+  //           : "KalpZERO";
+  //       const shortName =
+  //         typeof whiteLabel.shortName === "string" &&
+  //           whiteLabel.shortName.trim()
+  //           ? whiteLabel.shortName.trim()
+  //           : brandName;
+  //       setAgencyBranding({
+  //         agencyName:
+  //           typeof data.agencyName === "string" ? data.agencyName : "",
+  //         brandName,
+  //         shortName,
+  //         logoUrl:
+  //           typeof whiteLabel.logoUrl === "string"
+  //             ? whiteLabel.logoUrl.trim()
+  //             : "",
+  //         compactLogoUrl:
+  //           typeof whiteLabel.compactLogoUrl === "string"
+  //             ? whiteLabel.compactLogoUrl.trim()
+  //             : "",
+  //       });
+  //     })
+  //     .catch(() => undefined);
+  //   return () => {
+  //     isCancelled = true;
+  //   };
+  // }, [activeTenant, authCtx.user?.email]);
 
   useEffect(() => {
     if (authCtx.isLoading || !authCtx.user?.tenantKey) return;

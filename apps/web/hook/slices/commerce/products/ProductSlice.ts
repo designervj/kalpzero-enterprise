@@ -1,11 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Product, ProductState } from './ProductType';
-import { 
-  fetchProducts, 
-  createProduct, 
-  updateProduct, 
-  deleteProduct 
-} from './ProductThunk';
+import { createProduct, deleteProduct, fetchProductById, fetchProducts, updateProduct } from './ProductThunk';
+
 
 const initialState: ProductState = {
   allProducts: [],
@@ -48,6 +44,19 @@ const productSlice = createSlice({
         state.allProducts = action.payload;
       })
       .addCase(fetchProducts.rejected, (state) => {
+        state.isLoading = false;
+        state.isError = true;
+      })
+      // Fetch By ID
+      .addCase(fetchProductById.pending, (state) => {
+        state.isLoading = true;
+        state.isError = false;
+      })
+      .addCase(fetchProductById.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.currentProduct = action.payload;
+      })
+      .addCase(fetchProductById.rejected, (state) => {
         state.isLoading = false;
         state.isError = true;
       })

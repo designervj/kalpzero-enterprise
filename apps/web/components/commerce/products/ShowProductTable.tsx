@@ -128,7 +128,7 @@ export default function ShowProductTable({
               <TableCell className="text-right px-8">
                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => window.open(`/commerce/product/${product.slug}`, '_blank')}
+                    onClick={() => window.open(`/commerce/product/${product.id}`, '_blank')}
                     className="h-9 w-9 bg-slate-900 border border-white/5 text-white/40 hover:text-indigo-400 hover:border-indigo-500/30 transition-all flex items-center justify-center"
                     title="View Product"
                   >
