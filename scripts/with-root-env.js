@@ -81,6 +81,12 @@ setCompatEnv();
 const command = args[0];
 const commandArgs = args.slice(1);
 
+// pnpm forwards script args as: "<script args> -- <forwarded args>".
+// Next.js does not expect that sentinel, so strip it before spawning.
+if (commandArgs.length >= 2 && commandArgs[1] === '--') {
+  commandArgs.splice(1, 1);
+}
+
 const isWindows = process.platform === 'win32';
 const shell = isWindows ? true : false;
 
