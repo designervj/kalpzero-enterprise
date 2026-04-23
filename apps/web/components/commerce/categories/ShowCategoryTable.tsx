@@ -49,16 +49,7 @@ export default function ShowCategoryTable() {
         setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    const stats = useMemo(() => {
-        const productNodes = allCategories.filter(c => c.type === 'product').length;
-        const subNodes = allCategories.filter(c => !!c.parentId).length;
-        return {
-            all: allCategories.length,
-            product: productNodes,
-            intel: allCategories.filter(c => c.type === 'blog' || c.type === 'intel').length,
-            structures: subNodes
-        };
-    }, [allCategories]);
+
 
     const tree = useMemo(() => {
         const map = new Map<string, TreeCategory>();
