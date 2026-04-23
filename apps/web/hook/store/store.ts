@@ -10,6 +10,7 @@ import featureReducer from '../slices/system/featureSlice/FeatureSlice';
 import productReducer from '../slices/prodoductSlice/productSlice';
 import authReducer from '../slices/auth/authSlice';
 import categoryReducer from '../slices/commerce/category/categorySlice';
+import attributeReducer from '../slices/commerce/attribute/attributeSlice';
 export const store = configureStore({
     reducer: {
         auth: authReducer,
@@ -17,6 +18,7 @@ export const store = configureStore({
         pages: pagesReducer,
         landingTemplate: landingTemplateReducer,
         category: categoryReducer,
+        attribute: attributeReducer,
         language: languageReducer,  
         theme: themeReducer,
         plugin: pluginReducer,

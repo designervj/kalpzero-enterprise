@@ -15,9 +15,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { canRoleMutateUi } from "@/lib/role-scope";
-import CategoryImportModal from "@/components/categories/CategoryImportModal";
+import CategoryImportModal from "@/components/commerce/categories/CategoryImportModal";
 import {
-    CATEGORY_TEMPLATE_OPTIONS,
+  CATEGORY_TEMPLATE_OPTIONS,
   defaultCategoryTemplateForType,
   getCategoryTemplateLabel,
   normalizeCategoryTemplateKey,
@@ -709,8 +709,8 @@ export default function CategoriesPage() {
                   <select
                     value={normalizeCategoryTemplateKey(
                       previewTemplateByCategoryId[category._id] ||
-                        category.page?.templateKey ||
-                        category.templateKey,
+                      category.page?.templateKey ||
+                      category.templateKey,
                       defaultCategoryTemplateForType(
                         resolveCategoryType(category.type),
                       ),
@@ -757,8 +757,8 @@ export default function CategoriesPage() {
                     openPreview(
                       category,
                       previewTemplateByCategoryId[category._id] ||
-                        category.page?.templateKey ||
-                        category.templateKey,
+                      category.page?.templateKey ||
+                      category.templateKey,
                     )
                   }
                   className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-2 py-1 text-[11px] text-slate-300 hover:border-cyan-500/40 hover:text-cyan-300"
@@ -841,8 +841,8 @@ export default function CategoriesPage() {
                       <select
                         value={normalizeCategoryTemplateKey(
                           previewTemplateByCategoryId[category._id] ||
-                            category.page?.templateKey ||
-                            category.templateKey,
+                          category.page?.templateKey ||
+                          category.templateKey,
                           defaultCategoryTemplateForType(
                             resolveCategoryType(category.type),
                           ),
@@ -872,8 +872,8 @@ export default function CategoriesPage() {
                           openPreview(
                             category,
                             previewTemplateByCategoryId[category._id] ||
-                              category.page?.templateKey ||
-                              category.templateKey,
+                            category.page?.templateKey ||
+                            category.templateKey,
                           )
                         }
                         className="rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-cyan-300"
@@ -905,7 +905,7 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      <CategoryImportModal 
+      <CategoryImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={() => fetchCategories().catch(() => null)}
