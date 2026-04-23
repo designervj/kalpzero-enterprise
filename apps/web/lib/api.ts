@@ -269,6 +269,22 @@ export function getApiBaseUrl() {
   return resolveApiBaseUrl();
 }
 
+export function buildApiUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const apiBaseUrl = resolveApiBaseUrl();
+  const combinedPath = `${apiBaseUrl}${normalizedPath}`;
+
+  if (isAbsoluteApiBaseUrl(apiBaseUrl)) {
+    return new URL(combinedPath);
+  }
+
+  if (typeof window === "undefined") {
+    throw new Error(`Relative API base URL "${apiBaseUrl}" is not supported on the server.`);
+  }
+
+  return new URL(combinedPath, window.location.origin);
+}
+
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }

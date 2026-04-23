@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { AttributeSetItem } from "./attributeType";
-import { getApiBaseUrl } from "@/lib/api";
+import { buildApiUrl } from "@/lib/api";
 
 // Fetch all attribute sets
 export const fetchAttributes = createAsyncThunk<
@@ -9,7 +9,7 @@ export const fetchAttributes = createAsyncThunk<
   { rejectValue: string }
 >("attribute/fetchAttributes", async ({ auth_token, "x-tenant-db": xTenantDb, type }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/attribute-sets`);
+    const url = buildApiUrl("/commerce/attribute-sets");
     if (type) url.searchParams.append("type", type);
 
     const response = await fetch(url.toString(), {
@@ -40,7 +40,7 @@ export const createAttributeSet = createAsyncThunk<
   { rejectValue: string }
 >("attribute/createAttributeSet", async ({ payload, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/attribute-sets`);
+    const url = buildApiUrl("/commerce/attribute-sets");
     const response = await fetch(url.toString(), {
       method: "POST",
       headers: {
@@ -69,7 +69,7 @@ export const updateAttributeSet = createAsyncThunk<
   { rejectValue: string }
 >("attribute/updateAttributeSet", async ({ id, payload, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/attribute-sets/${id}`);
+    const url = buildApiUrl(`/commerce/attribute-sets/${id}`);
     const response = await fetch(url.toString(), {
       method: "PUT",
       headers: {
@@ -98,7 +98,7 @@ export const deleteAttributeSet = createAsyncThunk<
   { rejectValue: string }
 >("attribute/deleteAttributeSet", async ({ id, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/attribute-sets/${id}`);
+    const url = buildApiUrl(`/commerce/attribute-sets/${id}`);
     const response = await fetch(url.toString(), {
       method: "DELETE",
       headers: {
@@ -125,7 +125,7 @@ export const bulkImportAttributes = createAsyncThunk<
   { rejectValue: string }
 >("attribute/bulkImport", async ({ data, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/attribute-sets/bulk`);
+    const url = buildApiUrl("/commerce/attribute-sets/bulk");
     const response = await fetch(url.toString(), {
       method: "POST",
       headers: {
