@@ -288,11 +288,12 @@ def provision_runtime_document_store_for_tenant(
             database.create_collection(collection_name)
             created_collections.append(collection_name)
 
-        database[collection_name].create_index(
-            [("tenant_slug", 1), ("document_key", 1)],
-            unique=True,
-            name="tenant_slug_document_key_uq",
-        )
+        if collection_name in RUNTIME_COLLECTIONS.values():
+            database[collection_name].create_index(
+                [("tenant_slug", 1), ("document_key", 1)],
+                unique=True,
+                name="tenant_slug_document_key_uq",
+            )
 
     return {
         "kind": "mongo",

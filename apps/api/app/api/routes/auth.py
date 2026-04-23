@@ -101,11 +101,7 @@ def login(
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
-
-    print("calling loginb", payload)
     user = authenticate_user(db, payload.email, payload.password, tenant_slug=payload.tenant_slug)
-
-    print("useer login", user)
     session_payload = _serialize_user_session(db, user)
     expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
     token = create_access_token(

@@ -621,8 +621,11 @@ async def find_product_by_slug(db_name: str, *, slug: str) -> dict[str, Any] | N
 
 async def create_product(db_name: str, data: dict[str, Any]) -> dict[str, Any]:
     db = get_runtime_motor_database(get_settings(), database_name=db_name)
-    data["createdAt"] = datetime.now(tz=UTC)
-    data["updatedAt"] = datetime.now(tz=UTC)
+    now = datetime.now(tz=UTC)
+    data["createdAt"] = now
+    data["created_at"] = now
+    data["updatedAt"] = now
+    data["updated_at"] = now
     data.pop("_id", None)
     result = await db["commerce_products"].insert_one(data)
     data["id"] = str(result.inserted_id)
@@ -631,7 +634,9 @@ async def create_product(db_name: str, data: dict[str, Any]) -> dict[str, Any]:
 async def update_product(db_name: str, product_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
     db = get_runtime_motor_database(get_settings(), database_name=db_name)
     from bson import ObjectId
-    data["updatedAt"] = datetime.now(tz=UTC)
+    now = datetime.now(tz=UTC)
+    data["updatedAt"] = now
+    data["updated_at"] = now
     data.pop("_id", None)
     try:
         oid = ObjectId(product_id)

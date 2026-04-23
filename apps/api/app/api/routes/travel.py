@@ -130,6 +130,7 @@ async def travel_departures_create(
         _raise_http_error(exc)
 
 
+@router.patch("/departures/{departure_id}/status")
 @router.post("/departures/{departure_id}/status")
 async def travel_departures_update_status(
     departure_id: str,
@@ -198,6 +199,7 @@ async def travel_leads_create(
         _raise_http_error(exc)
 
 
+@router.patch("/leads/{lead_id}/status")
 @router.post("/leads/{lead_id}/status")
 async def travel_leads_update_status(
     lead_id: str,
@@ -217,6 +219,7 @@ async def travel_leads_update_status(
         _raise_http_error(exc)
 
 
+@router.get("/legacy/plan")
 @router.get("/legacy-plan")
 async def travel_legacy_plan(
     _: SessionContext = Depends(require_permission("imports.sources.read")),

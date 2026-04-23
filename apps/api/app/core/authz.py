@@ -207,7 +207,9 @@ def assert_permission_granted(permission: str, role_key: str | Iterable[str] | N
 
 def require_permission(permission: str) -> Callable[[SessionContext], SessionContext]:
     def dependency(session: SessionContext = Depends(get_current_session)) -> SessionContext:
-        if session.user_id is None and session.role != "guest":
+        if session.user_id is None:
+            if permission in ROLE_GRANTS.get("guest", set()):
+                return session
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required.",

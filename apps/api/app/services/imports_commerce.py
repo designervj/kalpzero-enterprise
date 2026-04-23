@@ -38,7 +38,7 @@ def _tenant_context(db: Session, *, tenant_id: str) -> tuple[str, str]:
 
 
 async def _repo_call(db_name: str, operation: str, /, **kwargs):
-    return await getattr(commerce_repository, operation)(db_name, **kwargs)
+    return await getattr(commerce_repository, operation)(db_name=db_name, **kwargs)
 
 
 async def run_commerce_import_job(

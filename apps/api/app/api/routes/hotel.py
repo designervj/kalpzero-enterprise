@@ -112,6 +112,7 @@ async def hotel_overview(
         _raise_http_error(exc)
 
 
+@router.get("/inventory/summary")
 @router.get("/inventory-summary")
 async def hotel_inventory_summary(
     property_id: str | None = None,
@@ -508,6 +509,7 @@ async def hotel_reservations_create(
         _raise_http_error(exc)
 
 
+@router.patch("/reservations/{reservation_id}/assign-room")
 @router.post("/reservations/{reservation_id}/assign-room")
 async def hotel_reservations_assign_room(
     reservation_id: str,
@@ -527,6 +529,7 @@ async def hotel_reservations_assign_room(
         _raise_http_error(exc)
 
 
+@router.patch("/reservations/{reservation_id}/status")
 @router.post("/reservations/{reservation_id}/status")
 async def hotel_reservations_update_status(
     reservation_id: str,
@@ -579,6 +582,7 @@ async def hotel_stay_detail(
         _raise_http_error(exc)
 
 
+@router.post("/stays/{stay_id}/room-moves")
 @router.post("/stays/{stay_id}/room-move", status_code=status.HTTP_201_CREATED)
 async def hotel_stay_room_move(
     stay_id: str,
@@ -898,6 +902,7 @@ async def hotel_property_profile(
         _raise_http_error(exc)
 
 
+@router.put("/property-profile")
 @router.post("/property-profile")
 async def hotel_property_profile_upsert(
     payload: UpsertHotelPropertyProfileRequest,
@@ -958,6 +963,7 @@ async def hotel_amenity_catalog(
         _raise_http_error(exc)
 
 
+@router.put("/amenities")
 @router.post("/amenity-catalog")
 async def hotel_amenity_catalog_upsert(
     payload: UpsertHotelAmenityCatalogRequest,
@@ -998,6 +1004,7 @@ async def hotel_nearby(
         _raise_http_error(exc)
 
 
+@router.put("/nearby")
 @router.post("/nearby-places")
 async def hotel_nearby_upsert(
     payload: UpsertHotelNearbyPlacesRequest,
@@ -1039,6 +1046,7 @@ async def hotel_report_summary(
         _raise_http_error(exc)
 
 
+@router.get("/housekeeping/tasks")
 @router.get("/housekeeping-tasks")
 async def hotel_housekeeping_tasks(
     property_id: str | None = None,
@@ -1060,6 +1068,7 @@ async def hotel_housekeeping_tasks(
         _raise_http_error(exc)
 
 
+@router.post("/housekeeping/tasks", status_code=status.HTTP_201_CREATED)
 @router.post("/housekeeping-tasks", status_code=status.HTTP_201_CREATED)
 async def hotel_housekeeping_tasks_create(
     payload: CreateHotelHousekeepingTaskRequest,
@@ -1082,6 +1091,7 @@ async def hotel_housekeeping_tasks_create(
         _raise_http_error(exc)
 
 
+@router.patch("/housekeeping/tasks/{task_id}/status")
 @router.post("/housekeeping-tasks/{task_id}/status")
 async def hotel_housekeeping_tasks_update_status(
     task_id: str,
@@ -1101,6 +1111,7 @@ async def hotel_housekeeping_tasks_update_status(
         _raise_http_error(exc)
 
 
+@router.get("/maintenance/tickets")
 @router.get("/maintenance-tickets")
 async def hotel_maintenance_tickets(
     property_id: str | None = None,
@@ -1122,6 +1133,7 @@ async def hotel_maintenance_tickets(
         _raise_http_error(exc)
 
 
+@router.post("/maintenance/tickets", status_code=status.HTTP_201_CREATED)
 @router.post("/maintenance-tickets", status_code=status.HTTP_201_CREATED)
 async def hotel_maintenance_tickets_create(
     payload: CreateHotelMaintenanceTicketRequest,
@@ -1145,6 +1157,7 @@ async def hotel_maintenance_tickets_create(
         _raise_http_error(exc)
 
 
+@router.patch("/maintenance/tickets/{ticket_id}/status")
 @router.post("/maintenance-tickets/{ticket_id}/status")
 async def hotel_maintenance_tickets_update_status(
     ticket_id: str,

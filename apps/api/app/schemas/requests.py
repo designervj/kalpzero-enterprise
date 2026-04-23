@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 class RegisterRequest(BaseModel):
     email: str
@@ -522,56 +522,141 @@ class UpdateCommerceAttributeSetRequest(BaseModel):
 
 
 class CommerceAttributeValueRequest(BaseModel):
-    attributeId: str = Field(min_length=3, max_length=36)
+    model_config = ConfigDict(populate_by_name=True)
+
+    attributeId: str = Field(
+        min_length=3,
+        max_length=36,
+        validation_alias=AliasChoices("attributeId", "attribute_id"),
+    )
     value: Any | None = None
 
 
 class CreateCommerceVariantRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     sku: str = Field(min_length=2, max_length=120)
-    title: str = Field(min_length=2, max_length=255)
-    price: float = Field(ge=0)
+    title: str = Field(
+        min_length=2,
+        max_length=255,
+        validation_alias=AliasChoices("title", "label"),
+    )
+    price: float = Field(ge=0, validation_alias=AliasChoices("price", "price_minor"))
     currency: str = Field(default="INR", min_length=3, max_length=8)
-    stock: int = Field(default=0, ge=0)
-    attributeValues: list[CommerceAttributeValueRequest] = Field(default_factory=list)
-    compareAtPrice: float | None = Field(default=None, ge=0)
-    imageId: str | None = Field(default=None, max_length=255)
+    stock: int = Field(default=0, ge=0, validation_alias=AliasChoices("stock", "inventory_quantity"))
+    attributeValues: list[CommerceAttributeValueRequest] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("attributeValues", "attribute_values"),
+    )
+    compareAtPrice: float | None = Field(
+        default=None,
+        ge=0,
+        validation_alias=AliasChoices("compareAtPrice", "compare_at_price"),
+    )
+    imageId: str | None = Field(
+        default=None,
+        max_length=255,
+        validation_alias=AliasChoices("imageId", "image_id"),
+    )
 
 
 class CreateCommerceProductRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str = Field(min_length=2, max_length=255)
     slug: str = Field(min_length=2, max_length=120)
     sku: str | None = Field(default=None, max_length=120)
     description: str | None = None
-    brandId: str | None = Field(default=None, min_length=3, max_length=36)
-    vendorId: str | None = Field(default=None, min_length=3, max_length=36)
-    collectionIds: list[str] = Field(default_factory=list)
-    attributeSetIds: list[str] = Field(default_factory=list)
-    categoryIds: list[str] = Field(min_length=1)
-    seoTitle: str | None = Field(default=None, max_length=255)
-    seoDescription: str | None = None
+    brandId: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=36,
+        validation_alias=AliasChoices("brandId", "brand_id"),
+    )
+    vendorId: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=36,
+        validation_alias=AliasChoices("vendorId", "vendor_id"),
+    )
+    collectionIds: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("collectionIds", "collection_ids"),
+    )
+    attributeSetIds: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("attributeSetIds", "attribute_set_ids"),
+    )
+    categoryIds: list[str] = Field(
+        min_length=1,
+        validation_alias=AliasChoices("categoryIds", "category_ids"),
+    )
+    seoTitle: str | None = Field(
+        default=None,
+        max_length=255,
+        validation_alias=AliasChoices("seoTitle", "seo_title"),
+    )
+    seoDescription: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("seoDescription", "seo_description"),
+    )
     status: str = Field(default="active", pattern="^(draft|active|archived)$")
     type: str = Field(default="physical", max_length=64)
     price: float = Field(default=0.0, ge=0)
-    productAttributes: list[CommerceAttributeValueRequest] = Field(default_factory=list)
+    productAttributes: list[CommerceAttributeValueRequest] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("productAttributes", "product_attributes"),
+    )
     variants: list[CreateCommerceVariantRequest] = Field(min_length=1)
 
 
 class UpdateCommerceProductRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str | None = Field(default=None, min_length=2, max_length=255)
     slug: str | None = Field(default=None, min_length=2, max_length=120)
     sku: str | None = Field(default=None, max_length=120)
     description: str | None = None
-    brandId: str | None = Field(default=None, min_length=3, max_length=36)
-    vendorId: str | None = Field(default=None, min_length=3, max_length=36)
-    collectionIds: list[str] | None = None
-    attributeSetIds: list[str] | None = None
-    categoryIds: list[str] | None = None
-    seoTitle: str | None = Field(default=None, max_length=255)
-    seoDescription: str | None = None
+    brandId: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=36,
+        validation_alias=AliasChoices("brandId", "brand_id"),
+    )
+    vendorId: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=36,
+        validation_alias=AliasChoices("vendorId", "vendor_id"),
+    )
+    collectionIds: list[str] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("collectionIds", "collection_ids"),
+    )
+    attributeSetIds: list[str] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("attributeSetIds", "attribute_set_ids"),
+    )
+    categoryIds: list[str] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("categoryIds", "category_ids"),
+    )
+    seoTitle: str | None = Field(
+        default=None,
+        max_length=255,
+        validation_alias=AliasChoices("seoTitle", "seo_title"),
+    )
+    seoDescription: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("seoDescription", "seo_description"),
+    )
     status: str | None = Field(default=None, pattern="^(draft|active|archived)$")
     type: str | None = Field(default=None, max_length=64)
     price: float | None = Field(default=None, ge=0)
-    productAttributes: list[CommerceAttributeValueRequest] | None = None
+    productAttributes: list[CommerceAttributeValueRequest] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("productAttributes", "product_attributes"),
+    )
     variants: list[CreateCommerceVariantRequest] | None = None
 
 
@@ -600,17 +685,56 @@ class OrderPaymentRequest(BaseModel):
 class OrderShippingRequest(BaseModel):
     method: str
 
+class CreateCommerceOrderLineRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    variant_id: str = Field(
+        min_length=3,
+        max_length=64,
+        validation_alias=AliasChoices("variant_id", "variantId"),
+    )
+    quantity: int = Field(ge=1)
+
+
 class CreateCommerceOrderRequest(BaseModel):
-    items: list[dict[str, Any]]
-    pricing: OrderPricingRequest
-    shippingAddress: OrderAddressRequest
-    billingAddress: OrderAddressRequest
-    payment: OrderPaymentRequest
-    shipping: OrderShippingRequest
-    email: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    customer_id: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=255,
+        validation_alias=AliasChoices("customer_id", "customerId"),
+    )
+    price_list_id: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=64,
+        validation_alias=AliasChoices("price_list_id", "priceListId"),
+    )
+    tax_profile_id: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=64,
+        validation_alias=AliasChoices("tax_profile_id", "taxProfileId"),
+    )
+    coupon_code: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=120,
+        validation_alias=AliasChoices("coupon_code", "couponCode"),
+    )
+    lines: list[CreateCommerceOrderLineRequest] = Field(default_factory=list)
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    pricing: OrderPricingRequest | None = None
+    shippingAddress: OrderAddressRequest | None = None
+    billingAddress: OrderAddressRequest | None = None
+    payment: OrderPaymentRequest | None = None
+    shipping: OrderShippingRequest | None = None
+    email: str | None = None
     sessionId: str | None = None
     userId: str | None = None
     status: str = "pending"
+    currency: str = Field(default="INR", min_length=3, max_length=8)
     paymentStatus: str = "pending"
     fulfillmentStatus: str = "unfulfilled"
 
@@ -625,9 +749,7 @@ class CartItemSchema(BaseModel):
     # The rest of the fields can be dynamic as per the example
     # We use Extra.allow or just dynamic fields
     item_data: dict[str, Any] = Field(default_factory=dict)
-
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class AddToCartRequest(BaseModel):
@@ -635,9 +757,7 @@ class AddToCartRequest(BaseModel):
     # We'll allow any fields and ensure quantity and cartItemId are present or handled
     quantity: int = Field(ge=1)
     cartItemId: str | None = None
-    
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class UpdateCartItemRequest(BaseModel):
@@ -646,13 +766,11 @@ class UpdateCartItemRequest(BaseModel):
 
 
 class CreateFormRequest(BaseModel):
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class UpdateFormRequest(BaseModel):
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class CreateCommerceFulfillmentLineRequest(BaseModel):
@@ -880,6 +998,3 @@ class ThemeTypographyRequest(BaseModel):
 class ThemeConfig(BaseModel):
     colors: ThemeColorsRequest
     typography: ThemeTypographyRequest
-    
-    
-    

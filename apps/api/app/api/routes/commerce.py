@@ -123,7 +123,7 @@ async def commerce_categories(
     try:
         return {
             "tenant_id": session.tenant_id,
-            "data": await list_categories(
+            "categories": await list_categories(
                 db,
                 tenant_slug=session.tenant_id,
                 db_name=session.tenant_db_name,
@@ -154,10 +154,7 @@ async def commerce_categories_create(
             metaDescription=payload.metaDescription,
             db_name=session.tenant_db_name
         )
-        return {
-            "tenant_id": session.tenant_id,
-            "data": result,
-        }
+        return result
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -177,10 +174,7 @@ async def commerce_categories_update(
             category_id=category_id,
             **payload.model_dump(exclude_unset=True)
         )
-        return {
-            "tenant_id": session.tenant_id,
-            "data": result,
-        }
+        return result
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -198,10 +192,7 @@ async def commerce_categories_delete(
             tenant_slug=session.tenant_id,
             category_id=category_id
         )
-        return {
-            "tenant_id": session.tenant_id,
-            "data": category_id,
-        }
+        return None
     except Exception as exc:
         _raise_http_error(exc)
 
@@ -642,7 +633,7 @@ async def commerce_products(
         )
         return {
             "tenant_id": session.tenant_id,
-            "data": data["data"],
+            "products": data["data"],
             "totalProducts": data["total"],
             "filters": data["filters"]
         }
@@ -666,7 +657,7 @@ async def commerce_product_detail(
     except Exception as exc:
         _raise_http_error(exc)
 
-@router.post("/products")
+@router.post("/products", status_code=status.HTTP_201_CREATED)
 async def commerce_products_create(
     payload: CreateCommerceProductRequest,
     session: SessionContext = Depends(require_permission("commerce.catalog.manage")),
@@ -756,7 +747,7 @@ async def commerce_orders(
         )
         return {
             "tenant_id": session.tenant_id,
-            "data": data["data"],
+            "orders": data["data"],
             "total": data["total"],
             "page": data["page"],
             "perPage": data["per_page"]
@@ -890,7 +881,7 @@ async def commerce_orders_create(
             tenant_slug=session.tenant_id,
             db_name=session.tenant_db_name,
             actor_user_id=session.user_id,
-            payload=payload.model_dump()
+            payload=payload.model_dump(exclude_none=True)
         )
     except Exception as exc:
         _raise_http_error(exc)
