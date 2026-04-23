@@ -28,8 +28,8 @@ export const fetchCategories = createAsyncThunk<
     
     // Assuming backend returns an array of categories or an object with an items array
     const data = await response.json();
-
-    return (data?.items || data) as CategoryType[];
+    console.log("dat commerce", data);
+    return (data?.data || data) as CategoryType[];
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch categories");
   }

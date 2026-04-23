@@ -14,26 +14,28 @@ export default function GetAllCategories() {
     const dispatch = useDispatch<AppDispatch>();
     const pathName = usePathname();
     const segment = pathName.split("/")[1];
-    const isFetching = useRef<boolean>(false);
-
+    console.log("segment", segment);
+   const isApi= useRef<boolean>(false);
     const { authUser } = useSelector((state: RootState) => state.auth);
     const { currentTenant } = useSelector((state: RootState) => state.tenant);
     const { isFetchedCategories } = useSelector((state: RootState) => state.category);
 
     useEffect(() => {
         if (!isFetchedCategories &&
-            !isFetching.current &&
              segment === "commerce" &&
             authUser?.access_token &&
-            currentTenant?.mongo_db_name
+            currentTenant?.mongo_db_name &&
+            !isApi.current
             ) {
-            isFetching.current = true;
+            isApi.current = true;
             dispatch(fetchCategories(
                 {
                     'x-tenant-db': currentTenant.mongo_db_name,
                     auth_token: authUser.access_token,
                 }
             ));
+            }else{
+            isApi.current = false;
         }
     }, [dispatch, currentTenant, isFetchedCategories, authUser, segment]);
 
