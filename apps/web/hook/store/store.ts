@@ -9,12 +9,14 @@ import optionReducer from '../slices/system/optionSlice/OptionSlice';
 import featureReducer from '../slices/system/featureSlice/FeatureSlice';
 import productReducer from '../slices/prodoductSlice/productSlice';
 import authReducer from '../slices/auth/authSlice';
+import categoryReducer from '../slices/commerce/category/categorySlice';
 export const store = configureStore({
     reducer: {
         auth: authReducer,
+        tenant: tenantReducer,
         pages: pagesReducer,
         landingTemplate: landingTemplateReducer,
-        tenant: tenantReducer,
+        category: categoryReducer,
         language: languageReducer,  
         theme: themeReducer,
         plugin: pluginReducer,

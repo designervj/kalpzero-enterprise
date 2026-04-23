@@ -62,18 +62,18 @@ export function OnboardingWizard() {
   const [isSubmittingTenant, setIsSubmittingTenant] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (status === "anonymous") {
-      router.push("/login");
-      return;
-    }
-    if (
-      status === "authenticated" &&
-      session?.role !== "platform_admin"
-    ) {
-      router.push("/tenant");
-    }
-  }, [router, session?.role, status]);
+  // useEffect(() => {
+  //   if (status === "anonymous") {
+  //     router.push("/login");
+  //     return;
+  //   }
+  //   if (
+  //     status === "authenticated" &&
+  //     session?.role !== "platform_admin"
+  //   ) {
+  //     router.push("/tenant");
+  //   }
+  // }, [router, session?.role, status]);
 
   async function onCreateAgency(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

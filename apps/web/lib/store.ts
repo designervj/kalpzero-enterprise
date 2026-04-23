@@ -9,6 +9,7 @@ import pluginReducer from "@/hook/slices/system/pluginSlice/PluginSlice";
 import optionReducer from "@/hook/slices/system/optionSlice/OptionSlice";
 import featureReducer from "@/hook/slices/system/featureSlice/FeatureSlice";
 import productReducer from "@/hook/slices/prodoductSlice/productSlice";
+import categoryReducer from "@/hook/slices/commerce/category/categorySlice";
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     option: optionReducer,
     feature: featureReducer,
     product: productReducer,
+    category: categoryReducer,
   },
 });
 

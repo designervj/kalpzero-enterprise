@@ -36,12 +36,12 @@ export const commerce_vertical={
         {
           "label": "Categories",
           "key": "categories",
-          "route": "/admin/categories"
+          "route": "/commerce/categories"
         },
         {
           "label": "Attributes",
           "key": "attributes",
-          "route": "/admin/attributes"
+          "route": "/commerce/attributes"
         }
       ]
     },
