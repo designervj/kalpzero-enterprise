@@ -8,7 +8,7 @@ import themeReducer from "@/hook/slices/system/themeSlice/ThemeSlice";
 import pluginReducer from "@/hook/slices/system/pluginSlice/PluginSlice";
 import optionReducer from "@/hook/slices/system/optionSlice/OptionSlice";
 import featureReducer from "@/hook/slices/system/featureSlice/FeatureSlice";
-import productReducer from "@/hook/slices/prodoductSlice/productSlice";
+import productReducer from "@/hook/slices/commerce/products/ProductSlice";
 import categoryReducer from "@/hook/slices/commerce/category/categorySlice";
 import attributeReducer from "@/hook/slices/commerce/attribute/attributeSlice";
 

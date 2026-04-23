@@ -1,4 +1,4 @@
-import { setAllProducts } from "@/hook/slices/prodoductSlice/productSlice";
+import { setAllProducts } from "@/hook/slices/commerce/products/ProductSlice";
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 

@@ -31,7 +31,7 @@ export const commerce_vertical={
         {
           "label": "Products",
           "key": "products",
-          "route": "/admin/products"
+          "route": "/commerce/products"
         },
         {
           "label": "Categories",

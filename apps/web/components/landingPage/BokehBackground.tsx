@@ -13,12 +13,12 @@ const bokehCircles = Array.from({ length: 6 }, (_, i) => {
   const index = i + 1;
   return {
     background: index % 2 === 0 ? '#ec4899' : '#3b82f6',
-    width: range(index * 10 + 1, 200, 600),
-    height: range(index * 10 + 2, 200, 600),
-    top: `${range(index * 10 + 3, 0, 100)}%`,
-    left: `${range(index * 10 + 4, 0, 100)}%`,
-    x: [0, range(index * 10 + 5, -100, 100), 0],
-    y: [0, range(index * 10 + 6, -100, 100), 0],
+    width: Math.round(range(index * 10 + 1, 200, 600)),
+    height: Math.round(range(index * 10 + 2, 200, 600)),
+    top: `${Math.round(range(index * 10 + 3, 0, 100))}%`,
+    left: `${Math.round(range(index * 10 + 4, 0, 100))}%`,
+    x: [0, Math.round(range(index * 10 + 5, -100, 100)), 0],
+    y: [0, Math.round(range(index * 10 + 6, -100, 100)), 0],
     duration: range(index * 10 + 7, 10, 20),
   };
 });
@@ -26,7 +26,7 @@ const bokehCircles = Array.from({ length: 6 }, (_, i) => {
 const lightLines = Array.from({ length: 20 }, (_, i) => {
   const index = i + 1;
   return {
-    top: `${range(index * 10 + 8, 0, 100)}%`,
+    top: `${Math.round(range(index * 10 + 8, 0, 100))}%`,
     duration: range(index * 10 + 9, 1, 3),
     delay: range(index * 10 + 10, 0, 2),
   };
