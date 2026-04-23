@@ -8,9 +8,20 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=10)
     tenant_slug:str | None = None
     role: str | None = None
-    name: str | None = None
     istenantowner: bool = False
+    first_name:str | None = None
+    last_name:str | None = None
 
+
+class UpdateProfileRequest(BaseModel):
+    id: str
+    email: str | None = None
+    password: str | None = None
+    name: str | None = None
+    first_name:str | None = None
+    last_name:str | None = None
+    addresses: list[Any] | None = None
+    wishlist: list[Any] | None = None
 
 
 class LoginRequest(BaseModel):
@@ -944,29 +955,6 @@ class UpsertDiscoveryDocumentRequest(BaseModel):
     cards: list[DiscoveryCardRequest] = Field(default_factory=list)
 
 
-class AddressRequest(BaseModel):
-    address1: str = Field(min_length=1, max_length=255)
-    address2: str | None = Field(default=None, max_length=255)
-    city: str = Field(min_length=1, max_length=120)
-    state: str = Field(min_length=1, max_length=120)
-    zipcode: str = Field(min_length=1, max_length=32)
-    country: str = Field(min_length=1, max_length=120)
-    is_default: bool = False
-
-
-class CreateCustomerRequest(BaseModel):
-    tenant_slug: str = Field(min_length=3, max_length=120)
-    first_name: str = Field(min_length=1, max_length=120)
-    last_name: str = Field(min_length=1, max_length=120)
-    email: str = Field(min_length=3, max_length=255)
-    password: str = Field(min_length=10)
-    addresses: list[AddressRequest] = Field(default_factory=list)
-
-
-class LoginCustomerRequest(BaseModel):
-    tenant_slug: str = Field(min_length=3, max_length=120)
-    email: str = Field(min_length=3, max_length=255)
-    password: str = Field(min_length=10)
 
 class ButtonsRequest(BaseModel):
     primary: str = Field(min_length=4, max_length=32)
@@ -998,3 +986,22 @@ class ThemeTypographyRequest(BaseModel):
 class ThemeConfig(BaseModel):
     colors: ThemeColorsRequest
     typography: ThemeTypographyRequest
+
+class PatchBusinessBlueprintRequest(BaseModel):
+    business_label: str | None = None
+    public_theme: ThemeConfig | None = None
+    admin_theme: ThemeTokensRequest | None = None
+    public_navigation: list[NavigationItemRequest] | None = None
+    admin_navigation: list[NavigationItemRequest] | None = None
+    routes: list[BlueprintRouteRequest] | None = None
+    dashboard_widgets: list[DashboardWidgetRequest] | None = None
+    vocabulary: dict[str, str] | None = None
+    enabled_modules: list[str] | None = None
+    mobile_capabilities: list[str] | None = None
+    admin_email: str | None = None
+    agency_slug: str | None = None
+    business_type: str | None = None
+    infra_mode: str | None = None
+    
+    
+    

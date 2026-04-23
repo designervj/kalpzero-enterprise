@@ -11,7 +11,6 @@ async def get_theme(
     session: SessionContext = Depends(get_current_session)
 ):
     db_name = session.tenant_db_name or "default"
-    print(db_name)
     forms = await get_theme_service(db_name)
     return {"data": forms["public_theme"], "success": True, "id": forms["id"]}
 

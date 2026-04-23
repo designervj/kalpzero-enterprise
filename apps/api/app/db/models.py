@@ -19,6 +19,10 @@ class UserModel(TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(32), default="tenant_admin")
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     istenantowner: Mapped[bool] = mapped_column(Boolean, default=False)
+    first_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    addresses: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, default=list)
+    wishlist: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, default=list)
 
 
 class AgencyModel(TimestampMixin, Base):

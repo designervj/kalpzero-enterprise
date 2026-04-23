@@ -8,18 +8,16 @@ from app.core.security import SessionContext, create_access_token, get_current_s
 from app.db.models import TenantModel, UserModel
 from app.db.session import get_db_session
 from app.schemas.requests import (
-    CreateCustomerRequest,
-    LoginCustomerRequest,
     LoginRequest,
     MagicLoginRequest,
     RegisterRequest,
+    UpdateProfileRequest
 )
 from app.schemas.responses import LoginResponse, RegisterResponse, SessionResponse
 from app.services.auth import (
-    authenticate_customer,
     authenticate_user,
-    create_customer,
     create_user,
+    update_user,
 )
 from app.db.models import UserModel
 
@@ -35,28 +33,19 @@ def _resolve_tenant_slug(db: Session, tenant_id: str | None) -> str:
 
 def _serialize_user_session(db: Session, user: UserModel) -> SessionResponse:
     return SessionResponse(
+        id=user.id,
         email=user.email,
         tenant_id=_resolve_tenant_slug(db, user.tenant_id),
         role=user.role,
-        name=user.name or user.email,
+        name=user.name,
         isTenantOwner=user.istenantowner,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        addresses=user.addresses,
+        wishlist=user.wishlist,
     )
 
 
-def _serialize_customer_session(
-    *,
-    email: str,
-    tenant_slug: str,
-    role: str,
-    name: str | None,
-) -> SessionResponse:
-    return SessionResponse(
-        email=email,
-        tenant_id=tenant_slug,
-        role=role,
-        name=name or email,
-        isTenantOwner=False,
-    )
 
 
 @router.post("/register", response_model=RegisterResponse)
@@ -92,6 +81,21 @@ def register(
         expires_at=expires_at.isoformat(),
         session=session_payload,
     )
+
+@router.patch("/update-profile")
+def update_profile(
+    payload: UpdateProfileRequest,
+    response: Response,
+    db: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+):
+ 
+    user = update_user(db, payload)
+    session_payload = _serialize_user_session(db, user)
+    return {
+        "user": session_payload,
+        "message": "Profile updated successfully.",
+    }
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -129,6 +133,22 @@ def login(
     )
 
 
+@router.post("/logout")
+def logout(
+    response: Response,
+    session: SessionContext = Depends(get_current_session),
+    db: Session = Depends(get_db_session),
+):
+    response.delete_cookie(
+        key="auth_token",
+        path="/",
+    )
+    return {
+        "access_token": "",
+        "expires_at": datetime.now(tz=UTC).isoformat(),
+        "session": None,
+    }
+
 @router.get("/me", response_model=SessionResponse)
 def me(
     session: SessionContext = Depends(get_current_session),
@@ -143,68 +163,6 @@ def me(
 
     return _serialize_user_session(db, user)
 
-
-@router.post("/register/customer", response_model=RegisterResponse)
-def register_customer(
-    payload: CreateCustomerRequest,
-    db: Session = Depends(get_db_session),
-    settings: Settings = Depends(get_settings),
-) -> RegisterResponse:
-    customer = create_customer(db, payload)
-    session_payload = _serialize_customer_session(
-        email=customer.email,
-        tenant_slug=payload.tenant_slug,
-        role=customer.role,
-        name=f"{customer.first_name} {customer.last_name}".strip(),
-    )
-    expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
-    token = create_access_token(
-        id=customer.id,
-        email=customer.email,
-        tenant_id=payload.tenant_slug,
-        role=customer.role,
-        settings=settings,
-    )
-
-    return RegisterResponse(
-        access_token=token,
-        expires_at=expires_at.isoformat(),
-        session=session_payload,
-    )
-
-
-@router.post("/login/customer", response_model=LoginResponse)
-def login_customer(
-    payload: LoginCustomerRequest,
-    db: Session = Depends(get_db_session),
-    settings: Settings = Depends(get_settings),
-) -> LoginResponse:
-    customer = authenticate_customer(
-        db,
-        tenant_slug=payload.tenant_slug,
-        email=payload.email,
-        password=payload.password,
-    )
-    session_payload = _serialize_customer_session(
-        email=customer.email,
-        tenant_slug=payload.tenant_slug,
-        role=customer.role,
-        name=f"{customer.first_name} {customer.last_name}".strip(),
-    )
-    expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
-    token = create_access_token(
-        id=customer.id,
-        email=customer.email,
-        tenant_id=payload.tenant_slug,
-        role=customer.role,
-        settings=settings,
-    )
-
-    return LoginResponse(
-        access_token=token,
-        expires_at=expires_at.isoformat(),
-        session=session_payload,
-    )
 
 
 @router.get("/magic/options")

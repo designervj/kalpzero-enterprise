@@ -175,6 +175,25 @@ ROLE_GRANTS: dict[str, set[str]] = {
         "publishing.discovery.read",
         "ai.runtime.read",
         "commerce.catalog.manage",
+    }, 
+    "customer": {
+        "commerce.catalog.read",
+        "commerce.pricing.read",
+        "commerce.orders.read",
+        "commerce.fulfillment.read",
+        "travel.packages.read",
+        "travel.leads.read",
+        "hotel.properties.read",
+        "hotel.rooms.read",
+        "hotel.reservations.read",
+        "hotel.finance.read",
+        "hotel.staff.read",
+        "hotel.operations.read",
+        "publishing.blueprints.read",
+        "publishing.pages.read",
+        "publishing.discovery.read",
+        "ai.runtime.read",
+        "commerce.catalog.manage",
     }
 }
 
@@ -207,14 +226,19 @@ def assert_permission_granted(permission: str, role_key: str | Iterable[str] | N
 
 def require_permission(permission: str) -> Callable[[SessionContext], SessionContext]:
     def dependency(session: SessionContext = Depends(get_current_session)) -> SessionContext:
+        granted_permissions = ROLE_GRANTS.get(session.role, set())
+        if permission in granted_permissions:
+            return session
+
         if session.user_id is None:
-            if permission in ROLE_GRANTS.get("guest", set()):
-                return session
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required.",
             )
-        assert_permission_granted(permission, session.role)
-        return session
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied for requested operation.",
+        )
 
     return dependency

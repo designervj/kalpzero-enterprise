@@ -1,9 +1,9 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import Cookie, Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 from pydantic import BaseModel
 
 from app.core.config import Settings, get_settings
@@ -52,10 +52,15 @@ def create_access_token(
 def decode_access_token(token: str, settings: Settings) -> TokenPayload:
     try:
         raw_payload = jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
+    except ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+        ) from exc
     except JWTError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token.",
+            detail="Invalid token",
         ) from exc
 
     return TokenPayload(**raw_payload)
@@ -86,6 +91,7 @@ def _resolve_tenant_db_name(
 
 
 def get_current_session(
+    response: Response,
     credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     auth_token: Annotated[str | None, Cookie()] = None,
     x_tenant_db: str | None = Header(None, alias="x-tenant-db"),
@@ -98,26 +104,34 @@ def get_current_session(
         token = auth_token
 
     if token:
-        payload = decode_access_token(token, settings)
-        context = SessionContext(
-            user_id=payload.id,
-            email=payload.email,
-            tenant_id=payload.tenant_id,
-            tenant_db_name=_resolve_tenant_db_name(
-                tenant_slug=payload.tenant_id,
-                x_tenant_db=x_tenant_db,
-                settings=settings,
-            ),
-            role=payload.role,
-        )
-        return context
-    else:
-        context = SessionContext(
-            user_id=None,
-            email=None,
-            tenant_id=None,
-            tenant_db_name=x_tenant_db,
-            role="guest",
-        )
-        
-        return context
+        try:
+            payload = decode_access_token(token, settings)
+            context = SessionContext(
+                user_id=payload.id,
+                email=payload.email,
+                tenant_id=payload.tenant_id,
+                tenant_db_name=_resolve_tenant_db_name(
+                    tenant_slug=payload.tenant_id,
+                    x_tenant_db=x_tenant_db,
+                    settings=settings,
+                ),
+                role=payload.role,
+            )
+            return context
+        except HTTPException as e:
+            if e.detail == "Token expired":
+                if auth_token:
+                    response.delete_cookie("auth_token")
+                token = None
+            else:
+                raise e
+
+    context = SessionContext(
+        user_id=None,
+        email=None,
+        tenant_id=None,
+        tenant_db_name=x_tenant_db,
+        role="guest",
+    )
+
+    return context

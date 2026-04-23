@@ -8,13 +8,12 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     bcrypt = None
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.db.models import CustomerModel, TenantModel, UserModel
-from app.repositories import auth as auth_repository
-from app.schemas.requests import CreateCustomerRequest, RegisterRequest
+from app.db.models import TenantModel, UserModel
+from app.schemas.requests import RegisterRequest, UpdateProfileRequest
 
 
 def _b64encode(raw: bytes) -> str:
@@ -60,31 +59,31 @@ def create_user(
     db: Session,
     payload: RegisterRequest,
 ) -> UserModel:
-    
+    tenant_info = db.scalar(select(TenantModel).where(TenantModel.slug == payload.tenant_slug))
+    if not tenant_info:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not found.",
+        )
     # ✅ Check if user already exists
-    existing_user = db.scalar(select(UserModel).where(UserModel.email == payload.email))
+    existing_user = db.scalar(select(UserModel).where(and_(UserModel.email == payload.email, UserModel.tenant_id == tenant_info.id)))
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists.",
         )
-
+    role = None
     # ✅ Determine role and tenant_id
-    role = payload.role or "tenant_admin"
+    if payload.role is None:    
+        role = "customer"
+    else:
+        role = payload.role
 
-    tenant_id = None
+    tenant_id = tenant_info.id
 
     if payload.email.endswith("@kalpzero.com") or payload.tenant_slug == "platform_control":
         role = "platform_admin"
         tenant_id = None
-    else:
-        tenant_info = db.scalar(select(TenantModel).where(TenantModel.slug == payload.tenant_slug))
-        if not tenant_info:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Tenant not found.",
-            )
-        tenant_id = tenant_info.id
 
     # ✅ Hash password
     hashed_password = hash_password(payload.password)
@@ -95,9 +94,17 @@ def create_user(
         hashed_password=hashed_password,
         tenant_id=tenant_id,
         role=role,
-        name=payload.name,
         istenantowner=payload.istenantowner,
     )
+
+    if role == "customer":
+        new_user.name = payload.first_name + " " + payload.last_name
+        new_user.first_name = payload.first_name
+        new_user.last_name = payload.last_name
+        new_user.addresses = []
+        new_user.wishlist = []
+    else:
+        new_user.name = payload.name
 
     db.add(new_user)
     db.commit()
@@ -139,72 +146,42 @@ def authenticate_user(
 
     return user
 
-
-def create_customer(
+def update_user(
     db: Session,
-    payload: CreateCustomerRequest,
-) -> CustomerModel:
-    # ✅ Find tenant
-
-    tenant = db.scalar(select(TenantModel).where(TenantModel.slug == payload.tenant_slug))
-    
-    if not tenant:
+    update_payload: UpdateProfileRequest
+) -> UserModel:
+    # Find user by user_id
+    user = db.get(UserModel, update_payload.id)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tenant not found.",
+            detail="User not found.",
         )
 
-    # ✅ Check if customer already exists IN THIS TENANT
-    existing = auth_repository.get_customer_by_email(db, tenant_id=tenant.id, email=payload.email)
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Customer with this email already exists for this tenant.",
-        )
+    # Update user fields
+    if update_payload.email:
+        user.email = update_payload.email
 
-    # ✅ Hash password
-    hashed_password = hash_password(payload.password)
+    if update_payload.first_name:
+        user.first_name = update_payload.first_name
 
-    # ✅ Create customer
-    customer = auth_repository.create_customer(
-        db,
-        tenant_id=tenant.id,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        email=payload.email,
-        hashed_password=hashed_password,
-        addresses=[addr.model_dump() for addr in payload.addresses]
-    )
+    if update_payload.last_name:
+        user.last_name = update_payload.last_name
+
+    if update_payload.name:
+        user.name = update_payload.name
+
+    if update_payload.addresses is not None:
+        user.addresses = update_payload.addresses
+
+    if update_payload.wishlist is not None:
+        user.wishlist = update_payload.wishlist
+
+    if update_payload.password:
+        user.hashed_password = hash_password(update_payload.password)
 
     db.commit()
-    db.refresh(customer)
-    return customer
+    db.refresh(user)
+    return user
 
 
-def authenticate_customer(
-    db: Session,
-    tenant_slug: str,
-    email: str,
-    password: str,
-) -> CustomerModel:
-    tenant = db.scalar(select(TenantModel).where(TenantModel.slug == tenant_slug))
-    if not tenant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tenant not found.",
-        )
-
-    customer = auth_repository.get_customer_by_email(db, tenant_id=tenant.id, email=email)
-    if not customer:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password.",
-        )
-
-    if not verify_password(password, customer.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password.",
-        )
-
-    return customer

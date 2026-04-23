@@ -7,8 +7,11 @@ from app.db.mongo import (
     build_runtime_database_name,
     describe_tenant_runtime_document_store,
     get_runtime_document_store,
+    get_runtime_mongo_database,
     provision_runtime_document_store_for_tenant,
+    RuntimeDocumentStore,
 )
+from app.core.config import Settings, get_settings
 from app.repositories import platform as platform_repository
 from app.services.errors import ConflictError, NotFoundError, ValidationError
 from app.services.website_provisioning import (
@@ -528,4 +531,59 @@ def _serialize_tenant_with_details(
         settings=settings,
         bootstrap=bootstrap,
         website_deployment=website_deployment,
+    )
+
+
+def get_business_blueprint(
+    store: RuntimeDocumentStore,
+    *,
+    tenant_slug: str | None = None,
+    database_name: str | None = None,
+) -> dict[str, object]:
+    if tenant_slug:
+        doc = store.get_document(
+            collection="business_blueprints",
+            tenant_slug=tenant_slug,
+            document_key="blueprint",
+            database_name=database_name,
+        )
+    else:
+        # Fallback to direct mongo query if slug is not known but DB is
+        db = get_runtime_mongo_database(get_settings(), database_name=database_name)
+        doc = db["business_blueprints"].find_one({"document_key": "blueprint"})
+
+    if doc is None:
+        raise NotFoundError(f"Blueprint not found in database '{database_name}'")
+
+    if "_id" in doc:
+        from bson import ObjectId
+        if isinstance(doc["_id"], ObjectId):
+            doc["_id"] = str(doc["_id"])
+
+    return doc
+
+
+def patch_business_blueprint(
+    store: RuntimeDocumentStore,
+    *,
+    payload: dict[str, object],
+    tenant_slug: str | None = None,
+    database_name: str | None = None,
+) -> dict[str, object]:
+    existing = get_business_blueprint(store, tenant_slug=tenant_slug, database_name=database_name)
+
+    # Merge top-level fields into the internal "payload"
+    current_payload = existing.get("payload", {})
+    for key, value in payload.items():
+        if value is not None:
+            current_payload[key] = value
+
+    slug = tenant_slug or str(existing.get("tenant_slug"))
+
+    return store.upsert_document(
+        collection="business_blueprints",
+        tenant_slug=slug,
+        document_key="blueprint",
+        payload=current_payload,
+        database_name=database_name,
     )

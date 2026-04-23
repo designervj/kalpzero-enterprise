@@ -205,12 +205,25 @@ Expected setup:
 
 Run these first:
 
+<!-- for macOs -->
+
 ```bash
 cd "$REPO_ROOT"
 pnpm install --frozen-lockfile
 cd apps/api
 python3 -m venv .venv
 ./.venv/bin/pip install -e ".[dev]"
+```
+
+<!-- for windows -->
+
+```bash
+cd $REPO_ROOT
+pnpm install --frozen-lockfile
+cd apps/api
+python -m venv .venv
+.venv\Scripts\Activate
+pip install -e ".[dev]"
 ```
 
 What they do:
@@ -229,6 +242,20 @@ pnpm install --frozen-lockfile
 cd apps/api
 python3 -m venv .venv
 ./.venv/bin/pip install -e ".[dev]"
+cd ..
+cd ..
+pnpm doctor:local
+```
+
+<!-- for windows -->
+
+```bash
+cd $REPO_ROOT
+pnpm install --frozen-lockfile
+cd apps/api
+python -m venv .venv
+.venv\Scripts\Activate
+pip install -e ".[dev]"
 cd ..
 cd ..
 pnpm doctor:local
@@ -559,199 +586,6 @@ The strongest hotel manual path remains:
 - record folio charge and payment
 - issue invoice
 - complete operational follow-up
-
-### Ecommerce Import Validation
-
-After onboarding a commerce-enabled tenant, the current tested ecommerce import
-path is:
-
-1. create import source
-2. run dry-run validation
-3. run execute
-4. verify imported commerce entities
-5. rerun execute to confirm idempotent replay
-
-Example commands:
-
-```bash
-API_BASE=${API_BASE:-http://127.0.0.1:8010}
-
-TENANT_TOKEN=$(curl -s "$API_BASE/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"ops@tenant.com","password":"very-secure-password","tenant_slug":"demo-tenant"}' \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
-
-cat > /tmp/commerce-import-source.json <<'EOF'
-{
-  "name": "Legacy Commerce Fixture",
-  "source_type": "legacy-kalpzero-commerce",
-  "connection_profile_key": "inline-fixture",
-  "vertical_pack": "commerce",
-  "config": {
-    "adapter_id": "legacy-kalpzero-commerce",
-    "dataset": {
-      "categories": [
-        {"name": "Footwear", "slug": "footwear"},
-        {"name": "Sneakers", "slug": "sneakers", "parent_slug": "footwear"}
-      ],
-      "brands": [
-        {"name": "Kalp Athletics", "slug": "kalp-athletics", "code": "KALP"}
-      ],
-      "vendors": [
-        {"name": "Prime Supply Co", "slug": "prime-supply", "code": "SUP-001"}
-      ],
-      "collections": [
-        {"name": "Summer Launch", "slug": "summer-launch", "sort_order": 1}
-      ],
-      "warehouses": [
-        {
-          "name": "Central Warehouse",
-          "slug": "central-warehouse",
-          "code": "DEL-CWH",
-          "city": "Delhi",
-          "country": "India",
-          "is_default": true
-        }
-      ],
-      "tax_profiles": [
-        {
-          "name": "GST 18",
-          "code": "GST18",
-          "prices_include_tax": false,
-          "rules": [{"label": "GST", "rate_basis_points": 1800}]
-        }
-      ],
-      "attributes": [
-        {
-          "code": "material",
-          "slug": "material",
-          "label": "Material",
-          "value_type": "single_select",
-          "scope": "product",
-          "options": [
-            {"value": "mesh", "label": "Mesh"},
-            {"value": "leather", "label": "Leather"}
-          ],
-          "is_required": true
-        },
-        {
-          "code": "color",
-          "slug": "color",
-          "label": "Color",
-          "value_type": "single_select",
-          "scope": "variant",
-          "options": [
-            {"value": "black", "label": "Black"},
-            {"value": "white", "label": "White"}
-          ],
-          "is_required": true,
-          "is_variation_axis": true
-        },
-        {
-          "code": "size",
-          "slug": "size",
-          "label": "Size",
-          "value_type": "single_select",
-          "scope": "variant",
-          "options": [
-            {"value": "42", "label": "42"},
-            {"value": "43", "label": "43"}
-          ],
-          "is_required": true,
-          "is_variation_axis": true
-        }
-      ],
-      "attribute_sets": [
-        {
-          "name": "Footwear Core",
-          "slug": "footwear-core",
-          "attribute_codes": ["material", "color", "size"]
-        }
-      ],
-      "products": [
-        {
-          "name": "KalpZero Runner",
-          "slug": "kalpzero-runner",
-          "brand_slug": "kalp-athletics",
-          "vendor_slug": "prime-supply",
-          "collection_slugs": ["summer-launch"],
-          "attribute_set_slug": "footwear-core",
-          "category_slugs": ["sneakers"],
-          "product_attributes": [
-            {"attribute_code": "material", "value": "mesh"}
-          ],
-          "variants": [
-            {
-              "sku": "RUN-42-BLK",
-              "label": "Black / 42",
-              "price_minor": 349900,
-              "currency": "INR",
-              "inventory_quantity": 12,
-              "attribute_values": [
-                {"attribute_code": "color", "value": "black"},
-                {"attribute_code": "size", "value": "42"}
-              ],
-              "warehouse_stock": [
-                {
-                  "warehouse_slug": "central-warehouse",
-                  "on_hand_quantity": 12,
-                  "low_stock_threshold": 3
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      "price_lists": [
-        {
-          "name": "Retail Default",
-          "slug": "retail-default",
-          "currency": "INR",
-          "items": [
-            {"variant_sku": "RUN-42-BLK", "price_minor": 339900}
-          ]
-        }
-      ],
-      "coupons": [
-        {
-          "code": "WELCOME10",
-          "discount_type": "percent",
-          "discount_value": 1000,
-          "minimum_subtotal_minor": 200000,
-          "applicable_category_slugs": ["sneakers"],
-          "applicable_variant_skus": ["RUN-42-BLK"]
-        }
-      ]
-    }
-  }
-}
-EOF
-
-SOURCE_ID=$(curl -s "$API_BASE/imports/sources" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TENANT_TOKEN" \
-  --data @/tmp/commerce-import-source.json \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
-
-curl -s "$API_BASE/imports/jobs" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TENANT_TOKEN" \
-  -d "{\"source_id\":\"$SOURCE_ID\",\"mode\":\"dry_run\"}" | python3 -m json.tool
-
-curl -s "$API_BASE/imports/jobs" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TENANT_TOKEN" \
-  -d "{\"source_id\":\"$SOURCE_ID\",\"mode\":\"execute\"}" | python3 -m json.tool
-
-curl -s "$API_BASE/commerce/products" \
-  -H "Authorization: Bearer $TENANT_TOKEN" | python3 -m json.tool
-
-curl -s "$API_BASE/commerce/stock-levels" \
-  -H "Authorization: Bearer $TENANT_TOKEN" | python3 -m json.tool
-
-curl -s "$API_BASE/imports/jobs" \
-  -H "Authorization: Bearer $TENANT_TOKEN" | python3 -m json.tool
-```
 
 ## Governance
 
