@@ -99,118 +99,118 @@ export function ExecutionFlowDiagram() {
     <div className="my-10 overflow-hidden rounded-[32px] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_-48px_rgba(15,23,42,0.85)]">
       <div className="border-b border-white/10 px-6 py-5">
         <div className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-300">Technical Flow</div>
-        <h3 className="mt-3 text-2xl font-semibold tracking-tight">Kalp execution graph</h3>
+        <h3 className="mt-3 text-2xl font-semibold tracking-tight">How a request moves through Kalp</h3>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-          This is the clean technical interpretation of the onboarding-and-publishing flow: requests enter through the shared platform,
-          state is split across purpose-built stores, and tenant-facing surfaces are rendered from one runtime.
+          This is the simple technical view: a request comes into the shared app, Kalp reads the right data from the right store,
+          and the result is shown as a website page, dashboard screen, or preview.
         </p>
       </div>
 
       <div className="grid gap-4 p-6 xl:grid-cols-[1fr_auto_1.1fr_auto_1fr_auto_1.1fr]">
-        <FlowLane title="Entry points" description="Where the platform receives intent and identity.">
+        <FlowLane title="Requests" description="Where Kalp receives user actions and website traffic.">
           <DiagramCard
             icon={ShieldCheck}
             title="Platform operators"
             tone="blue"
             eyebrow="Actors"
             bullets={[
-              "Super admin or agency operator starts onboarding.",
-              "Tenant slug, vertical pack, and feature flags are declared here."
+              "A platform admin or agency operator creates and manages businesses.",
+              "This is where onboarding, settings, and admin actions begin."
             ]}
           />
           <DiagramCard
             icon={Globe}
             title="Public requests"
             tone="violet"
-            eyebrow="Runtime input"
+            eyebrow="Website traffic"
             bullets={[
-              "Tenant slug and page slug enter from the shared Next.js route.",
-              "One route shell resolves many tenant websites."
+              "Visitors open a business website page through the shared Next.js app.",
+              "One route can serve many different business websites."
             ]}
           />
         </FlowLane>
 
         <FlowArrow />
 
-        <FlowLane title="Kalp services" description="The shared orchestration layer inside the platform.">
+        <FlowLane title="API and jobs" description="The shared backend and background work inside Kalp.">
           <DiagramCard
             icon={ServerCog}
-            title="FastAPI control plane"
+            title="FastAPI admin and system layer"
             tone="emerald"
-            eyebrow="Authority"
+            eyebrow="Backend"
             bullets={[
-              "Owns tenancy, auth, permissions, onboarding, and vertical contracts.",
-              "Acts as the system source of truth for platform decisions."
+              "Handles login, permissions, business setup, publishing, and app rules.",
+              "This is the main backend for the Kalp product."
             ]}
           />
           <DiagramCard
             icon={Workflow}
-            title="Onboarding and publish pipeline"
+            title="Onboarding and publish jobs"
             tone="amber"
-            eyebrow="Workflow"
+            eyebrow="Background work"
             bullets={[
-              "Bootstraps tenant runtime databases and seed documents.",
-              "Materializes public runtime state, preview payloads, and deployment metadata."
+              "Creates starter business data, page data, and publishable website data.",
+              "Also prepares preview data and website deployment details."
             ]}
           />
         </FlowLane>
 
         <FlowArrow />
 
-        <FlowLane title="State layers" description="Each store handles a distinct class of responsibility.">
+        <FlowLane title="Data stores" description="Each store is used for a different kind of data.">
           <DiagramCard
             icon={Database}
-            title="Postgres control records"
+            title="Postgres records"
             tone="blue"
-            eyebrow="Relational"
+            eyebrow="Structured data"
             bullets={[
-              "Agencies, tenants, users, audit, and transactional authority.",
-              "Strict governance and fail-closed business boundaries."
+              "Stores businesses, users, permissions, audit records, and other structured data.",
+              "Used when the data must stay strict and reliable."
             ]}
           />
           <DiagramCard
             icon={Layers3}
-            title="Mongo runtime documents"
+            title="Mongo content and page docs"
             tone="violet"
-            eyebrow="Document"
+            eyebrow="Flexible content"
             bullets={[
-              "Blueprint payloads, public pages, discovery documents, and AI-ready runtime data.",
-              "Flexible document model without losing tenant scope."
+              "Stores business settings, website pages, discovery content, and flexible page data.",
+              "Used when a business needs editable content and changing page shapes."
             ]}
           />
           <DiagramCard
             icon={Sparkles}
-            title="Redis and async coordination"
+            title="Redis cache and queues"
             tone="emerald"
-            eyebrow="Operational"
+            eyebrow="Fast operations"
             bullets={[
-              "Queueing, cache, and job-style operational coordination.",
-              "Supports publish, import, and background execution."
+              "Stores short-lived cache and queue data.",
+              "Helps with publish jobs, imports, and faster repeated reads."
             ]}
           />
         </FlowLane>
 
         <FlowArrow />
 
-        <FlowLane title="Tenant-facing surfaces" description="Everything that a business or operator finally sees.">
+        <FlowLane title="What people see" description="The screens and websites that Kalp finally shows.">
           <DiagramCard
             icon={Globe}
             title="Public tenant site"
             tone="blue"
             eyebrow="Website"
             bullets={[
-              "Public route rendering resolves tenant pages from shared runtime documents.",
-              "SEO and discovery payloads are driven from the same platform model."
+              "The public website reads page content from the stored business content documents.",
+              "Search-friendly page data and discovery data come from the same source."
             ]}
           />
           <DiagramCard
             icon={ServerCog}
-            title="Tenant admin and studio"
+            title="Dashboard and preview"
             tone="amber"
-            eyebrow="Operator"
+            eyebrow="Admin area"
             bullets={[
-              "Tenant dashboard, admin preview, and studio stay inside one Next.js app.",
-              "Operators inspect blueprint behavior without a separate codebase."
+              "The business dashboard and preview tools run inside the same Next.js app.",
+              "Teams can preview changes without building a separate website app."
             ]}
           />
         </FlowLane>
@@ -269,10 +269,9 @@ export function StorageMatrixDiagram() {
     <div className="my-10 overflow-hidden rounded-[32px] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_-48px_rgba(15,23,42,0.85)]">
       <div className="border-b border-white/10 px-6 py-5">
         <div className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-300">Responsibility Matrix</div>
-        <h3 className="mt-3 text-2xl font-semibold tracking-tight">Which store does what</h3>
+        <h3 className="mt-3 text-2xl font-semibold tracking-tight">Which data lives where</h3>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-          The platform is technical on purpose here: governance remains relational, tenant-authored runtime stays document-shaped,
-          and short-lived execution state is kept operational.
+          Kalp uses more than one store because business records, website content, and short-lived job data are not the same kind of problem.
         </p>
       </div>
 
@@ -333,10 +332,10 @@ export function WebsiteAutomationDiagram() {
     <div className="my-10 overflow-hidden rounded-[32px] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_-48px_rgba(15,23,42,0.85)]">
       <div className="border-b border-white/10 px-6 py-5">
         <div className="text-[11px] font-black uppercase tracking-[0.3em] text-violet-300">Automation Flow</div>
-        <h3 className="mt-3 text-2xl font-semibold tracking-tight">Repo-to-live website provisioning</h3>
+        <h3 className="mt-3 text-2xl font-semibold tracking-tight">How a business website goes live</h3>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-          This is the operational chain behind the optional website automation: Kalp creates the repo, binds the deployment target,
-          and returns a production URL back to the onboarding response.
+          This is the optional website flow: Kalp creates the business repo, connects the deploy target,
+          and returns the live website URL to the onboarding response.
         </p>
       </div>
 
@@ -371,13 +370,13 @@ export function WebsiteAutomationDiagram() {
           <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-4">
             <div className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400">Output</div>
             <div className="mt-3 text-sm leading-7 text-slate-200">
-              `website_deployment.repo_url`, `website_deployment.production_url`, deployment status, and operator-facing message.
+              `website_deployment.repo_url`, `website_deployment.production_url`, the deploy status, and a message for the operator.
             </div>
           </div>
           <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-4">
             <div className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400">Dependency</div>
             <div className="mt-3 text-sm leading-7 text-slate-200">
-              Requires the root GitHub and Vercel credentials to be configured before tenant creation.
+              Requires GitHub and Vercel credentials to be set in the root `.env` before the business is created.
             </div>
           </div>
         </div>

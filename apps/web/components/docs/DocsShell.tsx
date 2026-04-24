@@ -23,12 +23,12 @@ function Sidebar() {
 
   return (
     <div className="sticky top-24 space-y-8">
-      <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.35)]">
+        <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.35)]">
         <div className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-700">
           Kalp Docs
         </div>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Product, platform, and runtime documentation for the multi-tenant Kalp system.
+          Guides for setting up businesses, managing data, using APIs, and publishing websites in Kalp.
         </p>
       </div>
 

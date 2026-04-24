@@ -1,62 +1,66 @@
 export const metadata = {
-  title: "Business Blueprint Runtime",
+  title: "Business Settings and Modules",
   description:
-    "Understand the Business Blueprint contract that drives routes, modules, and theme behavior across Kalp."
+    "How Kalp changes menus, modules, labels, and colors for each business without a separate app."
 }
 
-<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Core Concepts</div>
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Managing Data</div>
 
-# Business Blueprint runtime
+# Business settings and modules
 
-The Business Blueprint is the contract that tells Kalp how a tenant should behave across public and admin surfaces. Instead of hardcoding tenant-specific branches, the platform reads blueprint decisions at runtime.
+Kalp changes from business to business through settings, not through separate codebases. These settings decide which modules a business sees, what its navigation looks like, and how its public website should feel.
 
-<h2 id="blueprint-contract">Blueprint contract</h2>
+<Callout title="Internal name" tone="brand">
+  In the codebase, this group of settings is called the `Business Blueprint`. In plain language, it is the main business settings document.
+</Callout>
 
-The blueprint carries the high-value behavior decisions for a tenant.
+<h2 id="what-these-settings-control">What these settings control</h2>
+
+The business settings document controls the parts of Kalp that a business should experience differently.
 
 <DocsCardGrid>
-  <DocsCard title="Vocabulary">
-    Tenant-specific labels and business language that shape how the workspace talks about entities and workflows.
+  <DocsCard title="Business words and labels">
+    A business can use its own labels and names so the dashboard language matches the business model.
   </DocsCard>
-  <DocsCard title="Navigation and routes">
-    Public and admin routes are materialized from blueprint decisions instead of being copied per customer.
+  <DocsCard title="Menus and routes">
+    Navigation items and available routes can change from one business to another.
   </DocsCard>
-  <DocsCard title="Theme tokens">
-    Brand colors, visual treatment, and design direction can vary without replacing the shared rendering layer.
+  <DocsCard title="Theme and colors">
+    A business can have its own public and admin look without needing a different frontend codebase.
   </DocsCard>
-  <DocsCard title="Capabilities">
-    Enabled modules, widgets, and options decide what the tenant can access inside the operator shell.
+  <DocsCard title="Enabled modules">
+    Kalp can show hotel tools to one business and commerce tools to another using the same product.
   </DocsCard>
 </DocsCardGrid>
 
-<h2 id="modules-and-navigation">Modules and navigation</h2>
+<h2 id="navigation-and-modules">Navigation and modules</h2>
 
-The blueprint controls what a tenant sees. A commerce tenant and a hotel tenant may share the same app, but not the same active modules.
+This is where Kalp decides what each business can use.
 
-- Module enablement affects sidebar navigation.
-- Capability definitions affect access and configuration.
-- Feature flags allow controlled rollout without changing the tenant’s codebase.
-- Blueprint choices can eventually extend to mobile and other operator surfaces.
+- enabled modules decide which product areas appear in the dashboard
+- navigation rules decide which menu items are shown
+- feature flags allow controlled rollout without changing the app itself
 
-<h2 id="theme-and-components">Theme and components</h2>
+That is why two businesses can log into the same product and still see different tools.
 
-Kalp uses theme tokens and component registries to let businesses look different while still rendering through shared components.
+<h2 id="look-and-feel">Look and feel</h2>
 
-This is the key distinction:
+Kalp separates the shared app from the business-specific look and feel.
 
-- shared rendering engine
-- tenant-specific tokens, content, and route definitions
+- the app stays shared
+- the business colors, wording, and navigation can change
+- the public website and admin area can each have their own theme settings
 
-That combination gives each business a distinct presence without making the platform unmaintainable.
+This gives each business a clear identity without making Kalp harder to maintain.
 
-<h2 id="why-no-forks">Why no forks</h2>
+<h2 id="why-kalp-uses-settings">Why Kalp uses settings</h2>
 
-Forking the platform for every tenant would slow shipping, multiply operational risk, and make security fixes harder to distribute. The blueprint model keeps Kalp extensible while still protecting the shared system.
+If every business had its own forked app, simple fixes would become expensive and slow. Kalp avoids that by keeping the code shared and moving business-specific changes into settings and content.
 
 <blockquote>
-  The platform changes once, and many tenants benefit. The tenant changes once, and only that tenant’s runtime behavior changes.
+  Change the app once, and every business can benefit. Change a business setting once, and only that business changes.
 </blockquote>
 
 <Callout title="Next read" tone="success">
-  Continue to <a href="/docs/core-concepts/runtime-documents-and-publishing">Runtime Documents and Publishing</a> to see how blueprint decisions are combined with runtime content.
+  Continue to <a href="/docs/core-concepts/runtime-documents-and-publishing">Pages, Content, and Publishing</a> to see how website pages and publishable data are stored.
 </Callout>

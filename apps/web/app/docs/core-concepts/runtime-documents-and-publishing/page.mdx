@@ -1,89 +1,75 @@
 export const metadata = {
-  title: "Runtime Documents and Publishing",
+  title: "Pages, Content, and Publishing",
   description:
-    "See how storage layers, public runtime payloads, and studio previews work together in Kalp."
+    "How Kalp stores website pages, preview data, discovery content, and published output."
 }
 
-<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Core Concepts</div>
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Managing Data</div>
 
-# Runtime documents and publishing
+# Pages, content, and publishing
 
-If the Business Blueprint decides how a tenant behaves, runtime documents decide what the tenant actually publishes. Kalp separates control-plane truth from flexible business content so each layer can do its own job well.
+After a business exists, Kalp still needs to answer a simple question: what should the public website show? This page explains how Kalp stores website pages, preview data, and discovery content so a business can edit and publish its site.
 
-<h2 id="three-layer-storage">Three-layer storage</h2>
+<h2 id="what-is-published">What is published</h2>
 
-Kalp uses a hybrid model so governance and flexibility do not fight each other.
-
-| Layer | Responsibility |
-| --- | --- |
-| Postgres | Control plane, tenancy, transactional truth, audit, and structured operational records |
-| MongoDB | Runtime documents, page content, discovery content, AI knowledge, and staging payloads |
-| Redis | Cache, queueing, and operational coordination |
-
-<Callout title="Why this matters" tone="brand">
-  Relational control-plane data stays strict. Flexible publishing payloads stay document-shaped. Kalp does not force both jobs into one storage model.
-</Callout>
-
-<StorageMatrixDiagram />
-
-<h2 id="runtime-resolution-flow">Runtime resolution flow</h2>
-
-The public runtime is not a direct database dump. Kalp resolves tenant state through a deterministic sequence so tenant boundaries and publishing behavior stay stable.
-
-```text
-Browser request
-  -> Next.js tenant route /[tenantSlug]/[[...pageSlug]]
-  -> tenant context and auth/session resolution
-  -> FastAPI domain contract lookup
-  -> Postgres tenant authority check
-  -> Mongo runtime document fetch
-  -> page block/theme/discovery assembly
-  -> rendered public response or preview response
-```
-
-This split matters because the route shell is shared, but the payload is tenant-specific. Kalp never needs a per-tenant route tree to achieve that.
-
-<h2 id="public-runtime">Public runtime</h2>
-
-The public tenant route is served from the shared app route at `/[tenantSlug]/[[...pageSlug]]`. That route resolves tenant runtime payloads and renders the right page for that business.
-
-- A tenant slug selects the business context.
-- Page slug selects the public page inside that tenant.
-- Runtime payloads determine blocks, theme tokens, and discovery content.
-- The public route stays shared even when each business page looks different.
-
-<h2 id="admin-preview">Admin preview</h2>
-
-Studio and admin preview surfaces let operators inspect how a tenant blueprint will behave without creating a separate app.
-
-- Studio preview is available under `/studio/[tenantSlug]`.
-- Platform and tenant shells stay in the same Next.js codebase.
-- Preview uses the same contract family as public rendering, which reduces mismatch between editing and delivery.
-
-<h2 id="publishing-cycle">Publishing cycle</h2>
-
-The publishing cycle is usually:
-
-1. onboarding seeds the first runtime collections
-2. the tenant receives a baseline blueprint and public pages
-3. operators edit content and configuration
-4. public runtime payloads are resolved and rendered from the shared app
-5. discovery and SEO-oriented surfaces can be materialized from the same runtime documents
-
-From an engineering perspective, that cycle has two goals:
-
-- keep control-plane truth authoritative in Postgres
-- let publishable business content evolve as document-shaped runtime state without blocking on schema-heavy release cycles
+Kalp usually publishes two kinds of website data:
 
 <DocsCardGrid>
-  <DocsCard title="One route shell">
-    Public pages use one tenant-aware route instead of tenant-specific route trees.
+  <DocsCard title="Website pages" eyebrow="Pages">
+    The main public pages such as home, catalog, offers, or custom landing pages.
   </DocsCard>
-  <DocsCard title="One preview workflow">
-    Studio preview keeps editing and runtime behavior aligned.
+  <DocsCard title="Discovery content" eyebrow="Discovery">
+    Summary content, cards, headlines, and other data used for search, listings, and discovery surfaces.
   </DocsCard>
 </DocsCardGrid>
 
+<h2 id="page-flow">Page flow</h2>
+
+When a visitor opens a business website page, Kalp follows a simple flow:
+
+```text
+Visitor opens a page
+  -> the web app reads the business slug and page slug
+  -> Kalp finds the right business
+  -> Kalp reads the saved page content
+  -> the page is rendered in the shared web app
+```
+
+The important point is that the website route is shared, but the page data is business-specific.
+
+<h2 id="preview-and-editing">Preview and editing</h2>
+
+Kalp also supports preview and editing flows for teams.
+
+- a team can edit content without changing the frontend code
+- preview uses the same business data model as the public website
+- this reduces mismatch between what the editor sees and what the visitor sees
+
+<h2 id="public-website-route">Public website route</h2>
+
+The shared public route is:
+
+```text
+/[tenantSlug]/[[...pageSlug]]
+```
+
+In plain language:
+
+- `tenantSlug` identifies the business
+- `pageSlug` identifies the page inside that business website
+
+That is how one app can serve many different business websites.
+
+<h2 id="publish-cycle">Publish cycle</h2>
+
+The normal content flow is:
+
+1. create the business
+2. seed starter pages and starter content
+3. edit the business settings and page data
+4. preview the result
+5. publish the website content for public use
+
 <Callout title="Next read" tone="success">
-  Continue to <a href="/docs/operations/business-website-provisioning">Business Website Provisioning</a> for the onboarding automation that creates a repo and first deployment.
+  Continue to <a href="/docs/apis/api-overview">API Overview</a> to see which endpoints Kalp uses for login, onboarding, and publishing.
 </Callout>

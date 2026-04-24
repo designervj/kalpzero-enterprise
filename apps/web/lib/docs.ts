@@ -20,19 +20,29 @@ export type DocsSection = {
 
 export const docsSections: DocsSection[] = [
   {
-    id: "getting-started",
-    title: "Getting Started",
-    description: "Platform intent, actors, and the shared model."
+    id: "start-here",
+    title: "Start Here",
+    description: "What Kalp is and the main words you will see in the product."
   },
   {
-    id: "core-concepts",
-    title: "Core Concepts",
-    description: "Blueprints, runtime documents, and publishing flow."
+    id: "businesses-and-users",
+    title: "Businesses and Users",
+    description: "How agencies, businesses, users, and access are organized."
   },
   {
-    id: "operations",
-    title: "Operations",
-    description: "Provisioning, deployment, and automation surfaces."
+    id: "managing-data",
+    title: "Managing Data",
+    description: "How Kalp stores business data, page content, and business settings."
+  },
+  {
+    id: "apis",
+    title: "APIs",
+    description: "The main API groups for login, onboarding, and publishing."
+  },
+  {
+    id: "websites-and-deployment",
+    title: "Websites and Deployment",
+    description: "How websites are created, deployed, and updated live."
   }
 ];
 
@@ -40,69 +50,175 @@ export const docsPages: DocsPage[] = [
   {
     title: "What is Kalp",
     href: "/docs/getting-started/what-is-kalp",
-    section: "getting-started",
-    summary: "The product definition, wave-one focus, and why Kalp stays shared across tenants.",
+    section: "start-here",
+    summary: "A simple introduction to Kalp, what it does, and when it is a good fit.",
     sourcePath: "apps/web/app/docs/getting-started/what-is-kalp/page.mdx",
     outline: [
-      { id: "platform-definition", label: "Platform definition" },
-      { id: "technical-topology", label: "Technical topology" },
-      { id: "why-shared-platform", label: "Why shared platform" },
-      { id: "wave-one-verticals", label: "Wave one verticals" },
-      { id: "best-fit", label: "Best fit" }
+      { id: "what-kalp-does", label: "What Kalp does" },
+      { id: "what-stays-shared", label: "What stays shared" },
+      { id: "main-parts", label: "Main parts" },
+      { id: "technical-view", label: "Technical view" },
+      { id: "when-to-use-kalp", label: "When to use Kalp" }
     ]
   },
   {
-    title: "Agency and Tenant Model",
+    title: "Key Terms",
+    href: "/docs/getting-started/key-terms",
+    section: "start-here",
+    summary: "Plain-language definitions for agencies, businesses, users, settings, and deployment terms.",
+    sourcePath: "apps/web/app/docs/getting-started/key-terms/page.mdx",
+    outline: [
+      { id: "business-structure", label: "Business structure" },
+      { id: "people", label: "People" },
+      { id: "settings-and-content", label: "Settings and content" },
+      { id: "deployment-terms", label: "Deployment terms" }
+    ]
+  },
+  {
+    title: "Agencies and Businesses",
     href: "/docs/getting-started/agency-and-tenant-model",
-    section: "getting-started",
-    summary: "How agencies, tenants, platform admins, and tenant admins relate inside the control plane.",
+    section: "businesses-and-users",
+    summary: "How Kalp groups businesses, what an agency is, and what gets created during onboarding.",
     sourcePath: "apps/web/app/docs/getting-started/agency-and-tenant-model/page.mdx",
     outline: [
-      { id: "control-plane", label: "Control plane" },
-      { id: "agency-layer", label: "Agency layer" },
-      { id: "tenant-layer", label: "Tenant layer" },
-      { id: "operator-flow", label: "Operator flow" }
+      { id: "agency", label: "Agency" },
+      { id: "business", label: "Business" },
+      { id: "what-is-created", label: "What is created" },
+      { id: "onboarding-flow", label: "Onboarding flow" }
     ]
   },
   {
-    title: "Business Blueprint Runtime",
+    title: "Roles and Access",
+    href: "/docs/businesses-and-users/roles-and-access",
+    section: "businesses-and-users",
+    summary: "Who can do what inside Kalp and how the system keeps one business separate from another.",
+    sourcePath: "apps/web/app/docs/businesses-and-users/roles-and-access/page.mdx",
+    outline: [
+      { id: "main-roles", label: "Main roles" },
+      { id: "how-access-is-checked", label: "How access is checked" },
+      { id: "tenant-boundaries", label: "Tenant boundaries" },
+      { id: "common-scenarios", label: "Common scenarios" }
+    ]
+  },
+  {
+    title: "How Kalp Stores Data",
+    href: "/docs/managing-data/how-kalp-stores-data",
+    section: "managing-data",
+    summary: "A plain-language explanation of what lives in Postgres, MongoDB, and Redis.",
+    sourcePath: "apps/web/app/docs/managing-data/how-kalp-stores-data/page.mdx",
+    outline: [
+      { id: "why-three-stores", label: "Why three stores" },
+      { id: "postgres", label: "Postgres" },
+      { id: "mongodb", label: "MongoDB" },
+      { id: "redis", label: "Redis" },
+      { id: "how-it-works-together", label: "How it works together" }
+    ]
+  },
+  {
+    title: "Business Settings and Modules",
     href: "/docs/core-concepts/business-blueprint-runtime",
-    section: "core-concepts",
-    summary: "The contract that drives navigation, modules, theme tokens, routes, and workspace behavior.",
+    section: "managing-data",
+    summary: "How Kalp changes menus, modules, labels, and colors for each business without a separate app.",
     sourcePath: "apps/web/app/docs/core-concepts/business-blueprint-runtime/page.mdx",
     outline: [
-      { id: "blueprint-contract", label: "Blueprint contract" },
-      { id: "modules-and-navigation", label: "Modules and navigation" },
-      { id: "theme-and-components", label: "Theme and components" },
-      { id: "why-no-forks", label: "Why no forks" }
+      { id: "what-these-settings-control", label: "What these settings control" },
+      { id: "navigation-and-modules", label: "Navigation and modules" },
+      { id: "look-and-feel", label: "Look and feel" },
+      { id: "why-kalp-uses-settings", label: "Why Kalp uses settings" }
     ]
   },
   {
-    title: "Runtime Documents and Publishing",
+    title: "Pages, Content, and Publishing",
     href: "/docs/core-concepts/runtime-documents-and-publishing",
-    section: "core-concepts",
-    summary: "How Postgres, MongoDB, Redis, public routes, and studio previews work together.",
+    section: "managing-data",
+    summary: "How Kalp stores website pages, preview data, discovery content, and published output.",
     sourcePath: "apps/web/app/docs/core-concepts/runtime-documents-and-publishing/page.mdx",
     outline: [
-      { id: "three-layer-storage", label: "Three-layer storage" },
-      { id: "runtime-resolution-flow", label: "Runtime resolution flow" },
-      { id: "public-runtime", label: "Public runtime" },
-      { id: "admin-preview", label: "Admin preview" },
-      { id: "publishing-cycle", label: "Publishing cycle" }
+      { id: "what-is-published", label: "What is published" },
+      { id: "page-flow", label: "Page flow" },
+      { id: "preview-and-editing", label: "Preview and editing" },
+      { id: "public-website-route", label: "Public website route" },
+      { id: "publish-cycle", label: "Publish cycle" }
     ]
   },
   {
-    title: "Business Website Provisioning",
+    title: "API Overview",
+    href: "/docs/apis/api-overview",
+    section: "apis",
+    summary: "The main API groups in Kalp and when to use each one.",
+    sourcePath: "apps/web/app/docs/apis/api-overview/page.mdx",
+    outline: [
+      { id: "base-url", label: "Base URL" },
+      { id: "main-route-groups", label: "Main route groups" },
+      { id: "auth-and-session", label: "Auth and session" },
+      { id: "how-to-pick-an-endpoint", label: "How to pick an endpoint" }
+    ]
+  },
+  {
+    title: "Authentication API",
+    href: "/docs/apis/authentication-api",
+    section: "apis",
+    summary: "Login, logout, session, register, profile update, and development-only magic login.",
+    sourcePath: "apps/web/app/docs/apis/authentication-api/page.mdx",
+    outline: [
+      { id: "login", label: "Login" },
+      { id: "current-session", label: "Current session" },
+      { id: "logout", label: "Logout" },
+      { id: "register-and-profile", label: "Register and profile" },
+      { id: "dev-only-magic-login", label: "Dev-only magic login" }
+    ]
+  },
+  {
+    title: "Business Onboarding API",
+    href: "/docs/apis/business-onboarding-api",
+    section: "apis",
+    summary: "Check readiness, create agencies, create businesses, and read the onboarding response.",
+    sourcePath: "apps/web/app/docs/apis/business-onboarding-api/page.mdx",
+    outline: [
+      { id: "readiness-check", label: "Readiness check" },
+      { id: "create-an-agency", label: "Create an agency" },
+      { id: "create-a-business", label: "Create a business" },
+      { id: "response", label: "Response" }
+    ]
+  },
+  {
+    title: "Publishing API",
+    href: "/docs/apis/publishing-api",
+    section: "apis",
+    summary: "Read and update business settings, pages, discovery content, and public website payloads.",
+    sourcePath: "apps/web/app/docs/apis/publishing-api/page.mdx",
+    outline: [
+      { id: "overview", label: "Overview" },
+      { id: "business-settings", label: "Business settings" },
+      { id: "pages", label: "Pages" },
+      { id: "discovery", label: "Discovery" },
+      { id: "public-site-data", label: "Public site data" }
+    ]
+  },
+  {
+    title: "Business Website Creation",
     href: "/docs/operations/business-website-provisioning",
-    section: "operations",
-    summary: "How onboarding can create a GitHub repo, connect Vercel, and return a live business URL.",
+    section: "websites-and-deployment",
+    summary: "How Kalp can create a GitHub repo, connect Vercel, and return a live website URL during onboarding.",
     sourcePath: "apps/web/app/docs/operations/business-website-provisioning/page.mdx",
     outline: [
-      { id: "onboarding-trigger", label: "Onboarding trigger" },
-      { id: "github-template", label: "GitHub template" },
-      { id: "vercel-project", label: "Vercel project" },
-      { id: "automation-sequence", label: "Automation sequence" },
-      { id: "response-shape", label: "Response shape" }
+      { id: "what-it-does", label: "What it does" },
+      { id: "what-you-need", label: "What you need" },
+      { id: "flow", label: "Flow" },
+      { id: "response", label: "Response" }
+    ]
+  },
+  {
+    title: "Live Deploy Flow",
+    href: "/docs/websites-and-deployment/live-deploy-flow",
+    section: "websites-and-deployment",
+    summary: "How a push to main becomes a live website update on the Kalp server.",
+    sourcePath: "apps/web/app/docs/websites-and-deployment/live-deploy-flow/page.mdx",
+    outline: [
+      { id: "when-deploy-runs", label: "When deploy runs" },
+      { id: "what-happens-on-server", label: "What happens on server" },
+      { id: "how-to-check-a-deploy", label: "How to check a deploy" },
+      { id: "manual-recovery", label: "Manual recovery" }
     ]
   }
 ];

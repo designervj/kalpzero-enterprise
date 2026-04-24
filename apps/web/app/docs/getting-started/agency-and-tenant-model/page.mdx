@@ -1,70 +1,76 @@
 export const metadata = {
-  title: "Agency and Tenant Model",
+  title: "Agencies and Businesses",
   description:
-    "Learn how agencies, tenants, platform admins, and tenant admins are organized in Kalp."
+    "How Kalp groups businesses, what an agency is, and what gets created during onboarding."
 }
 
-<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Getting Started</div>
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Businesses and Users</div>
 
-# Agency and tenant model
+# Agencies and businesses
 
-Kalp organizes the platform in layers. Platform operators manage the control plane, agencies group business ownership and infrastructure choices, and tenants represent the actual business runtime.
+Kalp uses a simple ownership model. An agency can manage one or more businesses, and each business gets its own data, website, users, and settings.
 
-<h2 id="control-plane">Control plane</h2>
+<Callout title="Internal word">
+  Inside the database and API, a business is often called a `tenant`. In the docs, we mostly say `business` because it is easier to understand.
+</Callout>
 
-The control plane is where Kalp keeps the canonical system records: agencies, tenants, users, permissions, vertical readiness, onboarding state, and operational rules.
+<h2 id="agency">Agency</h2>
 
-- Platform admins work from the platform shell.
-- Tenant creation is gated by readiness checks and approved verticals.
-- Auth and permission checks fail closed by default.
-- Shared operational data is kept relational so tenancy and governance stay consistent.
+An agency is the parent group above businesses.
+
+- it can own many businesses
+- it gives you a clean way to group related customers
+- it can later carry shared business rules or infrastructure choices
+
+If you run services for multiple clients, the agency is the top-level container you work with first.
+
+<h2 id="business">Business</h2>
+
+A business is the actual hotel, store, travel company, or other customer you run on Kalp.
+
+Each business gets:
+
+- a unique slug
+- a display name
+- its own users
+- business settings and enabled modules
+- page and website content
+- website deployment status
+
+<h2 id="what-is-created">What is created</h2>
+
+When you create a business, Kalp can create several things at once:
 
 <DocsCardGrid>
-  <DocsCard title="Platform Admin">
-    Creates agencies, provisions tenants, validates readiness, and manages cross-tenant operations.
+  <DocsCard title="System records" eyebrow="Required">
+    The business record, related users, permissions, and setup data are created in the main system database.
   </DocsCard>
-  <DocsCard title="Tenant Admin">
-    Operates one business workspace, manages modules, and works inside tenant-scoped runtime data.
+  <DocsCard title="Business content" eyebrow="Required">
+    Starter page data, business settings, and discovery content can be seeded for the new business.
+  </DocsCard>
+  <DocsCard title="Website repo and Vercel project" eyebrow="Optional">
+    If GitHub and Vercel are configured, Kalp can also create a repo and first live website for that business.
+  </DocsCard>
+  <DocsCard title="Business modules" eyebrow="Optional">
+    The selected vertical pack and feature flags decide which modules the business will see in its dashboard.
   </DocsCard>
 </DocsCardGrid>
 
-<h2 id="agency-layer">Agency layer</h2>
+<h2 id="onboarding-flow">Onboarding flow</h2>
 
-An agency is the management boundary above tenants. It can own multiple businesses and eventually influence domain rules, infrastructure preferences, and governance behavior.
+The normal flow is:
 
-- Agencies group related tenants.
-- Agencies can own resources and infrastructure profiles.
-- Agency operators can manage many businesses without leaving the shared platform.
-- Onboarding starts by creating an agency, then creating one or more tenants under it.
+1. Create an agency.
+2. Check onboarding readiness.
+3. Create a business under that agency.
+4. Let Kalp create the starter data for that business.
+5. Optionally let Kalp create a website repo and live website.
+6. Hand the business over to the people who will manage it.
 
-<h2 id="tenant-layer">Tenant layer</h2>
-
-A tenant is the actual business instance. It receives a slug, display name, vertical packs, feature flags, runtime database, seeded documents, and publishing state.
-
-<InlineBadge>Tenant outputs</InlineBadge>
-
-- tenant-scoped runtime database bootstrap
-- baseline blueprint and public page seeding
-- discovery document seeding
-- optional business website repo plus first Vercel deployment
-
-The tenant model is what lets Kalp keep one platform while still delivering tenant-specific public pages and operator experiences.
-
-<h2 id="operator-flow">Operator flow</h2>
-
-The typical operator path is straightforward:
-
-1. Log in as a platform admin.
-2. Create or select an agency.
-3. Run onboarding readiness.
-4. Create a tenant with slug, display name, infra mode, and vertical pack.
-5. Let the platform seed runtime data and optionally provision the business website repo and Vercel project.
-6. Hand the business over to tenant admins and operators.
-
-<Callout title="Operational note">
-  Kalp treats onboarding as a control-plane workflow, not just a CRUD insert. That is why readiness, provisioning, runtime seeding, and website deployment all sit in the same lifecycle.
+<Callout title="Why Kalp does this in one flow">
+  Kalp treats onboarding as a full setup flow, not just a single database insert. That is why business creation, starter data, and optional website setup are all connected.
 </Callout>
 
 <Callout title="Next read" tone="success">
-  Continue to <a href="/docs/core-concepts/business-blueprint-runtime">Business Blueprint Runtime</a> to see how tenant behavior is shaped after provisioning.
+  Continue to <a href="/docs/businesses-and-users/roles-and-access">Roles and Access</a> to see who can manage what inside Kalp.
 </Callout>

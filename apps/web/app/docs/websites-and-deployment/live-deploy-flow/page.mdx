@@ -1,0 +1,59 @@
+export const metadata = {
+  title: "Live Deploy Flow",
+  description:
+    "How a push to main becomes a live website update on the Kalp server."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Websites and Deployment</div>
+
+# Live deploy flow
+
+Kalp's live site is updated automatically from GitHub Actions.
+
+<h2 id="when-deploy-runs">When deploy runs</h2>
+
+The live deploy runs when:
+
+- code is pushed to `main`
+- the `Deploy Live` GitHub Actions workflow is triggered manually
+
+Only `main` is used for the live site.
+
+<h2 id="what-happens-on-server">What happens on server</h2>
+
+The live deploy script does these steps:
+
+1. sync the server checkout to the latest `main`
+2. install workspace dependencies
+3. sync the API virtual environment
+4. build the workspace
+5. restart `kalpzero-api` and `kalpzero-web`
+6. run health checks
+
+This is what turns a GitHub push into a live site update.
+
+<h2 id="how-to-check-a-deploy">How to check a deploy</h2>
+
+Useful commands on the server:
+
+```bash
+gh run list --repo hideepakrai/kalpzero-enterprise --workflow deploy-live.yml --limit 5
+tail -f /tmp/kalpzero-auto-deploy.log
+pm2 list
+pm2 logs kalpzero-web --lines 50
+pm2 logs kalpzero-api --lines 50
+```
+
+<h2 id="manual-recovery">Manual recovery</h2>
+
+If you need to rebuild the current checkout again on the server, use:
+
+```bash
+./scripts/deploy-live.sh --skip-pull
+```
+
+This rebuilds and restarts the current checked-out commit without pulling new code first.
+
+<Callout title="Important note">
+  If the browser is still holding old Next.js assets after a deploy, a hard refresh or incognito window may be needed once.
+</Callout>

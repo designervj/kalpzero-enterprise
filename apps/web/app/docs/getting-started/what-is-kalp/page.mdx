@@ -1,86 +1,84 @@
 export const metadata = {
   title: "What is Kalp",
   description:
-    "Understand Kalp as a shared multi-tenant operating platform for vertical businesses."
+    "A simple introduction to Kalp, what it does, and when it is a good fit."
 }
 
-<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Getting Started</div>
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Start Here</div>
 
 # What is Kalp?
 
-Kalp is the shared operating platform behind multi-tenant business websites, operator workspaces, and vertical business modules. It is not a separate codebase for each customer. Instead, one platform serves many agencies and tenants, with behavior shaped by business configuration, runtime documents, and role-scoped access.
+Kalp is one product for creating businesses, running their dashboards, and publishing their websites. Instead of building a separate app for every hotel, store, or travel business, you create each business inside the same system.
 
-<Callout title="Core idea" tone="brand">
-  Kalp keeps the control plane, publishing shell, and vertical packs shared so a hotel, a commerce business, or a travel operator can ship quickly without forking the product.
+<Callout title="Simple definition" tone="brand">
+  One codebase, many businesses. Each business gets its own users, settings, pages, and website, but Kalp stays one product to build and maintain.
 </Callout>
 
-<h2 id="platform-definition">Platform definition</h2>
+<h2 id="what-kalp-does">What Kalp does</h2>
 
-KalpZero Enterprise is positioned as an enterprise-grade, multi-tenant operating platform for vertical businesses. In this repo, the public shell lives in `apps/web`, the domain API lives in `apps/api`, and background execution lives in `apps/worker`.
+Kalp handles four big jobs in one place:
 
 <DocsCardGrid>
-  <DocsCard title="Shared frontend and publishing shell" eyebrow="Surface">
-    The same Next.js app powers the public site, tenant pages, platform controls, and studio preview surfaces.
+  <DocsCard title="Create businesses" eyebrow="Setup">
+    Platform admins can create agencies and businesses from the same product instead of managing separate apps.
   </DocsCard>
-  <DocsCard title="Canonical backend authority" eyebrow="Control plane">
-    FastAPI remains the source of truth for tenancy, permissions, onboarding, domain services, and provisioning contracts.
+  <DocsCard title="Run daily work" eyebrow="Dashboard">
+    Each business gets its own dashboard, modules, and user access inside the same web app.
   </DocsCard>
-  <DocsCard title="Vertical packs" eyebrow="Execution">
-    Kalp uses the same platform core to support hotel, commerce, and travel workflows without splitting the stack per tenant.
+  <DocsCard title="Store website content" eyebrow="Content">
+    Kalp keeps page data, discovery content, and business settings so each business can look and behave differently.
   </DocsCard>
-  <DocsCard title="Runtime-driven delivery" eyebrow="Flexibility">
-    Pages, discovery cards, blueprint decisions, and publishing payloads come from runtime data rather than from tenant-specific forks.
+  <DocsCard title="Publish websites" eyebrow="Website">
+    Kalp can serve the public website itself and can also create a separate GitHub repo and Vercel project when needed.
   </DocsCard>
 </DocsCardGrid>
 
-<h2 id="technical-topology">Technical topology</h2>
+<h2 id="what-stays-shared">What stays shared</h2>
 
-Kalp is easiest to understand technically when split into four lanes: ingress, orchestration, state, and rendered surfaces. That is the same pattern visible in your hand-drawn flow, just cleaned into a platform graph.
+Kalp is shared on purpose. These parts stay common across all businesses:
+
+- one main codebase
+- one main API
+- one deploy flow
+- one dashboard app
+- one set of business modules for hotel, commerce, travel, and other packs
+
+What changes per business are the settings, pages, users, feature flags, and website content.
+
+<h2 id="main-parts">Main parts</h2>
+
+In this repo, the main parts are:
+
+| Part | What it does |
+| --- | --- |
+| `apps/web` | The web app for the public website, login, admin area, and preview pages |
+| `apps/api` | The FastAPI backend for auth, onboarding, publishing, and business APIs |
+| `apps/worker` | Background jobs and worker-side logic |
+
+This split keeps the web app, the API, and background work cleanly separated, while still shipping as one product.
+
+<h2 id="technical-view">Technical view</h2>
 
 <ExecutionFlowDiagram />
 
-The important engineering decision is that one runtime graph serves both operator actions and public website requests.
+Here is the short version of that diagram:
 
-1. A platform operator enters through onboarding, provisioning, or admin flows.
-2. Public traffic enters through the tenant-aware Next.js route shell.
-3. FastAPI applies tenancy, permissions, and vertical rules before any runtime state is trusted.
-4. Postgres, MongoDB, and Redis each handle a narrow class of responsibility instead of overlapping badly.
-5. The resulting state is rendered back through one shared web app as a public website, dashboard, or studio preview.
+1. A person uses the admin area or opens a business website.
+2. Kalp checks the business context and the user session.
+3. The API reads the right data from Postgres, MongoDB, and Redis.
+4. The web app shows the right website page, dashboard screen, or preview.
 
-That is why Kalp can look tenant-specific while still behaving like one product core operationally.
+<h2 id="when-to-use-kalp">When to use Kalp</h2>
 
-<h2 id="why-shared-platform">Why shared platform</h2>
+Kalp is a good fit when:
 
-The main design choice is to avoid cloning the product for every business. A shared platform means Kalp can enforce tenant boundaries, centralize fixes, and keep new modules compatible across many businesses.
+- you want one product to serve many businesses
+- each business needs its own website and dashboard
+- you want central control over login, onboarding, and deployment
+- you want to add new businesses faster without creating new repos every time
 
-- Agencies and tenants stay inside a common control plane instead of separate repos.
-- Public pages can vary by tenant because routes, themes, and content are driven by runtime documents.
-- Admin behavior can vary by tenant because modules, features, navigation, and visibility are shaped by the Business Blueprint.
-- Future surfaces such as native mobile or other operator consoles can reuse the same contracts.
-
-<blockquote>
-  One tenant can publish a hotel booking site while another runs a commerce catalog, but both still sit on the same Kalp core.
-</blockquote>
-
-<h2 id="wave-one-verticals">Wave one verticals</h2>
-
-The current wave one focus is India-first execution for hotel management, commerce, and tour and travel operations. Later verticals extend the same core instead of replacing it.
-
-| Current focus | Why it matters |
-| --- | --- |
-| Commerce | Catalog, pricing, inventory, tax, payments, and fulfillment already fit the shared runtime model. |
-| Hotels | Public hotel content, room operations, folios, staff scheduling, and stay records can live on one tenant contract. |
-| Travel | Packages, transfers, activities, and hotel management flows can be combined in one platform operator shell. |
-
-<h2 id="best-fit">Best fit</h2>
-
-Kalp fits best when you want central governance plus tenant-level flexibility.
-
-- Use it when many businesses should share one product core.
-- Use it when the platform team wants fail-closed authorization and one operational control plane.
-- Use it when public websites, admin workspaces, and provisioning should all come from the same contracts.
-- Avoid it if every customer must own a totally separate product architecture with no shared runtime.
+Kalp is a poor fit when every customer must own a completely separate product with no shared code or shared deployment path.
 
 <Callout title="Next read" tone="success">
-  Continue to <a href="/docs/getting-started/agency-and-tenant-model">Agency and Tenant Model</a> to see how Kalp scopes ownership and operations.
+  Continue to <a href="/docs/getting-started/key-terms">Key Terms</a> to learn the main words used throughout the Kalp docs.
 </Callout>

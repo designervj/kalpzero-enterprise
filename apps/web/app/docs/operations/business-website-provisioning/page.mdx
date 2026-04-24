@@ -1,75 +1,53 @@
 export const metadata = {
-  title: "Business Website Provisioning",
+  title: "Business Website Creation",
   description:
-    "Understand the onboarding automation that creates a GitHub repo and Vercel deployment for a business website."
+    "How Kalp can create a GitHub repo, connect Vercel, and return a live website URL during onboarding."
 }
 
-<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Operations</div>
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Websites and Deployment</div>
 
-# Business website provisioning
+# Business website creation
 
-Kalp can now do more than create a tenant. During onboarding, it can also create a dedicated business website repository, connect it to Vercel, and return a production URL for that business.
+Kalp can do more than create a business record. If GitHub and Vercel are configured, it can also create a separate website repo for that business and make the first website deployment live.
 
-<h2 id="onboarding-trigger">Onboarding trigger</h2>
+<h2 id="what-it-does">What it does</h2>
 
-The trigger is part of tenant onboarding, not a separate afterthought. When a tenant is created with the required external credentials in place, Kalp can launch the website provisioning workflow alongside the runtime bootstrap.
+This website flow is optional, but when it is enabled Kalp can:
 
-- tenant is created in the control plane
-- runtime database and seed documents are provisioned
-- website deployment automation can run
-- API response includes website deployment status and links
+- create a new business repo from a template
+- connect that repo to Vercel
+- wait for the first live deploy
+- return the repo URL and website URL in the onboarding response
 
-<h2 id="github-template">GitHub template</h2>
+<h2 id="what-you-need">What you need</h2>
 
-The GitHub side relies on a template repository model.
-
-- a template repository provides the starter business website
-- Kalp creates a new business repo under your GitHub owner or org
-- the repo name is generated from tenant naming rules and prefixes
-- the resulting repo URL is returned in `website_deployment.repo_url`
+Kalp needs working GitHub and Vercel credentials in the root `.env`.
 
 ```env
 KALPZERO_GITHUB_TOKEN=
 KALPZERO_GITHUB_REPO_OWNER=
 KALPZERO_GITHUB_TEMPLATE_OWNER=
 KALPZERO_GITHUB_TEMPLATE_REPO=
-```
-
-<h2 id="vercel-project">Vercel project</h2>
-
-After the repository exists, Kalp can connect it to Vercel and create the first deployment.
-
-- Vercel token identifies the account or team
-- the project is created from the generated GitHub repository
-- first deployment becomes the production website for the business
-- the stable Vercel production URL is returned as `website_deployment.production_url`
-
-```env
 KALPZERO_VERCEL_TOKEN=
-KALPZERO_VERCEL_TEAM_ID=
-KALPZERO_VERCEL_TEAM_SLUG=
-KALPZERO_VERCEL_PROJECT_PREFIX=
 ```
 
-<h2 id="automation-sequence">Automation sequence</h2>
+If those values are missing, the business can still be created, but the website will not be created automatically.
 
-The provisioning path is technical by design. Kalp does not just store a repo name; it executes a multi-system workflow and returns concrete deployment metadata.
+<h2 id="flow">Flow</h2>
 
 <WebsiteAutomationDiagram />
 
-Under the hood, the sequence is:
+The simple version of the flow is:
 
-1. tenant onboarding calls the provisioning service once the control-plane tenant exists
-2. GitHub template settings are validated and a business-specific repository name is generated
-3. the target repo is created from the configured template source
-4. Vercel project creation binds that repo, applies project-level settings, and waits for the first deployment
-5. the API stores and returns `repo_url`, `production_url`, status, and operator-facing message in `website_deployment`
+1. create the business
+2. generate the new business repo from the GitHub template
+3. create the Vercel project
+4. wait for the first live deploy
+5. return the repo URL and website URL
 
-That design keeps repo creation and first deployment inside the same onboarding transaction boundary from the operator’s point of view.
+<h2 id="response">Response</h2>
 
-<h2 id="response-shape">Response shape</h2>
-
-The provisioning result is returned directly in the tenant payload so operators can confirm the rollout immediately.
+The business response can include a `website_deployment` block like this:
 
 ```json
 {
@@ -77,21 +55,15 @@ The provisioning result is returned directly in the tenant payload so operators 
     "status": "ready",
     "repo_name": "kalp-biz-hotel-sunrise",
     "repo_url": "https://github.com/your-org/kalp-biz-hotel-sunrise",
-    "production_url": "https://kalp-biz-hotel-sunrise.vercel.app",
-    "message": "Business website repo created and the first Vercel production deployment is live."
+    "production_url": "https://kalp-biz-hotel-sunrise.vercel.app"
   }
 }
 ```
 
-<Callout title="Operational caution">
-  Website provisioning is optional. Tenant creation still succeeds if the external GitHub and Vercel credentials are missing, but the deployment status will not be `ready`.
+<Callout title="Important note">
+  This website flow is optional. The main business setup still works even when GitHub or Vercel are not configured.
 </Callout>
 
-<DocsCardGrid>
-  <DocsCard title="Good for">
-    Businesses that should receive their own frontend repo and deployment lifecycle while still being onboarded from the Kalp control plane.
-  </DocsCard>
-  <DocsCard title="Still shared">
-    The provisioning workflow is centralized. The tenant lifecycle is still governed by the shared Kalp platform.
-  </DocsCard>
-</DocsCardGrid>
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/websites-and-deployment/live-deploy-flow">Live Deploy Flow</a> to see how pushes to `main` become live changes on the Kalp server.
+</Callout>

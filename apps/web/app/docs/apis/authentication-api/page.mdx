@@ -1,0 +1,81 @@
+export const metadata = {
+  title: "Authentication API",
+  description:
+    "Login, logout, session, register, profile update, and development-only magic login."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">APIs</div>
+
+# Authentication API
+
+Kalp's authentication routes live under `/auth`.
+
+<h2 id="login">Login</h2>
+
+Use:
+
+```text
+POST /auth/login
+```
+
+Example request:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "StrongPassword123",
+  "tenant_slug": null
+}
+```
+
+The response includes:
+
+- `access_token`
+- `expires_at`
+- `session`
+
+<h2 id="current-session">Current session</h2>
+
+Use:
+
+```text
+GET /auth/me
+```
+
+This returns the current signed-in user, including the business slug and role.
+
+<h2 id="logout">Logout</h2>
+
+Use:
+
+```text
+POST /auth/logout
+```
+
+This clears the auth cookie for the web app session.
+
+<h2 id="register-and-profile">Register and profile</h2>
+
+Use:
+
+```text
+POST /auth/register
+PATCH /auth/update-profile
+```
+
+`/auth/register` creates a new user and also returns a valid session. `/auth/update-profile` updates user profile details.
+
+<h2 id="dev-only-magic-login">Dev-only magic login</h2>
+
+Kalp also exposes:
+
+```text
+GET /auth/magic/options
+POST /auth/magic/login
+```
+
+These are development-only helpers. They are disabled outside development and test environments.
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/apis/business-onboarding-api">Business Onboarding API</a> for the routes that create agencies and businesses.
+</Callout>
