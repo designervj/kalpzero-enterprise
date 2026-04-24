@@ -5,6 +5,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 class RegisterRequest(BaseModel):
     email: str
+    name: str | None = Field(default=None, min_length=3, max_length=255)
     password: str = Field(min_length=10)
     tenant_slug:str | None = None
     role: str | None = None
@@ -988,21 +989,29 @@ class ThemeConfig(BaseModel):
     colors: ThemeColorsRequest
     typography: ThemeTypographyRequest
 
-class PatchBusinessBlueprintRequest(BaseModel):
+class BusinessBlueprintPayloadRequest(BaseModel):
+    tenant_id: str | None = None
+    tenant_slug: str | None = None
+    version: int | None = None
     business_label: str | None = None
+    vertical_packs: str | None = None
+    enabled_modules: list[str] | None = None
     public_theme: ThemeConfig | None = None
-    admin_theme: ThemeTokensRequest | None = None
+    admin_theme: ThemeConfig | None = None
     public_navigation: list[NavigationItemRequest] | None = None
     admin_navigation: list[NavigationItemRequest] | None = None
     routes: list[BlueprintRouteRequest] | None = None
     dashboard_widgets: list[DashboardWidgetRequest] | None = None
     vocabulary: dict[str, str] | None = None
-    enabled_modules: list[str] | None = None
     mobile_capabilities: list[str] | None = None
     admin_email: str | None = None
     agency_slug: str | None = None
     business_type: str | None = None
     infra_mode: str | None = None
+
+
+    
+
     
     
     

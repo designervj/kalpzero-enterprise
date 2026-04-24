@@ -19,13 +19,13 @@ if not hasattr(AsyncIOMotorClient, "append_metadata"):
 
 RUNTIME_COLLECTIONS = {
     "business_blueprints": "business_blueprints",
-    "site_pages": "site_pages",
-    "discovery_profiles": "discovery_profiles",
-    "builder_pages": "builder_pages",
-    "form_responses": "form_responses",
-    "ai_knowledge": "ai_knowledge_documents",
-    "import_staging": "import_staging_documents",
-    "discovery_ snapshots": "discovery_snapshots",
+    # "site_pages": "site_pages",
+    # "discovery_profiles": "discovery_profiles",
+    # "builder_pages": "builder_pages",
+    # "form_responses": "form_responses",
+    # "ai_knowledge": "ai_knowledge_documents",
+    # "import_staging": "import_staging_documents",
+    # "discovery_ snapshots": "discovery_snapshots",
 }
 
 VERTICAL_COLLECTIONS: dict[str, list[str]] = {
@@ -110,12 +110,10 @@ def _normalize_mongo_name_segment(value: str) -> str:
 
 
 def build_runtime_database_name(settings: Settings, *, tenant_slug: str) -> str:
-    base_name = _normalize_mongo_name_segment(settings.runtime_mongo_db)
-    if tenant_slug.startswith("kp_") or tenant_slug.startswith(f"{base_name}__tenant__"):
-        return tenant_slug
-
     tenant_name = _normalize_mongo_name_segment(tenant_slug)
-    return f"{base_name}__tenant__{tenant_name}"
+    if tenant_name.startswith("kp_"):
+        return tenant_name
+    return f"kp_{tenant_name}"
 
 
 def get_runtime_mongo_database(settings: Settings, *, database_name: str | None = None) -> Database:
@@ -320,7 +318,7 @@ def describe_runtime_document_store(settings: Settings) -> dict[str, object]:
         "mode": settings.runtime_doc_store_mode,
         "database": settings.runtime_mongo_db,
         "tenant_database_strategy": "per_tenant_database",
-        "tenant_database_pattern": f"{_normalize_mongo_name_segment(settings.runtime_mongo_db)}__tenant__{{tenant_slug}}",
+        "tenant_database_pattern": "kp_{tenant_slug}",
         "collections": RUNTIME_COLLECTIONS,
     }
 
@@ -331,13 +329,10 @@ def _drop_test_mongo_databases(settings: Settings) -> None:
     if settings.runtime_doc_store_mode != "mongo":
         return
 
-    base_runtime_db = _normalize_mongo_name_segment(settings.runtime_mongo_db)
-    tenant_prefix = f"{base_runtime_db}__tenant__"
+    tenant_prefix = "kp_"
     target_names = {
         settings.runtime_mongo_db,
         settings.ai_mongo_db,
-        base_runtime_db,
-        _normalize_mongo_name_segment(settings.ai_mongo_db),
     }
 
     client = get_mongo_client(settings.runtime_mongo_url)
