@@ -39,7 +39,7 @@ export const fetchProductById = createAsyncThunk<
   { rejectValue: string }
 >("product/fetchProductById", async ({ id, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/products/${id}`);
+    const url = buildApiUrl(`/commerce/products/${id}`);
     const response = await fetch(url.toString(), {
       method: "GET",
       headers: {
