@@ -1,7 +1,5 @@
 from urllib.parse import urlparse
-
 from sqlalchemy.orm import Session
-
 from app.core.config import Settings
 from app.db.mongo import (
     build_runtime_database_name,
@@ -19,6 +17,13 @@ from app.services.website_provisioning import (
     provision_business_website,
     serialize_website_deployment,
 )
+from app.utlis.utlis import serialize_mongo
+from pymongo import ReturnDocument
+from app.schemas.requests import (
+    BusinessBlueprintPayloadRequest,
+)
+from datetime import datetime, UTC
+from typing import Any
 
 BASE_MODULES = [
     "platform.auth",
@@ -394,6 +399,7 @@ def create_tenant(
         "agency_slug": agency_slug,
         "business_type": business_type,
         "infra_mode": infra_mode,
+        "db_name": mongo_db_name,
     }
 
  
@@ -555,35 +561,23 @@ def get_business_blueprint(
     if doc is None:
         raise NotFoundError(f"Blueprint not found in database '{database_name}'")
 
-    if "_id" in doc:
-        from bson import ObjectId
-        if isinstance(doc["_id"], ObjectId):
-            doc["_id"] = str(doc["_id"])
-
-    return doc
+    return serialize_mongo(doc)
 
 
-def patch_business_blueprint(
+def put_business_blueprint(
     store: RuntimeDocumentStore,
     *,
-    payload: dict[str, object],
-    tenant_slug: str | None = None,
+    payload: BusinessBlueprintPayloadRequest,
+    tenant_slug: str,
     database_name: str | None = None,
-) -> dict[str, object]:
-    existing = get_business_blueprint(store, tenant_slug=tenant_slug, database_name=database_name)
-
-    # Merge top-level fields into the internal "payload"
-    current_payload = existing.get("payload", {})
-    for key, value in payload.items():
-        if value is not None:
-            current_payload[key] = value
-
-    slug = tenant_slug or str(existing.get("tenant_slug"))
-
-    return store.upsert_document(
-        collection="business_blueprints",
-        tenant_slug=slug,
-        document_key="blueprint",
-        payload=current_payload,
-        database_name=database_name,
+) -> dict[str, Any]:
+    db = get_runtime_mongo_database(get_settings(), database_name=database_name)
+    result = db["business_blueprints"].find_one_and_update(
+        {"document_key": "blueprint"},
+        {"$set": {
+            "payload": payload.model_dump(),
+            "updatedAt": datetime.now(tz=UTC)
+        }},
+        return_document=ReturnDocument.AFTER
     )
+    return serialize_mongo(result)

@@ -72,7 +72,7 @@ def _dedupe_strings(values: list[str], *, default: list[str] | None = None) -> l
 def _serialize_category(model) -> dict[str, object]:
     return {
         "id": str(model["id"]),
-        "name": model["name"],
+        "name": model.get("name", ""),
         "slug": model["slug"],
         "type": model.get("type"),
         "parentId": str(model.get("parentId")) if model.get("parentId") else None,
@@ -81,6 +81,7 @@ def _serialize_category(model) -> dict[str, object]:
         "bannerImageUrl": model.get("bannerImageUrl", ""),
         "metaTitle": model.get("metaTitle", ""),
         "metaDescription": model.get("metaDescription", ""),
+        "title": model.get("title", ""),
         "createdAt": model["createdAt"].isoformat() if hasattr(model["createdAt"], "isoformat") else model["createdAt"],
         "updatedAt": model["updatedAt"].isoformat() if hasattr(model["updatedAt"], "isoformat") else model["updatedAt"],
     }

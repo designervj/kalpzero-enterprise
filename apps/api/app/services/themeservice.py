@@ -1,7 +1,7 @@
 from typing import Any
 from app.repositories import themerepo
 
-async def get_theme(db_name: str) -> list[dict[str, Any]]:
+async def get_theme(db_name: str) -> dict[str, Any] | None:
     return await themerepo.get_theme(db_name)
 
 
