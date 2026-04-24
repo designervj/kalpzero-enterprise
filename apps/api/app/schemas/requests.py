@@ -9,6 +9,7 @@ class RegisterRequest(BaseModel):
     tenant_slug:str | None = None
     role: str | None = None
     istenantowner: bool = False
+    name: str | None = None
     first_name:str | None = None
     last_name:str | None = None
 

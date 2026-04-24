@@ -59,31 +59,29 @@ def create_user(
     db: Session,
     payload: RegisterRequest,
 ) -> UserModel:
-    tenant_info = db.scalar(select(TenantModel).where(TenantModel.slug == payload.tenant_slug))
-    if not tenant_info:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tenant not found.",
-        )
-    # ✅ Check if user already exists
-    existing_user = db.scalar(select(UserModel).where(and_(UserModel.email == payload.email, UserModel.tenant_id == tenant_info.id)))
+    is_platform_admin = payload.email.endswith("@kalpzero.com") or payload.tenant_slug == "platform_control"
+    tenant_id: str | None = None
+
+    if is_platform_admin:
+        role = "platform_admin"
+    else:
+        tenant_info = db.scalar(select(TenantModel).where(TenantModel.slug == payload.tenant_slug))
+        if not tenant_info:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tenant not found.",
+            )
+        tenant_id = tenant_info.id
+        role = payload.role or "tenant_admin"
+
+    existing_user = db.scalar(
+        select(UserModel).where(and_(UserModel.email == payload.email, UserModel.tenant_id == tenant_id))
+    )
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists.",
         )
-    role = None
-    # ✅ Determine role and tenant_id
-    if payload.role is None:    
-        role = "customer"
-    else:
-        role = payload.role
-
-    tenant_id = tenant_info.id
-
-    if payload.email.endswith("@kalpzero.com") or payload.tenant_slug == "platform_control":
-        role = "platform_admin"
-        tenant_id = None
 
     # ✅ Hash password
     hashed_password = hash_password(payload.password)
@@ -97,14 +95,20 @@ def create_user(
         istenantowner=payload.istenantowner,
     )
 
+    resolved_name = " ".join(part for part in [payload.first_name, payload.last_name] if part).strip()
+    if not resolved_name:
+        resolved_name = payload.name or payload.email.split("@", 1)[0]
+
     if role == "customer":
-        new_user.name = payload.first_name + " " + payload.last_name
+        new_user.name = resolved_name
         new_user.first_name = payload.first_name
         new_user.last_name = payload.last_name
         new_user.addresses = []
         new_user.wishlist = []
     else:
-        new_user.name = payload.name
+        new_user.name = resolved_name
+        new_user.first_name = payload.first_name
+        new_user.last_name = payload.last_name
 
     db.add(new_user)
     db.commit()
@@ -183,5 +187,4 @@ def update_user(
     db.commit()
     db.refresh(user)
     return user
-
 

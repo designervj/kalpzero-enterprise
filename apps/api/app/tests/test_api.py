@@ -26,13 +26,13 @@ def test_auth_me_returns_current_session(client: TestClient) -> None:
     response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 200
-    assert response.json() == {
-        "email": "founder@kalpzero.com",
-        "tenant_id": "platform_control",
-        "role": "platform_admin",
-        "name": "Platform Founder",
-        "isTenantOwner": False,
-    }
+    payload = response.json()
+    assert payload["id"]
+    assert payload["email"] == "founder@kalpzero.com"
+    assert payload["tenant_id"] == "platform_control"
+    assert payload["role"] == "platform_admin"
+    assert payload["name"] == "Platform Founder"
+    assert payload["isTenantOwner"] is False
 
 
 def test_registry_requires_authentication(client: TestClient) -> None:

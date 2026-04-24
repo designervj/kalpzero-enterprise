@@ -535,6 +535,20 @@ Current limitation:
 - web, worker, contracts, and UI packages still use placeholder test scripts, so
   meaningful automated coverage is currently concentrated in `apps/api`
 
+### Exact Backend API Pytest Command
+
+Use this from the repo root to run the full backend API test suite:
+
+```bash
+apps/api/.venv/bin/pytest apps/api/app/tests -vv
+```
+
+Or use the matching `pnpm` wrapper:
+
+```bash
+pnpm test:api
+```
+
 ## Recommended Testing Sequence Before Onboarding
 
 Use this exact sequence before backend onboarding work:
