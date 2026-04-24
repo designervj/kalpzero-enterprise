@@ -217,69 +217,69 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   //   };
   // }, [activeTenant, authCtx.user?.email]);
 
-  useEffect(() => {
-    if (authCtx.isLoading || !authCtx.user?.tenantKey) return;
+  // useEffect(() => {
+  //   if (authCtx.isLoading || !authCtx.user?.tenantKey) return;
 
-    let isCancelled = false;
+  //   let isCancelled = false;
 
-    if (Array.isArray(authCtx.user.enabledModules)) {
-      setTenantModules(authCtx.user.enabledModules);
-    }
+  //   if (Array.isArray(authCtx.user.enabledModules)) {
+  //     setTenantModules(authCtx.user.enabledModules);
+  //   }
 
-    fetch("/api/registry/snapshot", { cache: "no-store" })
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error("Failed to load registry snapshot.");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (isCancelled) return;
-        setSnapshot(data as RuntimeRegistrySnapshot);
-        if (Array.isArray(data?.enabledModules)) {
-          setTenantModules(data.enabledModules);
-        }
-      })
-      .catch((error) => {
-        if (!isCancelled) {
-          console.error(error);
-        }
-      });
+  //   fetch("/api/registry/snapshot", { cache: "no-store" })
+  //     .then(async (res) => {
+  //       if (!res.ok) {
+  //         throw new Error("Failed to load registry snapshot.");
+  //       }
+  //       return res.json();
+  //     })
+  //     .then((data) => {
+  //       if (isCancelled) return;
+  //       setSnapshot(data as RuntimeRegistrySnapshot);
+  //       if (Array.isArray(data?.enabledModules)) {
+  //         setTenantModules(data.enabledModules);
+  //       }
+  //     })
+  //     .catch((error) => {
+  //       if (!isCancelled) {
+  //         console.error(error);
+  //       }
+  //     });
 
-    fetch("/api/analytics/summary", { cache: "no-store" })
-      .then(async (res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (
-          isCancelled ||
-          !Array.isArray(data?.enabledModules) ||
-          data.enabledModules.length === 0
-        ) {
-          return;
-        }
-        setTenantModules((prev) =>
-          prev.length > 0 ? prev : data.enabledModules,
-        );
-      })
-      .catch(() => { });
+  //   fetch("/api/analytics/summary", { cache: "no-store" })
+  //     .then(async (res) => (res.ok ? res.json() : null))
+  //     .then((data) => {
+  //       if (
+  //         isCancelled ||
+  //         !Array.isArray(data?.enabledModules) ||
+  //         data.enabledModules.length === 0
+  //       ) {
+  //         return;
+  //       }
+  //       setTenantModules((prev) =>
+  //         prev.length > 0 ? prev : data.enabledModules,
+  //       );
+  //     })
+  //     .catch(() => { });
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [authCtx.isLoading, authCtx.user?.enabledModules, authCtx.user?.tenantKey]);
+  //   return () => {
+  //     isCancelled = true;
+  //   };
+  // }, [authCtx.isLoading, authCtx.user?.enabledModules, authCtx.user?.tenantKey]);
 
   const { currentTenant } = useSelector((state: RootState) => state.tenant);
 
-  useEffect(() => {
-    if (currentTenant && currentTenant.enabledModules) {
-      setTenantModules(currentTenant.enabledModules);
-    }
-  }, [currentTenant]);
+  // useEffect(() => {
+  //   if (currentTenant && currentTenant.enabledModules) {
+  //     setTenantModules(currentTenant.enabledModules);
+  //   }
+  // }, [currentTenant]);
 
-  useEffect(() => {
-    if (Array.isArray(authCtx.user?.enabledModules)) {
-      setTenantModules(authCtx.user.enabledModules);
-    }
-  }, [authCtx.user?.enabledModules]);
+  // useEffect(() => {
+  //   if (Array.isArray(authCtx.user?.enabledModules)) {
+  //     setTenantModules(authCtx.user.enabledModules);
+  //   }
+  // }, [authCtx.user?.enabledModules]);
 
   const activeRole = authCtx.currentProfile as RoleProfileKey;
   const sessionRole = authCtx.user?.role || authCtx.sessionRole;

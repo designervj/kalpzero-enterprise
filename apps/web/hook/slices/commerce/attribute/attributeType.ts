@@ -13,9 +13,9 @@ export interface AttributeSetItem {
   name?: string;
   appliesTo?: string; // e.g. "product"
   description?: string;
-  contexts?: string[];
   attributes?: AttributeOption[];
   vertical_bindings?: string[]; 
+  status?: string;
   createdAt?: string;
   updatedAt?: string;
 }

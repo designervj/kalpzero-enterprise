@@ -11,6 +11,7 @@ import productReducer from '../slices/commerce/products/ProductSlice';
 import authReducer from '../slices/auth/authSlice';
 import categoryReducer from '../slices/commerce/category/categorySlice';
 import attributeReducer from '../slices/commerce/attribute/attributeSlice';
+import brandReducer from '../slices/commerce/brand/BrandSlice';
 export const store = configureStore({
     reducer: {
         auth: authReducer,
@@ -24,7 +25,8 @@ export const store = configureStore({
         plugin: pluginReducer,
         option:optionReducer,
         feature:featureReducer,
-        product: productReducer
+        product: productReducer,
+         brand: brandReducer
        
     },
 });

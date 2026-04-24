@@ -11,6 +11,7 @@ import featureReducer from "@/hook/slices/system/featureSlice/FeatureSlice";
 import productReducer from "@/hook/slices/commerce/products/ProductSlice";
 import categoryReducer from "@/hook/slices/commerce/category/categorySlice";
 import attributeReducer from "@/hook/slices/commerce/attribute/attributeSlice";
+import brandReducer from "@/hook/slices/commerce/brand/BrandSlice";
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +27,7 @@ export const store = configureStore({
     product: productReducer,
     category: categoryReducer,
     attribute: attributeReducer,
+    brand: brandReducer,
   },
 });
 
