@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { CategoryType } from "./categoryType";
-import { getApiBaseUrl } from "@/lib/api";
+import { buildApiUrl } from "@/lib/api";
 
 // Fetch all categories
 export const fetchCategories = createAsyncThunk<
@@ -9,7 +9,7 @@ export const fetchCategories = createAsyncThunk<
   { rejectValue: string }
 >("category/fetchCategories", async ({ auth_token, "x-tenant-db": xTenantDb, type }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/categories`);
+    const url = buildApiUrl("/commerce/categories");
     if (type) url.searchParams.append("type", type);
 
     const response = await fetch(url.toString(), {
@@ -29,7 +29,7 @@ export const fetchCategories = createAsyncThunk<
     // Assuming backend returns an array of categories or an object with an items array
     const data = await response.json();
     console.log("dat commerce", data);
-    const result = data?.data || data;
+    const result = data?.categories || data;
     return (Array.isArray(result) ? result : []) as CategoryType[];
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch categories");
@@ -43,7 +43,7 @@ export const createCategory = createAsyncThunk<
   { rejectValue: string }
 >("category/createCategory", async ({ categoryData, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/categories`);
+    const url = buildApiUrl("/commerce/categories");
     const response = await fetch(url.toString(), {
       method: "POST",
       headers: {
@@ -72,7 +72,7 @@ export const updateCategory = createAsyncThunk<
   { rejectValue: string }
 >("category/updateCategory", async ({ id, categoryData, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/categories/${id}`);
+    const url = buildApiUrl(`/commerce/categories/${id}`);
     const response = await fetch(url.toString(), {
       method: "PUT",
       headers: {
@@ -101,7 +101,7 @@ export const deleteCategory = createAsyncThunk<
   { rejectValue: string }
 >("category/deleteCategory", async ({ id, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/categories/${id}`);
+    const url = buildApiUrl(`/commerce/categories/${id}`);
     const response = await fetch(url.toString(), {
       method: "DELETE",
       headers: {

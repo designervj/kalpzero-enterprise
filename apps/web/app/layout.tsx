@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ReduxProvider } from "@/components/providers/redux-provider";
 
+import { ChunkErrorListener } from "@/components/providers/ChunkErrorListener";
+
 import "./globals.css";
 
 const headingFont = Fraunces({
@@ -31,6 +33,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="en">
       <body className={`${headingFont.variable} ${bodyFont.variable} font-body antialiased`}>
+        <ChunkErrorListener />
         <ReduxProvider>
           <AuthProvider>{children}</AuthProvider>
         </ReduxProvider>

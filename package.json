@@ -13,8 +13,8 @@
     "doctor:local": "bash scripts/local-doctor.sh",
     "lint": "turbo run lint",
     "test": "pnpm test:api && turbo run test",
-    "test:api": "cd apps/api && .venv\\Scripts\\pytest",
-    "test:smoke": "cd apps/api && .venv\\Scripts\\pytest app/tests/test_api.py app/tests/test_commerce.py",
+    "test:api": "apps/api/.venv/bin/pytest apps/api/app/tests -vv",
+    "test:smoke": "apps/api/.venv/bin/pytest apps/api/app/tests/test_api.py apps/api/app/tests/test_commerce.py -vv",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

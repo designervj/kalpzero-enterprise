@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Product } from "./ProductType";
-import { getApiBaseUrl } from "@/lib/api";
+import { buildApiUrl } from "@/lib/api";
 
 // Fetch all products
 export const fetchProducts = createAsyncThunk<
@@ -9,7 +9,7 @@ export const fetchProducts = createAsyncThunk<
   { rejectValue: string }
 >("product/fetchProducts", async ({ auth_token, "x-tenant-db": xTenantDb, type }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/products`);
+    const url = buildApiUrl("/commerce/products");
     if (type) url.searchParams.append("type", type);
 
     const response = await fetch(url.toString(), {
@@ -31,6 +31,33 @@ export const fetchProducts = createAsyncThunk<
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch products");
   }
+})
+// Fetch a single product by ID
+export const fetchProductById = createAsyncThunk<
+  Product,
+  { id: string; auth_token: string; "x-tenant-db": string },
+  { rejectValue: string }
+>("product/fetchProductById", async ({ id, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
+  try {
+    const url = buildApiUrl(`/commerce/products/${id}`);
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth_token}`,
+        "x-tenant-db": xTenantDb
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to fetch product");
+    }
+    const result = await response.json();
+    return result.data as Product;
+  } catch (error: any) {
+    return rejectWithValue(error.message || "Failed to fetch product");
+  }
 });
 
 // Create a new product
@@ -40,7 +67,7 @@ export const createProduct = createAsyncThunk<
   { rejectValue: string }
 >("product/createProduct", async ({ payload, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/products`);
+    const url = buildApiUrl("/commerce/products");
     const response = await fetch(url.toString(), {
       method: "POST",
       headers: {
@@ -69,7 +96,7 @@ export const updateProduct = createAsyncThunk<
   { rejectValue: string }
 >("product/updateProduct", async ({ id, payload, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/products/${id}`);
+    const url = buildApiUrl(`/commerce/products/${id}`);
     const response = await fetch(url.toString(), {
       method: "PUT",
       headers: {
@@ -98,7 +125,7 @@ export const deleteProduct = createAsyncThunk<
   { rejectValue: string }
 >("product/deleteProduct", async ({ id, auth_token, "x-tenant-db": xTenantDb }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/commerce/products/${id}`);
+    const url = buildApiUrl(`/commerce/products/${id}`);
     const response = await fetch(url.toString(), {
       method: "DELETE",
       headers: {

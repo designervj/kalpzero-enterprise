@@ -1,7 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { TenantSwitcherOption } from "@/components/adminLayout/AdminLayout";
 import { Tenant } from "@/app/(dashboard)/settings/tenant/tenantType";
-import { getApiBaseUrl } from "@/lib/api";
+import { buildApiUrl } from "@/lib/api";
 
 // Fetch all tenants
 export const fetchTenants = createAsyncThunk<
@@ -109,7 +109,7 @@ export const  fetchTenantById = createAsyncThunk<
   { rejectValue: string }
 >("tenant/fetchTenantById", async ({ id, auth_token }, { rejectWithValue }) => {
   try {
-    const url = new URL(`${getApiBaseUrl()}/platform/tenant`);
+    const url = buildApiUrl("/platform/tenant");
     url.searchParams.append("id", id); // May not be strictly necessary, but keeping it to not break interfaces
 
     const response = await fetch(url.toString(), {

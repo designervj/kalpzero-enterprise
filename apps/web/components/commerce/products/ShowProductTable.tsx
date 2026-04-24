@@ -147,9 +147,9 @@ export default function ShowProductTable({
               <TableCell className="text-right px-10">
                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                   <button
-                    onClick={() => window.open(`/commerce/product/${product.slug}`, '_blank')}
-                    className="h-10 w-10 bg-slate-900 border border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-500/50 transition-all flex items-center justify-center rounded-xl hover:shadow-lg hover:shadow-blue-500/10"
-                    title="View Asset"
+                     onClick={() => window.open(`/commerce/product/${product.slug}`, '_blank')}
+                    className="h-9 w-9 bg-slate-900 border border-white/5 text-white/40 hover:text-indigo-400 hover:border-indigo-500/30 transition-all flex items-center justify-center"
+                   title="View Asset"
                   >
                     <Eye size={18} />
                   </button>
