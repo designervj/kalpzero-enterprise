@@ -3,6 +3,11 @@ import Link from "next/link";
 
 import { Callout } from "@/components/docs/Callout";
 import { DocsCard, DocsCardGrid, InlineBadge } from "@/components/docs/DocsPrimitives";
+import {
+  ExecutionFlowDiagram,
+  StorageMatrixDiagram,
+  WebsiteAutomationDiagram
+} from "@/components/docs/TechnicalDiagrams";
 
 function headingClassName(level: "h1" | "h2" | "h3") {
   if (level === "h1") {
@@ -87,6 +92,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     DocsCardGrid,
     DocsCard,
     InlineBadge,
+    ExecutionFlowDiagram,
+    StorageMatrixDiagram,
+    WebsiteAutomationDiagram,
     ...components
   };
 }

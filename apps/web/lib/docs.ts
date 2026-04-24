@@ -45,6 +45,7 @@ export const docsPages: DocsPage[] = [
     sourcePath: "apps/web/app/docs/getting-started/what-is-kalp/page.mdx",
     outline: [
       { id: "platform-definition", label: "Platform definition" },
+      { id: "technical-topology", label: "Technical topology" },
       { id: "why-shared-platform", label: "Why shared platform" },
       { id: "wave-one-verticals", label: "Wave one verticals" },
       { id: "best-fit", label: "Best fit" }
@@ -84,6 +85,7 @@ export const docsPages: DocsPage[] = [
     sourcePath: "apps/web/app/docs/core-concepts/runtime-documents-and-publishing/page.mdx",
     outline: [
       { id: "three-layer-storage", label: "Three-layer storage" },
+      { id: "runtime-resolution-flow", label: "Runtime resolution flow" },
       { id: "public-runtime", label: "Public runtime" },
       { id: "admin-preview", label: "Admin preview" },
       { id: "publishing-cycle", label: "Publishing cycle" }
@@ -99,6 +101,7 @@ export const docsPages: DocsPage[] = [
       { id: "onboarding-trigger", label: "Onboarding trigger" },
       { id: "github-template", label: "GitHub template" },
       { id: "vercel-project", label: "Vercel project" },
+      { id: "automation-sequence", label: "Automation sequence" },
       { id: "response-shape", label: "Response shape" }
     ]
   }

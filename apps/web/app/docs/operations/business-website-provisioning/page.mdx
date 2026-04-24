@@ -51,6 +51,22 @@ KALPZERO_VERCEL_TEAM_SLUG=
 KALPZERO_VERCEL_PROJECT_PREFIX=
 ```
 
+<h2 id="automation-sequence">Automation sequence</h2>
+
+The provisioning path is technical by design. Kalp does not just store a repo name; it executes a multi-system workflow and returns concrete deployment metadata.
+
+<WebsiteAutomationDiagram />
+
+Under the hood, the sequence is:
+
+1. tenant onboarding calls the provisioning service once the control-plane tenant exists
+2. GitHub template settings are validated and a business-specific repository name is generated
+3. the target repo is created from the configured template source
+4. Vercel project creation binds that repo, applies project-level settings, and waits for the first deployment
+5. the API stores and returns `repo_url`, `production_url`, status, and operator-facing message in `website_deployment`
+
+That design keeps repo creation and first deployment inside the same onboarding transaction boundary from the operator’s point of view.
+
 <h2 id="response-shape">Response shape</h2>
 
 The provisioning result is returned directly in the tenant payload so operators can confirm the rollout immediately.

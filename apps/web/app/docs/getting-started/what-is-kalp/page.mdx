@@ -33,6 +33,22 @@ KalpZero Enterprise is positioned as an enterprise-grade, multi-tenant operating
   </DocsCard>
 </DocsCardGrid>
 
+<h2 id="technical-topology">Technical topology</h2>
+
+Kalp is easiest to understand technically when split into four lanes: ingress, orchestration, state, and rendered surfaces. That is the same pattern visible in your hand-drawn flow, just cleaned into a platform graph.
+
+<ExecutionFlowDiagram />
+
+The important engineering decision is that one runtime graph serves both operator actions and public website requests.
+
+1. A platform operator enters through onboarding, provisioning, or admin flows.
+2. Public traffic enters through the tenant-aware Next.js route shell.
+3. FastAPI applies tenancy, permissions, and vertical rules before any runtime state is trusted.
+4. Postgres, MongoDB, and Redis each handle a narrow class of responsibility instead of overlapping badly.
+5. The resulting state is rendered back through one shared web app as a public website, dashboard, or studio preview.
+
+That is why Kalp can look tenant-specific while still behaving like one product core operationally.
+
 <h2 id="why-shared-platform">Why shared platform</h2>
 
 The main design choice is to avoid cloning the product for every business. A shared platform means Kalp can enforce tenant boundaries, centralize fixes, and keep new modules compatible across many businesses.
