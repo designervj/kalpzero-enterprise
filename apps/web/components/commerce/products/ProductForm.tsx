@@ -1,248 +1,405 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Product } from "@/hook/slices/commerce/products/ProductType";
-import { 
-  X, 
-  Loader2, 
-  Tag, 
-  Hash, 
-  DollarSign, 
-  Shield, 
-  FileText, 
-  Zap, 
-  Box,
-  Layout,
-  Globe,
-  Database,
-  Layers,
-  ArrowRight,
-  ShoppingBag
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  Save,
+  Terminal,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { useAppDispatch, useAppSelector } from "@/hook/store/hooks";
+import { toast } from "sonner";
+import { RootState } from "@/hook/store/store";
 
-const productSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  slug: z.string().min(2, "Slug must be at least 2 characters"),
-  sku: z.string().min(2, "SKU must be at least 2 characters"),
-  description: z.string().optional(),
-  price: z.number().min(0, "Price must be non-negative"),
-  status: z.enum(["active", "inactive"]).default("active"),
-  type: z.enum(["physical", "digital"]).default("physical"),
-});
+import {
+  setProductFormField,
+  resetProductForm,
+  setPricingField,
+  setCurrentProduct,
+} from "@/hook/slices/commerce/products/ProductSlice";
 
-type ProductFormData = z.infer<typeof productSchema>;
+
+import { GeneralInformation } from "./studio/GeneralInformation";
+import { PricingInventory } from "./studio/PricingInventory";
+import { VisualMedia } from "./studio/VisualMedia";
+import { OptionConfiguration } from "./studio/OptionConfiguration";
+import { VariantMatrix } from "./studio/VariantMatrix";
+import { PublicationSidebar } from "./studio/PublicationSidebar";
+import { Product, Variant } from "@/hook/slices/commerce/products/ProductType";
+import { buildCombinationTitle, buildVariantCombinations, generateSKUWithBaseSKU, sanitizeKey } from "@/lib/admin-products/utils";
 
 interface ProductFormProps {
   initialData?: Product | null;
   onSubmit: (data: any) => void;
   onCancel: () => void;
-  isLoading?: boolean;
+  // isLoading: boolean;
 }
 
-export default function ProductForm({
-  initialData,
-  onSubmit,
-  onCancel,
-  isLoading,
-}: ProductFormProps) {
+export default function ProductForm({ initialData, onSubmit, onCancel }: ProductFormProps) {
+  const dispatch = useAppDispatch();
+  const isEditing = Boolean(initialData);
+
+  const { allCategories } = useAppSelector(
+    (state: RootState) => state.category,
+  );
+  const { allAttributes } = useAppSelector(
+    (state: RootState) => state.attribute,
+  );
   const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema) as any,
-    defaultValues: {
-      name: initialData?.name || "",
-      slug: initialData?.slug || "",
-      sku: initialData?.sku || "",
-      description: initialData?.description || "",
-      price: initialData?.price || 0,
-      status: (initialData?.status as any) || "active",
-      type: (initialData?.type as any) || "physical",
-    },
-  });
+    allProducts,
+    currentProduct: form,
+    // isLoading: productLoading,
+  } = useAppSelector((state: RootState) => state.product);
+  
+  const allForms: any[] = [];
 
-  const productName = watch("name");
+  // const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [galleryUrlDraft, setGalleryUrlDraft] = useState("");
+  const [productSlug, setProductSlug] = useState("");
 
+  const relatedProductCandidates = useMemo(
+    () => allProducts.filter((item: any) => item.id !== (initialData?.id || initialData?.id)),
+    [allProducts, initialData],
+  );
+
+  // Initial Load
   useEffect(() => {
-    if (productName && !initialData?.slug) {
-      const generatedSlug = productName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)+/g, "");
-      setValue("slug", generatedSlug);
-    }
-  }, [productName, setValue, initialData]);
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08
+    const init = async () => {
+      try {
+        if (isEditing && initialData) {
+          dispatch(setCurrentProduct(initialData));
+          setProductSlug(initialData.slug || "");
+        } else {
+          dispatch(resetProductForm());
+          setProductSlug("");
+        }
+      } catch (err) {
+        console.error("Tactical initialization failed", err);
+        toast.error("COMMUNICATIONS FAILURE: Hub initialization terminated.");
       }
+    };
+    init();
+  }, [initialData, isEditing, dispatch]);
+
+  const handleSave = async () => {
+    debugger;
+    if (!form) return;
+    if (!form.name?.trim() || !form.sku?.trim()) {
+      return toast.error(
+        "Name and sku is required",
+      );
+    }
+
+    if (productSlug.trim().length < 2) {
+      return toast.error("Slug must be at least 2 characters long");
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name?.trim(),
+        slug: productSlug.trim(),
+        sku: form.sku?.trim(),
+        description: form.description,
+        brandId: form.brandId,
+        vendorId: form.vendorId,
+        collectionIds: (form.collectionIds || []).filter(Boolean),
+        attributeSetIds: (form.attributeSetIds || []).filter(Boolean),
+        categoryIds: (form.categoryIds || []).filter(Boolean),
+        seoTitle: form.seoTitle,
+        seoDescription: form.seoDescription,
+        status: form.status || "active",
+        type: form.type || "physical",
+        price: Number(form.pricing?.price || 0),
+        productAttributes: (form.productAttributes || []).map((attr: any) => ({
+          attributeId: attr.attributeId,
+          value: attr.value
+        })),
+        variants: (form.variants || []).map((v: any) => ({
+          sku: v.sku,
+          title: v.title,
+          price: Number(v.price || 0),
+          currency: "INR",
+          stock: Number(v.stock || 0),
+          attributeValues: Object.entries(v.optionValues || {}).map(([key, val]) => ({
+            attributeId: key,
+            value: val as string
+          })),
+          compareAtPrice: Number(v.compareAtPrice || 0),
+          imageId: v.imageId || ""
+        })),
+        relatedProductIds: (form.relatedProductIds || []).filter(Boolean),
+      };
+
+      await onSubmit(payload);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, x: -10 },
-    visible: { opacity: 1, x: 0 }
+  const regenerateVariants = () => {
+    if (!form) return;
+    const combos = buildVariantCombinations(form?.options || []);
+    const nextVariants: Variant[] = combos.map((combo, index) => {
+      const existing = (form?.variants || []).find((v: any) =>
+        Object.entries(combo).every(
+          ([key, val]) => v.optionValues[key] === val,
+        ),
+      );
+
+      return {
+        id: existing?.id || `v-${index}-${Date.now()}`,
+        title:
+          existing?.title ||
+          buildCombinationTitle(combo) ||
+          `Variant ${index + 1}`,
+        optionValues: combo,
+        sku: existing?.sku || generateSKUWithBaseSKU(form.sku || "", combo),
+        price: Number(existing?.price || form.pricing?.price || 0),
+        stock: Number(existing?.stock || 0),
+        status: existing?.status || "active",
+      };
+    });
+
+    dispatch(setProductFormField({ field: "variants", value: nextVariants }));
+    toast.info(`MATRIX REBUILT: ${nextVariants.length} UNITS LOCALIZED`);
   };
+
+  const toggleAttributeSet = (id: string) => {
+    if (!form || !id) return;
+    const attributeSetIds = form.attributeSetIds || [];
+    const isRemoving = attributeSetIds.includes(id);
+    const nextIds = isRemoving
+      ? attributeSetIds.filter((i: string) => i !== id && i)
+      : [...attributeSetIds.filter(Boolean), id];
+
+    const nextOptions = isRemoving
+      ? (form.options || []).filter((o: any) => o.attributeSetId !== id)
+      : [
+          ...(form.options || []),
+          ...(
+            allAttributes.find((s: any) => (s.key || s._id) === id)
+              ?.attributes || []
+          )
+            .filter((a: any) => a.enabled !== false)
+            .map((a: any) => ({
+              key: sanitizeKey(a.key || a.label || ""),
+              label: a.label || a.key || "Option",
+              values: a.options || [],
+              selectedValues: [],
+              useForVariants: false,
+              draftValue: "",
+              attributeSetId: id,
+            })),
+        ];
+
+    dispatch(setProductFormField({ field: "attributeSetIds", value: nextIds }));
+    dispatch(setProductFormField({ field: "options", value: nextOptions }));
+    dispatch(setProductFormField({ field: "variants", value: [] }));
+  };
+
+  const toggleCategory = (id: string) => {
+    if (!form || !id) return;
+    const categoryIds = form.categoryIds || [];
+    const exists = categoryIds.includes(id);
+    const nextIds = exists
+      ? categoryIds.filter((i: string) => i !== id && i)
+      : [...categoryIds.filter(Boolean), id];
+
+    dispatch(setProductFormField({ field: "categoryIds", value: nextIds }));
+
+    if (exists && form.primaryCategoryId === id) {
+      dispatch(setProductFormField({ field: "primaryCategoryId", value: "" }));
+    } else if (!exists && nextIds.length === 1) {
+      dispatch(setProductFormField({ field: "primaryCategoryId", value: id }));
+    }
+  };
+
+  const addOptionValue = (idx: number) => {
+    if (!form || !form.options) return;
+    const opt = form.options[idx];
+    const val = opt.draftValue?.trim();
+    if (!val) return;
+    const next = [...form.options];
+    next[idx] = {
+      ...opt,
+      values: [...opt.values, val],
+      selectedValues: [...opt.selectedValues, val],
+      draftValue: "",
+    };
+    dispatch(setProductFormField({ field: "options", value: next }));
+  };
+
+  if (!form) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+        <div className="h-8 w-8 border-2 border-white/5 border-t-gold rounded-full animate-spin shadow-lg shadow-gold/20" />
+        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">
+          Initializing Tactical Hub...
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <motion.form 
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      onSubmit={handleSubmit(onSubmit)} 
-      className="space-y-10"
-    >
-      {/* Primary Identification Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <motion.div variants={itemVariants} className="space-y-3">
-          <Label htmlFor="name" className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
-            <Tag size={12} className="text-emerald-400" /> Asset Designation
-          </Label>
-          <div className="relative group">
-            <Input
-              id="name"
-              {...register("name")}
-              placeholder="E.G. QUANTUM CORE V2"
-              className={cn(
-                "bg-slate-950/50 border-slate-800 text-white placeholder:text-slate-700 h-14 px-5 rounded-xl font-bold uppercase tracking-tight focus:ring-4 focus:ring-emerald-500/5 transition-all",
-                errors.name ? "border-rose-500/50" : "focus:border-emerald-500/50"
-              )}
-            />
-            <div className="absolute inset-0 rounded-xl bg-emerald-500/5 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
+    <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Tactical Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-l-4 border-gold pl-6 py-2">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onCancel}
+              className="text-white/20 hover:text-gold transition-colors"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <h1 className="text-3xl font-black text-white uppercase tracking-tighter">
+              {isEditing ? "Update" : "Add"}{" "}
+              <span className="text-gold">Product</span>
+            </h1>
           </div>
-          {errors.name && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest pl-1">{errors.name.message}</p>}
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="space-y-3">
-          <Label htmlFor="sku" className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
-            <Hash size={12} className="text-cyan-400" /> Serial SKU
-          </Label>
-          <div className="relative group">
-            <Input
-              id="sku"
-              {...register("sku")}
-              placeholder="SKU-8829-X"
-              className={cn(
-                "bg-slate-950/50 border-slate-800 text-cyan-400 font-mono placeholder:text-slate-700 h-14 px-5 rounded-xl uppercase tracking-widest focus:ring-4 focus:ring-cyan-500/5 transition-all",
-                errors.sku ? "border-rose-500/50" : "focus:border-cyan-500/50"
-              )}
-            />
-            <div className="absolute inset-0 rounded-xl bg-cyan-500/5 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
+          <div className="flex items-center gap-2 text-[10px] font-bold text-white/40 uppercase tracking-widest italic">
+            <Terminal size={12} className="text-gold/50" />
+            {isEditing
+              ? `Modifying Unit ${form.sku}`
+              : "Add New Product"}
           </div>
-          {errors.sku && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest pl-1">{errors.sku.message}</p>}
-        </motion.div>
+        </div>
 
-        <motion.div variants={itemVariants} className="space-y-3">
-          <Label htmlFor="slug" className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
-            <Globe size={12} className="text-blue-400" /> Network Slug
-          </Label>
-          <Input
-            id="slug"
-            {...register("slug")}
-            placeholder="quantum-core-v2"
-            className="bg-slate-950/50 border-slate-800 text-slate-400 font-mono h-14 px-5 rounded-xl italic focus:border-blue-500/50 transition-all"
+        <div className="flex items-center gap-4">
+          <button
+            className="h-12 px-8 bg-charcoal border border-white/10 text-white/40 font-black text-[10px] uppercase tracking-widest hover:text-white hover:border-gold/30 transition-all active:scale-95 flex items-center gap-3 shadow-xl"
+            onClick={onCancel}
+          >
+            cancel
+          </button>
+          <button
+            className="h-12 px-10 bg-olive text-white font-black text-[10px] uppercase tracking-widest hover:bg-olive-lt transition-all active:scale-95 flex items-center gap-3 shadow-2xl shadow-olive/20"
+            disabled={saving}
+            onClick={handleSave}
+          >
+            {saving ? (
+              <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
+            {isEditing ? "Update" : "Add"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Main Interface */}
+        <div className="lg:col-span-8 space-y-8">
+          <GeneralInformation
+            name={form.name || ""}
+            sku={form.sku || ""}
+            slug={productSlug}
+            description={form.description || ""}
+            onFormChange={(field, value) =>
+              dispatch(setProductFormField({ field: field as any, value }))
+            }
+            onSlugChange={setProductSlug}
           />
-        </motion.div>
 
-        <motion.div variants={itemVariants} className="space-y-3">
-          <Label htmlFor="type" className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
-            <Layers size={12} className="text-amber-400" /> Classification
-          </Label>
-          <select
-            id="type"
-            {...register("type")}
-            className="w-full bg-slate-950/50 border border-slate-800 text-white h-14 px-5 rounded-xl font-black uppercase tracking-widest text-[10px] focus:border-emerald-500/50 outline-none appearance-none cursor-pointer"
-          >
-            <option value="physical" className="bg-slate-900">PHYSICAL ASSET</option>
-            <option value="digital" className="bg-slate-900">DIGITAL ASSET</option>
-          </select>
-        </motion.div>
+          <PricingInventory
+            pricing={form.pricing || { price: "" }}
+            onPricingChange={(field, value) =>
+              dispatch(setPricingField({ field: field as any, value }))
+            }
+          />
+
+          <VisualMedia
+            gallery={form.gallery || []}
+            primaryImageId={form.primaryImageId || ""}
+            galleryUrlDraft={galleryUrlDraft}
+            onGalleryChange={(gallery) =>
+              dispatch(
+                setProductFormField({ field: "gallery", value: gallery }),
+              )
+            }
+            onPrimaryImageChange={(id) =>
+              dispatch(
+                setProductFormField({ field: "primaryImageId", value: id }),
+              )
+            }
+            onGalleryUrlDraftChange={setGalleryUrlDraft}
+            onAddGalleryItem={(item) => {
+              dispatch(
+                setProductFormField({
+                  field: "gallery",
+                  value: [...(form.gallery || []), item],
+                }),
+              );
+              if (!form.primaryImageId) {
+                dispatch(
+                  setProductFormField({
+                    field: "primaryImageId",
+                    value: item.id,
+                  }),
+                );
+              }
+            }}
+          />
+
+          <OptionConfiguration
+            attributeSetIds={form.attributeSetIds || []}
+            options={form.options || []}
+            onToggleAttributeSet={toggleAttributeSet}
+            onOptionChange={(idx, opt) => {
+              const next = [...(form.options || [])];
+              next[idx] = opt;
+              dispatch(setProductFormField({ field: "options", value: next }));
+            }}
+            onAddOptionValue={addOptionValue}
+            onRegenerateVariants={regenerateVariants}
+          />
+
+          <VariantMatrix
+            variants={form.variants || []}
+            onVariantsChange={(variants) =>
+              dispatch(
+                setProductFormField({ field: "variants", value: variants }),
+              )
+            }
+          />
+        </div>
+
+        {/* Tactical Control Sidebar */}
+        <div className="lg:col-span-4">
+          <PublicationSidebar
+            status={form.status || "active"}
+            templateKey={form.templateKey || ""}
+            allCategories={allCategories}
+            categoryIds={form.categoryIds || []}
+            primaryCategoryId={form.primaryCategoryId || ""}
+            relatedProductCandidates={relatedProductCandidates}
+            relatedProductIds={form.relatedProductIds || []}
+            onFormChange={(field, value) =>
+              dispatch(setProductFormField({ field: field as any, value }))
+            }
+            onToggleCategory={toggleCategory}
+            onToggleRelatedProduct={(id) => {
+              if (!id) return;
+              const relatedProductIds = form.relatedProductIds || [];
+              const exists = relatedProductIds.includes(id);
+              const nextIds = exists
+                ? relatedProductIds.filter((rid: string) => rid !== id && rid)
+                : [...relatedProductIds.filter(Boolean), id];
+              
+              dispatch(
+                setProductFormField({
+                  field: "relatedProductIds",
+                  value: nextIds,
+                }),
+              )
+            }}
+            allForms={allForms}
+            formId={form.formId || ""}
+          />
+        </div>
       </div>
-
-      {/* Pricing & Status Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-slate-950/30 border border-slate-800/50 rounded-[2rem]">
-        <motion.div variants={itemVariants} className="space-y-3">
-          <Label htmlFor="price" className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
-            <DollarSign size={12} className="text-emerald-400" /> Unit Credit (Price)
-          </Label>
-          <div className="relative group">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-500 font-bold">$</div>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              {...register("price", { valueAsNumber: true })}
-              className="bg-slate-950/50 border-slate-800 text-white pl-10 pr-5 h-14 rounded-xl font-black tracking-tight focus:border-emerald-500/50 transition-all"
-            />
-          </div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="space-y-3">
-          <Label htmlFor="status" className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
-            <Shield size={12} className="text-emerald-400" /> Matrix Status
-          </Label>
-          <select
-            id="status"
-            {...register("status")}
-            className="w-full bg-slate-950/50 border border-slate-800 text-white h-14 px-5 rounded-xl font-black uppercase tracking-widest text-[10px] focus:border-emerald-500/50 outline-none appearance-none cursor-pointer"
-          >
-            <option value="active" className="bg-slate-900">OPERATIONAL</option>
-            <option value="inactive" className="bg-slate-900">INACTIVE</option>
-          </select>
-        </motion.div>
-      </div>
-
-      <motion.div variants={itemVariants} className="space-y-3">
-        <Label htmlFor="description" className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
-          <FileText size={12} className="text-slate-400" /> Asset Specifications
-        </Label>
-        <Textarea
-          id="description"
-          {...register("description")}
-          placeholder="DETAILED TECHNICAL SPECIFICATIONS AND ASSET DATA..."
-          rows={5}
-          className="bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-700 rounded-2xl px-5 py-4 font-medium tracking-tight focus:border-emerald-500/50 transition-all resize-none shadow-inner"
-        />
-      </motion.div>
-
-      <motion.div variants={itemVariants} className="flex justify-end gap-5 pt-8 border-t border-slate-800/50">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isLoading}
-          className="px-8 h-14 text-xs font-black text-slate-500 hover:text-white uppercase tracking-[0.2em] transition-all disabled:opacity-50"
-        >
-          Abort Protocol
-        </button>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="px-10 h-14 rounded-2xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-900/20 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-3 disabled:opacity-50 disabled:grayscale"
-        >
-          {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <Zap size={18} fill="currentColor" />
-          )}
-          {initialData?.id ? "Synchronize Asset" : "Initialize Asset"}
-        </button>
-      </motion.div>
-    </motion.form>
+    </div>
   );
 }
 

@@ -53,7 +53,27 @@ const config: Config = {
           foreground: "hsl(var(--sidebar-foreground))",
           accent: "hsl(var(--sidebar-accent))",
           border: "hsl(var(--sidebar-border))"
-        }
+        },
+        ink: {
+          DEFAULT: "#102033",
+          light: "#1a2e47",
+          dark: "#08121f",
+        },
+        charcoal: {
+          DEFAULT: "#14171c",
+          light: "#1f242b",
+          dark: "#0a0c0f",
+        },
+        gold: {
+          DEFAULT: "#d4af37",
+          light: "#e5c366",
+          dark: "#a68a2c",
+        },
+        olive: {
+          DEFAULT: "#3d4d3d",
+          light: "#4d5d4d",
+          dark: "#2d3d2d",
+        },
       },
       borderRadius: {
         xl: "1.5rem",

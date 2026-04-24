@@ -14,6 +14,7 @@ export interface ProductOption {
   useForVariants: boolean;
   label: string;
   key: string; // e.g. "size", "color"
+  draftValue?: string;
 }
 export interface GalleryItem {
   id: string;
@@ -22,35 +23,42 @@ export interface GalleryItem {
   order: number;
 }
 
+export interface ProductAttribute {
+  attributeId: string;
+  value: string;
+}
+
 export interface Variant {
   id?: string;
   sku?: string;
+  title?: string;
   price?: number;
+  currency?: string;
+  stock?: number;
+  attributeValues?: ProductAttribute[];
   compareAtPrice?: number;
-
-  options: {
-    [key: string]: string; // e.g. { size: "M", color: "Black" }
-  };
-
   imageId?: string;
-  inventory?: number;
+  // UI Helper
+  optionValues?: {
+    [key: string]: string;
+  };
+  status?: string;
 }
+
 export interface Product {
   id?: string;
   name?: string;
   slug?: string;
   sku?: string;
   description?: string;
-
   status?: "active" | "inactive";
   type?: "physical" | "digital";
 
   categoryIds?: string[];
   attributeSetIds?: string[];
 
-  pricing?: Pricing;
-
-  options?: ProductOption[];
+  pricing?: Pricing; // Keep for UI compatibility
+  options?: ProductOption[]; // Keep for UI compatibility
 
   gallery?: GalleryItem[];
   primaryImageId?: string;
@@ -64,30 +72,16 @@ export interface Product {
   price?: number;
 
   brandId?: string | null;
-  brand_id?: string | null;
-
   vendorId?: string | null;
-  vendor_id?: string | null;
 
   collectionIds?: string[];
-  collection_ids?: string[];
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  productAttributes?: ProductAttribute[];
+  variants?: Variant[];
 
-  seoTitle: string | null;
-  seo_title?: string | null;
-
-  seoDescription: string | null;
-  seo_description?: string | null;
-
-  productAttributes: any[];
-  product_attributes?: any[];
-
-  variants: Variant[];
-
-  createdAt: string;
-  created_at?: string;
-
-  updatedAt: string | null;
-  updated_at?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProductState {

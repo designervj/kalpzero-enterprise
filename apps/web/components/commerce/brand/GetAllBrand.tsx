@@ -1,32 +1,30 @@
-"use client";
+"use client"
 
-import { useEffect, useRef } from "react";
-import { useDispatch } from "react-redux";
-import { useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/lib/store";
 import { usePathname } from "next/navigation";
-import { fetchCategories } from "@/hook/slices/commerce/category/categoryThunk";
+import { useEffect, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchBrands } from "@/hook/slices/commerce/brand/BrandThunk";
 
-
-export default function GetAllCategories() {
-    const dispatch = useDispatch<AppDispatch>();
+export default function GetAllBrand() {
+     const dispatch = useDispatch<AppDispatch>();
     const pathName = usePathname();
     const segment = pathName.split("/")[1];
   ;
    const isApi= useRef<boolean>(false);
     const { authUser } = useSelector((state: RootState) => state.auth);
     const { currentTenant } = useSelector((state: RootState) => state.tenant);
-    const { isFetchedCategories } = useSelector((state: RootState) => state.category);
+    const { isFetchedBrands } = useSelector((state: RootState) => state.brand);
 
     useEffect(() => {
-        if (!isFetchedCategories &&
+        if (!isFetchedBrands &&
              segment === "commerce" &&
             authUser?.access_token &&
             currentTenant?.mongo_db_name &&
             !isApi.current
             ) {
             isApi.current = true;
-            dispatch(fetchCategories(
+            dispatch(fetchBrands(
                 {
                     'x-tenant-db': currentTenant.mongo_db_name,
                     auth_token: authUser.access_token,
@@ -35,7 +33,8 @@ export default function GetAllCategories() {
             }else{
             isApi.current = false;
         }
-    }, [dispatch, currentTenant, isFetchedCategories, authUser, segment]);
-
-return null;
+    }, [dispatch, currentTenant, isFetchedBrands, authUser, segment]);
+    return (
+       null
+    )
 }

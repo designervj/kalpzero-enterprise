@@ -18,6 +18,7 @@
     "@kalpzero/ui": "workspace:*",
     "@next/mdx": "^15.5.14",
     "@next/third-parties": "^16.2.4",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@reduxjs/toolkit": "^2.5.0",
     "class-variance-authority": "^0.7.1",
