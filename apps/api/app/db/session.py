@@ -22,10 +22,17 @@ def _normalize_database_url(database_url: str) -> str:
 def _build_engine(database_url: str) -> Engine:
     database_url = _normalize_database_url(database_url)
     engine_kwargs: dict[str, object] = {"future": True}
+    
     if database_url.startswith("sqlite"):
         engine_kwargs["connect_args"] = {"check_same_thread": False}
         if database_url.endswith(":memory:"):
             engine_kwargs["poolclass"] = StaticPool
+    else:
+        # For non-sqlite (PostgreSQL), add pool resilience
+        engine_kwargs["pool_pre_ping"] = True
+        engine_kwargs["pool_recycle"] = 3600  # Recycle connections every hour
+        engine_kwargs["pool_size"] = 10
+        engine_kwargs["max_overflow"] = 20
 
     engine = create_engine(database_url, **engine_kwargs)
    
