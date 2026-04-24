@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Edit, Trash, Package, ShieldCheck, ShieldAlert, Eye } from "lucide-react";
+import { Edit, Trash, Package, ShieldCheck, ShieldAlert, Eye, DollarSign, Tag, Boxes, Layers, ChevronRight, Sparkles, Box } from "lucide-react";
 import { Product } from "@/hook/slices/commerce/products/ProductType";
 import {
   Table,
@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { motion } from "framer-motion";
 
 interface ShowProductTableProps {
   records: Product[];
@@ -40,10 +41,10 @@ export default function ShowProductTable({
 
   if (isLoading && records.length === 0) {
     return (
-      <div className="h-64 flex flex-col items-center justify-center gap-4 bg-slate-950 border border-white/5">
-        <div className="h-8 w-8 border-2 border-white/5 border-t-amber-500 rounded-full animate-spin shadow-lg shadow-amber-500/20" />
-        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic animate-pulse">
-          Accessing Inventory Matrix...
+      <div className="h-80 flex flex-col items-center justify-center gap-6 bg-slate-900/40 backdrop-blur-md border border-slate-800/50 rounded-[3rem]">
+        <div className="h-12 w-12 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin shadow-lg shadow-emerald-500/20" />
+        <span className="text-sm font-black uppercase tracking-[0.4em] text-slate-500 italic animate-pulse">
+          Synchronizing Inventory Matrix...
         </span>
       </div>
     );
@@ -51,102 +52,120 @@ export default function ShowProductTable({
 
   if (filtered.length === 0) {
     return (
-      <div className="h-64 flex flex-col items-center justify-center gap-6 bg-slate-950 border border-white/5 opacity-10">
-        <Package size={48} />
-        <span className="text-[10px] font-black uppercase tracking-[0.4em]">
-          Product Registry Vacant
+      <div className="h-80 flex flex-col items-center justify-center gap-8 bg-slate-900/40 backdrop-blur-md border border-slate-800/50 rounded-[3rem] opacity-20 group">
+        <div className="p-8 bg-slate-900 rounded-[2rem] border border-slate-800 group-hover:scale-110 transition-transform duration-500">
+          <Package size={64} className="text-slate-400" />
+        </div>
+        <span className="text-sm font-black uppercase tracking-[0.5em] text-slate-500">
+          No Assets Detected in Sector
         </span>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-950 border border-white/5 rounded-none overflow-hidden shadow-2xl shadow-black/80">
+    <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/50 rounded-[1rem] overflow-hidden shadow-2xl shadow-black/40">
       <Table>
-        <TableHeader className="bg-slate-900/60 border-b border-white/5">
-          <TableRow className="hover:bg-transparent border-none h-16">
-            <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40 px-8">
-              Product Designation
+        <TableHeader className="bg-slate-900/60 border-b border-slate-800/50 h-20">
+          <TableRow className="hover:bg-transparent border-none">
+            <TableHead className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 px-10">
+              Asset Designation
             </TableHead>
-            <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
+            <TableHead className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">
               SKU / Serial
             </TableHead>
-            <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
-              Unit Credit (Price)
+            <TableHead className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">
+              Unit Credit
             </TableHead>
-            <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
+            <TableHead className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">
               Status
             </TableHead>
-            <TableHead className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">
-              Type
+            <TableHead className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">
+              Classification
             </TableHead>
-            <TableHead className="text-right text-[10px] font-black uppercase tracking-[0.25em] text-white/40 px-8">
-              Calibration (Actions)
+            <TableHead className="text-right text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 px-10">
+              Control
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filtered.map((product) => (
-            <TableRow key={product.id} className="group border-slate-900 hover:bg-white/[0.02] transition-colors">
-              <TableCell className="px-8 py-4">
-                <div className="flex flex-col">
-                  <span className="text-sm font-black text-white uppercase tracking-widest group-hover:text-amber-500 transition-colors">
-                    {product.name}
-                  </span>
-                  <span className="text-[9px] font-mono font-bold text-white/20 uppercase tracking-widest italic">
-                    /{product.slug}
+            <TableRow key={product.id} className="group border-slate-800/40 hover:bg-emerald-500/[0.03] transition-all duration-300">
+              <TableCell className="px-10 py-5">
+                <div className="flex items-center gap-5">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-900/50 border border-slate-800 text-slate-500 group-hover:text-emerald-400 group-hover:border-emerald-500/30 group-hover:scale-105 transition-all duration-300">
+                    <Box size={22} />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-base font-bold text-white tracking-tight group-hover:text-emerald-300 transition-colors">
+                      {product.name}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
+                      /{product.slug}
+                    </span>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 group-hover:border-emerald-500/20 transition-colors">
+                  <Tag size={12} className="text-emerald-500/50" />
+                  <span className="text-[10px] font-mono font-bold text-emerald-400/80 uppercase tracking-widest">
+                    {product.sku || "UNSERIALIZED"}
                   </span>
                 </div>
               </TableCell>
               <TableCell>
-                <span className="text-[10px] font-mono font-bold text-amber-500/60 uppercase tracking-widest px-2 py-0.5 bg-slate-900 border border-amber-500/10 rounded-sm">
-                  {product.sku || "NO-SKU"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <DollarSign size={14} className="text-slate-500" />
+                  <span className="text-base font-black text-white tracking-tight">
+                    {product.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "0.00"}
+                  </span>
+                </div>
               </TableCell>
               <TableCell>
-                <span className="text-xs font-black text-white tracking-widest">
-                  ${product.price?.toFixed(2) || "0.00"}
-                </span>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
+                <div className={`inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border ${
+                  product.status === "active" 
+                    ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" 
+                    : "bg-rose-500/5 border-rose-500/20 text-rose-400"
+                }`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${
-                    product.status === "active" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-rose-500"
+                    product.status === "active" ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
                   }`} />
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${
-                    product.status === "active" ? "text-emerald-500" : "text-rose-500"
-                  }`}>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">
                     {product.status || "INACTIVE"}
                   </span>
                 </div>
               </TableCell>
               <TableCell>
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                  {product.type || "PHYSICAL"}
-                </span>
+                <div className="flex items-center gap-2.5">
+                  <Layers size={14} className="text-slate-500" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                    {product.type || "PHYSICAL"}
+                  </span>
+                </div>
               </TableCell>
-              <TableCell className="text-right px-8">
-                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <TableCell className="text-right px-10">
+                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                   <button
-                    onClick={() => window.open(`/commerce/product/${product.id}`, '_blank')}
+                     onClick={() => window.open(`/commerce/product/${product.slug}`, '_blank')}
                     className="h-9 w-9 bg-slate-900 border border-white/5 text-white/40 hover:text-indigo-400 hover:border-indigo-500/30 transition-all flex items-center justify-center"
-                    title="View Product"
+                   title="View Asset"
                   >
-                    <Eye size={14} />
+                    <Eye size={18} />
                   </button>
                   <button
                     onClick={() => onEdit(product)}
-                    className="h-9 w-9 bg-slate-900 border border-white/5 text-white/40 hover:text-amber-500 hover:border-amber-500/30 transition-all flex items-center justify-center"
-                    title="Edit Product"
+                    className="h-10 w-10 bg-slate-900 border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 transition-all flex items-center justify-center rounded-xl hover:shadow-lg hover:shadow-cyan-500/10"
+                    title="Calibrate Asset"
                   >
-                    <Edit size={14} />
+                    <Edit size={16} />
                   </button>
                   <button
                     onClick={() => onDelete(product)}
-                    className="h-9 w-9 bg-slate-900 border border-white/5 text-white/40 hover:text-rose-500 hover:border-rose-500/30 transition-all flex items-center justify-center"
-                    title="Delete Product"
+                    className="h-10 w-10 bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-500 hover:border-rose-500/50 transition-all flex items-center justify-center rounded-xl hover:shadow-lg hover:shadow-rose-500/10"
+                    title="Purge Asset"
                   >
-                    <Trash size={14} />
+                    <Trash size={16} />
                   </button>
                 </div>
               </TableCell>
@@ -157,3 +176,4 @@ export default function ShowProductTable({
     </div>
   );
 }
+
