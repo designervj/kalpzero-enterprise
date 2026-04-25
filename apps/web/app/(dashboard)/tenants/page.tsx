@@ -6,13 +6,17 @@ import {
   ArrowRight,
   Building2,
   Edit3,
+  Globe2,
   Plus,
+  RefreshCw,
   Rocket,
   Server,
   Trash2,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { useAuth as useRootAuth } from "@/components/providers/auth-provider";
 import { canRoleMutateUi } from "@/lib/role-scope";
+import { getTenants as getPlatformTenants, type TenantDto } from "@/lib/api";
 import {
   buildEditForm,
   describeBusinessType,
@@ -60,16 +64,20 @@ const SUBSCRIPTION_BADGE_CLASSNAME =
 
 export default function TenantIdentitiesPage() {
   const { currentProfile, isScopedRoleView } = useAuth();
+  const rootAuth = useRootAuth();
   const canMutate = canRoleMutateUi(currentProfile);
   const router = useRouter();
   const [tenants, setTenants] = useState<TenantRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [platformTenants, setPlatformTenants] = useState<TenantDto[]>([]);
+  const [isPlatformLoading, setIsPlatformLoading] = useState(true);
   const [editingTenant, setEditingTenant] = useState<TenantRecord | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
   const [editForm, setEditForm] = useState<TenantEditFormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [platformError, setPlatformError] = useState("");
   const [toast, setToast] = useState("");
 
   const availableModuleKeys = useMemo(() => {
@@ -99,9 +107,42 @@ export default function TenantIdentitiesPage() {
     }
   };
 
+  const fetchPlatformBusinesses = async () => {
+    if (!rootAuth.token) {
+      setPlatformTenants([]);
+      setPlatformError("");
+      setIsPlatformLoading(false);
+      return;
+    }
+
+    setIsPlatformLoading(true);
+    setPlatformError("");
+    try {
+      const payload = await getPlatformTenants(rootAuth.token);
+      setPlatformTenants(payload.tenants);
+    } catch (err) {
+      console.error(err);
+      setPlatformTenants([]);
+      setPlatformError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load control-plane businesses.",
+      );
+    } finally {
+      setIsPlatformLoading(false);
+    }
+  };
+
   useEffect(() => {
     void fetchTenants();
   }, []);
+
+  useEffect(() => {
+    if (rootAuth.status === "loading") {
+      return;
+    }
+    void fetchPlatformBusinesses();
+  }, [rootAuth.status, rootAuth.token]);
 
   useEffect(() => {
     if (!canMutate) {
@@ -317,6 +358,153 @@ export default function TenantIdentitiesPage() {
           {error}
         </div>
       )}
+
+      <section className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-white">Business Directory</h3>
+            <p className="mt-1 text-sm text-slate-400">
+              Businesses created through the current onboarding control plane
+              appear here immediately after onboarding.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => void fetchPlatformBusinesses()}
+            className="gap-2"
+          >
+            <RefreshCw size={14} />
+            Refresh Directory
+          </Button>
+        </div>
+
+        {platformError ? (
+          <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            {platformError}
+          </div>
+        ) : null}
+
+        {isPlatformLoading ? (
+          <div className="flex flex-col items-center justify-center gap-4 p-16 text-cyan-400/70">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-500/30 border-t-cyan-400"></div>
+            <span className="font-mono text-xs uppercase tracking-widest">
+              Loading onboarded businesses...
+            </span>
+          </div>
+        ) : platformTenants.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-800 bg-black/20 p-8 text-center text-sm text-slate-500">
+            No control-plane businesses have been onboarded yet.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {platformTenants.map((tenant) => (
+              <div
+                key={tenant.id}
+                className="rounded-xl border border-slate-800/80 bg-black/30 p-5"
+              >
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-lg font-semibold text-white">
+                        {tenant.display_name}
+                      </h4>
+                      <Badge variant="secondary">{tenant.slug}</Badge>
+                      <Badge className="border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+                        {(tenant.vertical_packs || []).join(", ") || "business"}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {tenant.infra_mode} infra
+                      {" • "}
+                      created{" "}
+                      {new Date(tenant.created_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {tenant.website_deployment?.production_url ? (
+                      <a
+                        href={tenant.website_deployment.production_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-10 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 text-sm font-semibold text-cyan-200 transition hover:border-cyan-400/60 hover:bg-cyan-500/20"
+                      >
+                        Open live site
+                      </a>
+                    ) : null}
+                    {tenant.website_deployment?.platform_url ? (
+                      <a
+                        href={tenant.website_deployment.platform_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm font-semibold text-slate-200 transition hover:bg-slate-800/60"
+                      >
+                        <Globe2 size={14} className="mr-2" />
+                        Open platform subdomain
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500">
+                      Website Status
+                    </div>
+                    <div className="mt-2 text-sm font-semibold text-white">
+                      {tenant.website_deployment?.status ?? "not configured"}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500">
+                      Public URL
+                    </div>
+                    <div className="mt-2 break-all text-sm text-slate-200">
+                      {tenant.website_deployment?.production_url ?? "Pending"}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500">
+                      Platform Subdomain
+                    </div>
+                    <div className="mt-2 break-all text-sm text-slate-200">
+                      {tenant.website_deployment?.platform_url ??
+                        tenant.website_deployment?.platform_host ??
+                        "Pending"}
+                    </div>
+                  </div>
+                </div>
+
+                {(tenant.website_deployment?.repo_url ||
+                  tenant.website_deployment?.message) ? (
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
+                      <div className="text-[10px] uppercase tracking-widest text-slate-500">
+                        GitHub Repo
+                      </div>
+                      <div className="mt-2 break-all text-sm text-slate-200">
+                        {tenant.website_deployment?.repo_url ?? "Pending"}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
+                      <div className="text-[10px] uppercase tracking-widest text-slate-500">
+                        Delivery Message
+                      </div>
+                      <div className="mt-2 text-sm leading-relaxed text-slate-300">
+                        {tenant.website_deployment?.message ?? "No message yet."}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md">
         {isLoading ? (

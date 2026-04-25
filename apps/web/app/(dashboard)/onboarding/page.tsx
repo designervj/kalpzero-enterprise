@@ -263,6 +263,52 @@ function normalizePrimaryDomains(values: string[]) {
   );
 }
 
+function normalizeLanguageCode(value: string) {
+  return value.trim().toLowerCase().replace(/_/g, "-");
+}
+
+function buildSelectedLanguageOption(availableLanguages: any[], code: string) {
+  const normalizedCode = normalizeLanguageCode(code);
+  const matched = availableLanguages.find(
+    (language: any) => normalizeLanguageCode(String(language?.code ?? "")) === normalizedCode,
+  );
+
+  if (matched) {
+    return {
+      ...matched,
+      code: normalizedCode,
+      name: matched.name || normalizedCode.toUpperCase(),
+      nativeName: matched.nativeName || matched.name || normalizedCode.toUpperCase(),
+      flag: matched.flag || "🌐",
+    };
+  }
+
+  return {
+    code: normalizedCode,
+    name: normalizedCode.toUpperCase(),
+    nativeName: "Custom language code",
+    flag: "🌐",
+  };
+}
+
+function buildPlatformUrlFallback(tenantSlug: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const hostname = window.location.hostname.toLowerCase();
+  if (!hostname || hostname === "localhost" || hostname === "127.0.0.1") {
+    return null;
+  }
+
+  const rootHost = hostname.startsWith("www.") ? hostname.slice(4) : hostname;
+  if (!rootHost.includes(".")) {
+    return null;
+  }
+
+  return `${window.location.protocol}//${tenantSlug}.${rootHost}`;
+}
+
 function inferVerticalPack(selectedBusinessTypes: any[], enabledModules: string[]): SupportedVerticalPack {
   const tokens = [
     ...selectedBusinessTypes.flatMap((item) => {
@@ -320,6 +366,12 @@ function buildDeploymentSummary(
   }
 ): DeploymentSummary {
   const websiteDeployment = tenant.website_deployment;
+  const platformUrl =
+    websiteDeployment?.platform_url ??
+    buildPlatformUrlFallback(tenant.slug);
+  const platformHost =
+    websiteDeployment?.platform_host ??
+    (platformUrl ? new URL(platformUrl).host : null);
   return {
     tenantKey: tenant.slug,
     tenantName: options.businessName || "Unnamed Business",
@@ -333,8 +385,8 @@ function buildDeploymentSummary(
     websiteStatus: websiteDeployment?.status ?? "disabled",
     websiteUrl: websiteDeployment?.production_url ?? `${window.location.origin}/${tenant.slug}`,
     repoUrl: websiteDeployment?.repo_url ?? null,
-    platformUrl: websiteDeployment?.platform_url ?? null,
-    platformHost: websiteDeployment?.platform_host ?? null,
+    platformUrl,
+    platformHost,
     websiteMessage: websiteDeployment?.message ?? null,
     domains: websiteDeployment?.domains ?? [],
     ownerAccountMessage: options.ownerAccountMessage ?? null,
@@ -411,6 +463,7 @@ export default function OnboardingWizard() {
   const [attributeCatalog, setAttributeCatalog] = useState<any>(null);
   const [selectedInfoBt, setSelectedInfoBt] = useState<any>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
+  const [languageQuery, setLanguageQuery] = useState("");
   const [deploymentResult, setDeploymentResult] =
     useState<DeploymentSummary | null>(null);
 
@@ -702,12 +755,122 @@ export default function OnboardingWizard() {
   };
 
   const toggleLanguage = (code: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      languages: prev.languages.includes(code)
-        ? prev.languages.filter((l) => l !== code)
-        : [...prev.languages, code],
-    }));
+    const normalizedCode = normalizeLanguageCode(code);
+    if (!normalizedCode) {
+      return;
+    }
+
+    setFormData((prev) => {
+      const currentLanguages = Array.from(
+        new Set(prev.languages.map(normalizeLanguageCode).filter(Boolean)),
+      );
+
+      if (currentLanguages.includes(normalizedCode)) {
+        if (currentLanguages.length === 1) {
+          return prev;
+        }
+        const nextLanguages = currentLanguages.filter(
+          (item) => item !== normalizedCode,
+        );
+        return {
+          ...prev,
+          languages: nextLanguages,
+          primaryLanguage:
+            normalizeLanguageCode(prev.primaryLanguage) === normalizedCode
+              ? nextLanguages[0] ?? prev.primaryLanguage
+              : prev.primaryLanguage,
+        };
+      }
+
+      return {
+        ...prev,
+        languages: [...currentLanguages, normalizedCode],
+        primaryLanguage:
+          normalizeLanguageCode(prev.primaryLanguage) || normalizedCode,
+      };
+    });
+  };
+
+  const addLanguage = (value: string) => {
+    const normalizedValue = normalizeLanguageCode(value);
+    if (!normalizedValue) {
+      return;
+    }
+
+    setFormData((prev) => {
+      const currentLanguages = Array.from(
+        new Set(prev.languages.map(normalizeLanguageCode).filter(Boolean)),
+      );
+      if (currentLanguages.includes(normalizedValue)) {
+        return {
+          ...prev,
+          primaryLanguage:
+            normalizeLanguageCode(prev.primaryLanguage) || normalizedValue,
+        };
+      }
+      return {
+        ...prev,
+        languages: [...currentLanguages, normalizedValue],
+        primaryLanguage:
+          normalizeLanguageCode(prev.primaryLanguage) || normalizedValue,
+      };
+    });
+  };
+
+  const removeLanguage = (value: string) => {
+    const normalizedValue = normalizeLanguageCode(value);
+    if (!normalizedValue) {
+      return;
+    }
+
+    setFormData((prev) => {
+      const currentLanguages = Array.from(
+        new Set(prev.languages.map(normalizeLanguageCode).filter(Boolean)),
+      );
+      if (currentLanguages.length <= 1) {
+        return prev;
+      }
+      const nextLanguages = currentLanguages.filter(
+        (item) => item !== normalizedValue,
+      );
+      return {
+        ...prev,
+        languages: nextLanguages,
+        primaryLanguage:
+          normalizeLanguageCode(prev.primaryLanguage) === normalizedValue
+            ? nextLanguages[0] ?? prev.primaryLanguage
+            : prev.primaryLanguage,
+      };
+    });
+  };
+
+  const commitLanguageQuery = () => {
+    const trimmedQuery = languageQuery.trim();
+    if (!trimmedQuery) {
+      return;
+    }
+
+    const exactMatch = availableLanguages.find((language: any) => {
+      const normalizedQuery = normalizeLanguageCode(trimmedQuery);
+      const values = [
+        String(language?.code ?? ""),
+        String(language?.name ?? ""),
+        String(language?.nativeName ?? ""),
+      ]
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+      return (
+        values.includes(trimmedQuery.toLowerCase()) ||
+        values.includes(normalizedQuery)
+      );
+    });
+
+    addLanguage(
+      exactMatch?.code ||
+        (filteredLanguages.length === 1 ? filteredLanguages[0]?.code : "") ||
+        trimmedQuery,
+    );
+    setLanguageQuery("");
   };
 
   const toggleModule = (mod: string) => {
@@ -798,6 +961,16 @@ export default function OnboardingWizard() {
     );
     const agencySlug = slugifyValue(`${tenantSlug}-agency`, `agency-${tenantSlug}`, 80);
     const primaryDomains = normalizePrimaryDomains(formData.primaryDomains);
+    const normalizedLanguages = Array.from(
+      new Set(formData.languages.map(normalizeLanguageCode).filter(Boolean)),
+    );
+    const resolvedPrimaryLanguage =
+      normalizeLanguageCode(formData.primaryLanguage) ||
+      normalizedLanguages[0] ||
+      "en";
+    const onboardingLanguages = Array.from(
+      new Set([resolvedPrimaryLanguage, ...normalizedLanguages].filter(Boolean)),
+    );
     const websiteFeatureFlags = buildFeatureFlags(
       formData.enabledModules,
       formData.featureFlags,
@@ -831,6 +1004,8 @@ export default function OnboardingWizard() {
         business_type: verticalPack,
         admin_email: adminEmail,
         primary_domains: primaryDomains,
+        languages: onboardingLanguages,
+        primary_language: resolvedPrimaryLanguage,
         dedicated_profile_id:
           infraMode === "dedicated" ? "dedicated-infra-demo" : undefined,
         feature_flags: websiteFeatureFlags,
@@ -910,6 +1085,25 @@ export default function OnboardingWizard() {
   const completionPercent = Math.round(
     ((activeStep + 1) / STEPS.length) * 100,
   );
+  const normalizedLanguageQuery = languageQuery.trim().toLowerCase();
+  const selectedLanguageOptions = Array.from(
+    new Set(formData.languages.map(normalizeLanguageCode).filter(Boolean)),
+  ).map((code) => buildSelectedLanguageOption(availableLanguages, code));
+  const filteredLanguages = availableLanguages.filter((language: any) => {
+    if (!normalizedLanguageQuery) {
+      return true;
+    }
+    const haystack = [
+      language?.code,
+      language?.name,
+      language?.nativeName,
+      language?.flag,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(normalizedLanguageQuery);
+  });
   const modulePresetLabel =
     formData.businessType.length > 0
       ? formData.businessType
@@ -919,7 +1113,7 @@ export default function OnboardingWizard() {
   const businessLabel = formData.businessName || "New Business Workspace";
   const currentStepLabel = `Step ${activeStep + 1} of ${STEPS.length}`;
   const modeLabel = isLiteProfile ? "Lite Profile" : "Full Tenant";
-  const languageCount = formData.languages.length;
+  const languageCount = selectedLanguageOptions.length;
 
   return (
     <div
@@ -1690,9 +1884,90 @@ export default function OnboardingWizard() {
                         Languages
                       </h2>
                       <p className="text-slate-400 text-sm md:text-base">
-                        Choose which languages your business will support. You
-                        can add more later in Settings.
+                        Choose which languages your business will support.
+                        Search by name or code, then keep one language as the
+                        default for the workspace.
                       </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-800 bg-black/30 p-5">
+                      <label className="block text-xs uppercase tracking-widest text-slate-500 font-semibold">
+                        Find or Add Language
+                      </label>
+                      <div className="mt-3 flex flex-col gap-3 md:flex-row">
+                        <input
+                          type="text"
+                          value={languageQuery}
+                          onChange={(e) => setLanguageQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitLanguageQuery();
+                            }
+                          }}
+                          className="w-full bg-black/50 border border-slate-700/80 rounded-lg px-4 py-3 text-white text-sm placeholder-slate-600 focus:outline-none focus:ring-2"
+                          style={
+                            {
+                              "--tw-ring-color": `${formData.brand.primary}80`,
+                            } as any
+                          }
+                          placeholder="Type english, hindi, en, hi, fr"
+                        />
+                        <button
+                          type="button"
+                          onClick={commitLanguageQuery}
+                          className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-cyan-200 transition hover:border-cyan-400/60 hover:bg-cyan-500/20"
+                        >
+                          Add Language
+                        </button>
+                      </div>
+                      <p className="mt-2 text-[10px] text-slate-500">
+                        If the exact language is not in the registry yet, you
+                        can still save its code manually and refine it later.
+                      </p>
+                      {selectedLanguageOptions.length > 0 ? (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {selectedLanguageOptions.map((language) => {
+                            const isPrimary =
+                              normalizeLanguageCode(formData.primaryLanguage) ===
+                              language.code;
+                            const canRemove = !isPrimary && selectedLanguageOptions.length > 1;
+                            return (
+                              <div
+                                key={language.code}
+                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
+                                  isPrimary
+                                    ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-100"
+                                    : "border-slate-700 bg-slate-900/70 text-slate-200"
+                                }`}
+                              >
+                                <span>{language.flag || "🌐"}</span>
+                                <span className="font-medium">
+                                  {language.name}
+                                </span>
+                                <span className="text-slate-500">
+                                  {language.code}
+                                </span>
+                                {isPrimary ? (
+                                  <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] uppercase tracking-widest text-cyan-200">
+                                    Primary
+                                  </span>
+                                ) : null}
+                                {canRemove ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeLanguage(language.code)}
+                                    className="rounded-full p-1 text-slate-500 transition hover:bg-slate-800 hover:text-white"
+                                    aria-label={`Remove ${language.name}`}
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
 
                     {/* Primary Language */}
@@ -1705,7 +1980,9 @@ export default function OnboardingWizard() {
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            primaryLanguage: e.target.value,
+                            primaryLanguage: normalizeLanguageCode(
+                              e.target.value,
+                            ),
                           })
                         }
                         className="bg-black/50 border border-slate-700/80 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 cursor-pointer appearance-none w-full max-w-sm"
@@ -1715,9 +1992,7 @@ export default function OnboardingWizard() {
                           } as any
                         }
                       >
-                        {availableLanguages
-                          .filter((l) => formData.languages.includes(l.code))
-                          .map((l: any) => (
+                        {selectedLanguageOptions.map((l: any) => (
                             <option key={l.code} value={l.code}>
                               {l.flag} {l.name} ({l.nativeName})
                             </option>
@@ -1728,7 +2003,7 @@ export default function OnboardingWizard() {
                     {/* Additional Languages */}
                     <div>
                       <label className="block text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">
-                        Additional Languages
+                        Available Languages
                       </label>
                       {isLoadingData ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
@@ -1748,19 +2023,28 @@ export default function OnboardingWizard() {
                             </div>
                           ))}
                         </div>
+                      ) : filteredLanguages.length === 0 ? (
+                        <div className="rounded-2xl border border-slate-800 bg-black/30 p-5 text-sm text-slate-400">
+                          No language matched <span className="text-white">&quot;{languageQuery}&quot;</span>.
+                          Add it above as a custom code if you still want to continue.
+                        </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                          {availableLanguages.map((lang: any) => {
-                            const active = formData.languages.includes(
-                              lang.code,
+                          {filteredLanguages.map((lang: any) => {
+                            const normalizedCode = normalizeLanguageCode(
+                              String(lang.code ?? ""),
+                            );
+                            const active = selectedLanguageOptions.some(
+                              (item) => item.code === normalizedCode,
                             );
                             const isPrimary =
-                              formData.primaryLanguage === lang.code;
+                              normalizeLanguageCode(formData.primaryLanguage) ===
+                              normalizedCode;
                             return (
                               <button
-                                key={lang.code}
+                                key={normalizedCode}
                                 onClick={() =>
-                                  !isPrimary && toggleLanguage(lang.code)
+                                  !isPrimary && toggleLanguage(normalizedCode)
                                 }
                                 disabled={isPrimary}
                                 className={`flex items-center justify-between p-4 rounded-xl border text-sm transition-all ${active

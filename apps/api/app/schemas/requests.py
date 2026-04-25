@@ -61,6 +61,8 @@ class CreateTenantRequest(BaseModel):
         default_factory=list,
         validation_alias=AliasChoices("primary_domains", "primaryDomain"),
     )
+    languages: list[str] = Field(default_factory=list)
+    primary_language: str | None = None
     feature_flags: list[str] = Field(default_factory=list)
     dedicated_profile_id: str | None = None
 

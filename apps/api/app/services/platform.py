@@ -364,6 +364,8 @@ def create_tenant(
     business_type: str | None,
     admin_email: str | None,
     primary_domains: list[str] | None,
+    languages: list[str] | None,
+    primary_language: str | None,
     feature_flags: list[str],
     dedicated_profile_id: str | None,
 ) -> dict[str, object]:
@@ -403,6 +405,29 @@ def create_tenant(
     )
 
     from app.services import publishing as publishing_service
+
+    normalized_languages: list[str] = []
+    seen_languages: set[str] = set()
+    for value in languages or []:
+        if not isinstance(value, str):
+            continue
+        normalized_value = value.strip().lower().replace("_", "-")
+        if not normalized_value or normalized_value in seen_languages:
+            continue
+        seen_languages.add(normalized_value)
+        normalized_languages.append(normalized_value)
+    resolved_primary_language = (
+        primary_language.strip().lower().replace("_", "-")
+        if isinstance(primary_language, str) and primary_language.strip()
+        else ""
+    )
+    if resolved_primary_language and resolved_primary_language not in seen_languages:
+        normalized_languages.insert(0, resolved_primary_language)
+        seen_languages.add(resolved_primary_language)
+    if not normalized_languages:
+        normalized_languages = [resolved_primary_language or "en"]
+    if not resolved_primary_language:
+        resolved_primary_language = normalized_languages[0]
  
     extra_metadata = {
         "admin_email": admin_email,
@@ -410,6 +435,8 @@ def create_tenant(
         "business_type": business_type,
         "infra_mode": infra_mode,
         "db_name": mongo_db_name,
+        "languages": normalized_languages,
+        "primary_language": resolved_primary_language,
     }
 
  

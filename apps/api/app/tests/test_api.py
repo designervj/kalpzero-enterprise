@@ -9,6 +9,7 @@ from app.tests._direct import ensure_project_python, run_current_test_file
 ensure_project_python(__file__, is_main=__name__ == "__main__")
 
 from fastapi.testclient import TestClient
+import pytest
 
 from app.tests.support import login, provision_tenant
 
@@ -331,7 +332,7 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
     monkeypatch.setattr(
         website_provisioning,
         "_sync_local_repository_checkout",
-        lambda settings, *, repo_name: f"/tmp/kalp-sites/{repo_name}",
+        lambda settings, *, repo_name, repo_full_name=None: f"/tmp/kalp-sites/{repo_name}",
     )
     monkeypatch.setattr(
         website_provisioning,
@@ -430,8 +431,131 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
     assert platform_domain["metadata"]["last_checked_at"]
     assert (
         website_deployment["message"]
-        == "Business website repo created and synced to the server. 1 domain is live: hotel-demo.example.com. 1 domain is waiting for DNS: self-hosted-tenant.kalptree.xyz."
+        == "Business website provisioning completed. 1 domain is live: hotel-demo.example.com. 1 domain is waiting for DNS: self-hosted-tenant.kalptree.xyz. The GitHub repo is also mirrored on this server."
     )
+
+
+def test_self_hosted_provisioning_stays_ready_when_repo_mirror_sync_fails(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("KALPZERO_GITHUB_TOKEN", "ghs_test_token")
+    monkeypatch.setenv("KALPZERO_GITHUB_REPO_OWNER", "kalp-sites")
+    monkeypatch.setenv("KALPZERO_GITHUB_TEMPLATE_OWNER", "kalp-templates")
+    monkeypatch.setenv("KALPZERO_GITHUB_TEMPLATE_REPO", "business-site-template")
+    monkeypatch.setenv("KALPZERO_GITHUB_REPO_PREFIX", "kalp-biz")
+    monkeypatch.setenv("KALPZERO_WEBSITE_PROVIDER", "github_self_hosted")
+    monkeypatch.setenv("KALPZERO_PUBLIC_WEB_URL", "https://kalptree.xyz")
+    monkeypatch.setenv("KALPZERO_WEBSITE_ROOT_DOMAIN", "kalptree.xyz")
+    monkeypatch.setenv("KALPZERO_WEBSITE_PUBLIC_URL_MODE", "path")
+
+    from app.core.config import get_settings
+    from app.services import website_provisioning
+
+    get_settings.cache_clear()
+    monkeypatch.setattr(
+        website_provisioning,
+        "_request_json",
+        lambda method, url, *, headers, payload=None: {
+            "id": 909,
+            "name": "kalp-biz-partial-sync-tenant",
+            "full_name": "kalp-sites/kalp-biz-partial-sync-tenant",
+            "html_url": "https://github.com/kalp-sites/kalp-biz-partial-sync-tenant",
+            "default_branch": "main",
+        },
+    )
+
+    def fail_checkout(settings, *, repo_name, repo_full_name=None):
+        raise website_provisioning.WebsiteProvisioningError(
+            "GitHub checkout could not be authenticated for "
+            f"{repo_full_name or repo_name}. Update the GitHub token so it can read repository contents, then run website sync again."
+        )
+
+    monkeypatch.setattr(website_provisioning, "_sync_local_repository_checkout", fail_checkout)
+    monkeypatch.setattr(
+        website_provisioning,
+        "_resolve_server_public_ips",
+        lambda settings: {"103.80.161.222"},
+    )
+    monkeypatch.setattr(
+        website_provisioning,
+        "_lookup_host_ips",
+        lambda host: {"103.80.161.222"} if host == "partial-sync.example.com" else set(),
+    )
+    monkeypatch.setattr(
+        website_provisioning,
+        "_run_domain_provisioner",
+        lambda settings, *, host, email: {"host": host},
+    )
+
+    platform_token = login(client, email="founder@kalpzero.com")
+    agency_response = client.post(
+        "/platform/agencies",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "slug": "partial-sync-agency",
+            "name": "Partial Sync Agency",
+            "region": "in",
+            "owner_user_id": "founder@kalpzero.com",
+        },
+    )
+    assert agency_response.status_code == 201
+
+    tenant_response = client.post(
+        "/platform/tenants",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "agency_slug": "partial-sync-agency",
+            "slug": "partial-sync-tenant",
+            "display_name": "Partial Sync Tenant",
+            "infra_mode": "shared",
+            "vertical_pack": "hotel",
+            "admin_email": "owner@tenant.com",
+            "primary_domains": ["partial-sync.example.com"],
+            "feature_flags": ["seo-suite", "custom-domain"],
+        },
+    )
+
+    assert tenant_response.status_code == 201
+    website_deployment = tenant_response.json()["website_deployment"]
+    assert website_deployment["status"] == "ready"
+    assert website_deployment["production_url"] == "https://partial-sync.example.com"
+    assert website_deployment["platform_url"] == "https://partial-sync-tenant.kalptree.xyz"
+    assert website_deployment["repo_url"] == "https://github.com/kalp-sites/kalp-biz-partial-sync-tenant"
+    assert website_deployment["local_repo_path"] is None
+    assert (
+        "Server repo mirror needs attention. GitHub checkout could not be authenticated"
+        in website_deployment["message"]
+    )
+
+
+def test_sync_local_repository_checkout_cleans_failed_clone_directories(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("KALPZERO_GITHUB_TOKEN", "ghs_test_token")
+    monkeypatch.setenv("KALPZERO_GITHUB_REPO_OWNER", "kalp-sites")
+    monkeypatch.setenv("KALPZERO_WEBSITE_LOCAL_REPO_ROOT", str(tmp_path))
+
+    from app.core.config import get_settings
+    from app.services import website_provisioning
+
+    get_settings.cache_clear()
+    settings = get_settings()
+
+    def fake_run_git_command(*args, cwd=None):
+        if "clone" in args:
+            Path(args[-1]).mkdir(parents=True, exist_ok=True)
+        raise website_provisioning.WebsiteProvisioningError("fatal: Authentication failed")
+
+    monkeypatch.setattr(website_provisioning, "_run_git_command", fake_run_git_command)
+
+    with pytest.raises(website_provisioning.WebsiteProvisioningError):
+        website_provisioning._sync_local_repository_checkout(
+            settings,
+            repo_name="kalp-biz-cleanup-check",
+            repo_full_name="kalp-sites/kalp-biz-cleanup-check",
+        )
+
+    assert not (tmp_path / "kalp-biz-cleanup-check").exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
@@ -466,7 +590,7 @@ def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
     monkeypatch.setattr(
         website_provisioning,
         "_sync_local_repository_checkout",
-        lambda settings, *, repo_name: f"/tmp/kalp-sites/{repo_name}",
+        lambda settings, *, repo_name, repo_full_name=None: f"/tmp/kalp-sites/{repo_name}",
     )
     monkeypatch.setattr(
         website_provisioning,
@@ -572,7 +696,7 @@ def test_public_host_resolution_returns_tenant_slug_for_self_hosted_domains(
     monkeypatch.setattr(
         website_provisioning,
         "_sync_local_repository_checkout",
-        lambda settings, *, repo_name: f"/tmp/kalp-sites/{repo_name}",
+        lambda settings, *, repo_name, repo_full_name=None: f"/tmp/kalp-sites/{repo_name}",
     )
     monkeypatch.setattr(
         website_provisioning,

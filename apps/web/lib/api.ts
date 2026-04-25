@@ -393,6 +393,8 @@ export async function createTenant(
     business_type?: string;
     admin_email?: string;
     primary_domains?: string[];
+    languages?: string[];
+    primary_language?: string;
     feature_flags: string[];
     dedicated_profile_id?: string;
     username?: string;

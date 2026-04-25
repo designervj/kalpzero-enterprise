@@ -1,8 +1,11 @@
+from base64 import b64encode
 import json
 import logging
 import re
+import shutil
 import socket
 import subprocess
+import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -269,12 +272,35 @@ def sync_self_hosted_website_domains(
         tenant_slug=tenant.slug,
         primary_domains=normalized_primary_domains,
     )
+    repo_name = deployment.repo_name or build_repository_name(settings, tenant_slug=tenant.slug)
+    repo_full_name = deployment.metadata_json.get("github_full_name")
+    local_repo_path, repo_sync_warning = _try_sync_local_repository_checkout(
+        settings,
+        repo_name=repo_name,
+        repo_full_name=repo_full_name if isinstance(repo_full_name, str) else None,
+    )
     _, production_url, message = _activate_self_hosted_domains(
         db,
         settings,
         tenant=tenant,
         admin_email=admin_email or deployment.metadata_json.get("admin_email"),
     )
+    message = _combine_self_hosted_status_message(
+        domain_message=message,
+        local_repo_path=local_repo_path,
+        repo_sync_warning=repo_sync_warning,
+    )
+    metadata: dict[str, object] = {
+        "platform_host": _build_platform_subdomain_host(settings, tenant_slug=tenant.slug),
+        "platform_url": _build_subdomain_url(
+            settings,
+            host=_build_platform_subdomain_host(settings, tenant_slug=tenant.slug),
+        ),
+        "requested_primary_domains": normalized_primary_domains,
+        "repo_sync_error": repo_sync_warning,
+    }
+    if local_repo_path:
+        metadata["local_repo_path"] = local_repo_path
 
     deployment = _update_deployment(
         db,
@@ -282,14 +308,7 @@ def sync_self_hosted_website_domains(
         status="ready",
         production_url=production_url,
         deployment_url=production_url,
-        metadata={
-            "platform_host": _build_platform_subdomain_host(settings, tenant_slug=tenant.slug),
-            "platform_url": _build_subdomain_url(
-                settings,
-                host=_build_platform_subdomain_host(settings, tenant_slug=tenant.slug),
-            ),
-            "requested_primary_domains": normalized_primary_domains,
-        },
+        metadata=metadata,
         message=message,
     )
     platform_repository.create_audit_event(
@@ -475,6 +494,8 @@ def _provision_github_self_hosted(
     primary_domains: list[str],
 ):
     repo_name = build_repository_name(settings, tenant_slug=tenant.slug)
+    platform_host = _build_platform_subdomain_host(settings, tenant_slug=tenant.slug)
+    platform_url = _build_subdomain_url(settings, host=platform_host)
     repo_response = _create_github_repository_from_template(
         settings,
         repo_name=repo_name,
@@ -494,16 +515,15 @@ def _provision_github_self_hosted(
         metadata={
             "github_full_name": repo_response.get("full_name"),
             "github_default_branch": repo_response.get("default_branch"),
+            "platform_host": platform_host,
+            "platform_url": platform_url,
+            "public_url_mode": settings.website_public_url_mode,
+            "requested_primary_domains": primary_domains,
         },
-        message="GitHub repository created from the business website template.",
+        message="GitHub repository created from the business website template. Public website provisioning is continuing.",
     )
     db.commit()
 
-    local_repo_path = _sync_local_repository_checkout(
-        settings,
-        repo_name=deployment.repo_name or repo_name,
-    )
-    platform_host = _build_platform_subdomain_host(settings, tenant_slug=tenant.slug)
     _sync_self_hosted_domains(
         db,
         settings,
@@ -517,6 +537,25 @@ def _provision_github_self_hosted(
         tenant=tenant,
         admin_email=admin_email,
     )
+    local_repo_path, repo_sync_warning = _try_sync_local_repository_checkout(
+        settings,
+        repo_name=deployment.repo_name or repo_name,
+        repo_full_name=repo_response.get("full_name") if isinstance(repo_response.get("full_name"), str) else None,
+    )
+    message = _combine_self_hosted_status_message(
+        domain_message=provisioning_message,
+        local_repo_path=local_repo_path,
+        repo_sync_warning=repo_sync_warning,
+    )
+    metadata: dict[str, object] = {
+        "platform_host": platform_host,
+        "platform_url": platform_url,
+        "public_url_mode": settings.website_public_url_mode,
+        "requested_primary_domains": primary_domains,
+        "repo_sync_error": repo_sync_warning,
+    }
+    if local_repo_path:
+        metadata["local_repo_path"] = local_repo_path
 
     deployment = _update_deployment(
         db,
@@ -524,14 +563,8 @@ def _provision_github_self_hosted(
         status="ready",
         production_url=production_url,
         deployment_url=production_url,
-        metadata={
-            "local_repo_path": local_repo_path,
-            "platform_host": platform_host,
-            "platform_url": _build_subdomain_url(settings, host=platform_host),
-            "public_url_mode": settings.website_public_url_mode,
-            "requested_primary_domains": primary_domains,
-        },
-        message=provisioning_message,
+        metadata=metadata,
+        message=message,
     )
     platform_repository.create_audit_event(
         db,
@@ -565,7 +598,11 @@ def _update_deployment(
     if status != "failed":
         merged_metadata.pop("provisioning_failed", None)
     if metadata:
-        merged_metadata.update({key: value for key, value in metadata.items() if value is not None})
+        for key, value in metadata.items():
+            if value is None:
+                merged_metadata.pop(key, None)
+            else:
+                merged_metadata[key] = value
     if message is not None:
         merged_metadata["message"] = message
     if status != "failed" and "last_error" not in fields:
@@ -765,7 +802,7 @@ def _pending_dns_message(settings: Settings, *, host: str, domain_kind: str, exp
 
 
 def _build_domain_sync_message(*, ready_hosts: list[str], pending_dns_hosts: list[str], failed_hosts: list[str]) -> str:
-    parts = ["Business website repo created and synced to the server."]
+    parts = ["Business website provisioning completed."]
     if ready_hosts:
         label = "domain is live" if len(ready_hosts) == 1 else "domains are live"
         parts.append(f"{len(ready_hosts)} {label}: {', '.join(ready_hosts)}.")
@@ -776,6 +813,20 @@ def _build_domain_sync_message(*, ready_hosts: list[str], pending_dns_hosts: lis
         label = "domain needs operator attention" if len(failed_hosts) == 1 else "domains need operator attention"
         parts.append(f"{len(failed_hosts)} {label}: {', '.join(failed_hosts)}.")
     return " ".join(parts)
+
+
+def _combine_self_hosted_status_message(
+    *,
+    domain_message: str,
+    local_repo_path: str | None,
+    repo_sync_warning: str | None,
+) -> str:
+    parts = [domain_message.strip()]
+    if local_repo_path:
+        parts.append("The GitHub repo is also mirrored on this server.")
+    elif repo_sync_warning:
+        parts.append(f"Server repo mirror needs attention. {repo_sync_warning}")
+    return " ".join(part for part in parts if part)
 
 
 def _select_self_hosted_production_url(
@@ -992,46 +1043,141 @@ def _run_git_command(*args: str, cwd: Path | None = None) -> None:
         raise WebsiteProvisioningError("Timed out while syncing the local website repository.") from exc
 
 
+def _build_git_http_auth_header(settings: Settings) -> str:
+    token = (settings.github_token or "").strip()
+    if not token:
+        raise WebsiteProvisioningError("GitHub repository sync requires KALPZERO_GITHUB_TOKEN.")
+    encoded = b64encode(f"x-access-token:{token}".encode("utf-8")).decode("ascii")
+    return f"AUTHORIZATION: Basic {encoded}"
+
+
+def _resolve_github_repo_full_name(
+    settings: Settings,
+    *,
+    repo_name: str,
+    repo_full_name: str | None = None,
+) -> str:
+    candidate = (repo_full_name or "").strip().strip("/")
+    if candidate.endswith(".git"):
+        candidate = candidate[:-4]
+    if candidate:
+        return candidate
+    owner = (settings.github_repo_owner or "").strip().strip("/")
+    if not owner:
+        raise WebsiteProvisioningError("GitHub repository owner is not configured for website sync.")
+    return f"{owner}/{repo_name}"
+
+
+def _remove_checkout_path(path: Path) -> None:
+    if not path.exists():
+        return
+    if path.is_dir():
+        shutil.rmtree(path, ignore_errors=True)
+        return
+    path.unlink(missing_ok=True)
+
+
+def _format_checkout_sync_error(detail: str, *, repo_full_name: str) -> str:
+    normalized = " ".join((detail or "").split())
+    lowered = normalized.lower()
+    if "authentication failed" in lowered or "invalid credentials" in lowered:
+        return (
+            f"GitHub checkout could not be authenticated for {repo_full_name}. "
+            "Update the GitHub token so it can read repository contents, then run website sync again."
+        )
+    if "repository not found" in lowered:
+        return (
+            f"GitHub checkout could not find {repo_full_name}. "
+            "Check the repository owner and token access, then run website sync again."
+        )
+    if normalized:
+        return f"GitHub checkout could not be synced for {repo_full_name}. {normalized}"
+    return f"GitHub checkout could not be synced for {repo_full_name}."
+
+
 def _sync_local_repository_checkout(
     settings: Settings,
     *,
     repo_name: str,
+    repo_full_name: str | None = None,
 ) -> str:
     root = Path(settings.website_local_repo_root).expanduser()
     root.mkdir(parents=True, exist_ok=True)
     repo_path = root / repo_name
-    repo_url = f"https://github.com/{settings.github_repo_owner}/{repo_name}.git"
-    auth_header = f"AUTHORIZATION: bearer {settings.github_token}"
+    resolved_repo_full_name = _resolve_github_repo_full_name(
+        settings,
+        repo_name=repo_name,
+        repo_full_name=repo_full_name,
+    )
+    repo_url = f"https://github.com/{resolved_repo_full_name}.git"
+    auth_header = _build_git_http_auth_header(settings)
 
     if (repo_path / ".git").exists():
+        try:
+            _run_git_command(
+                "git",
+                "-c",
+                f"http.extraheader={auth_header}",
+                "fetch",
+                "origin",
+                settings.github_default_branch,
+                "--depth",
+                "1",
+                cwd=repo_path,
+            )
+            _run_git_command("git", "reset", "--hard", "FETCH_HEAD", cwd=repo_path)
+            _run_git_command("git", "clean", "-fd", cwd=repo_path)
+        except WebsiteProvisioningError as exc:
+            raise WebsiteProvisioningError(
+                _format_checkout_sync_error(str(exc), repo_full_name=resolved_repo_full_name)
+            ) from exc
+        return str(repo_path)
+
+    temp_parent = Path(tempfile.mkdtemp(prefix=f".{repo_name}-", dir=str(root)))
+    temp_repo_path = temp_parent / repo_name
+    try:
         _run_git_command(
             "git",
             "-c",
             f"http.extraheader={auth_header}",
-            "fetch",
-            "origin",
-            settings.github_default_branch,
+            "clone",
             "--depth",
             "1",
-            cwd=repo_path,
+            "--branch",
+            settings.github_default_branch,
+            repo_url,
+            str(temp_repo_path),
         )
-        _run_git_command("git", "reset", "--hard", "FETCH_HEAD", cwd=repo_path)
-        _run_git_command("git", "clean", "-fd", cwd=repo_path)
-        return str(repo_path)
+        if repo_path.exists():
+            _remove_checkout_path(repo_path)
+        temp_repo_path.rename(repo_path)
+    except WebsiteProvisioningError as exc:
+        raise WebsiteProvisioningError(
+            _format_checkout_sync_error(str(exc), repo_full_name=resolved_repo_full_name)
+        ) from exc
+    finally:
+        if temp_parent.exists():
+            shutil.rmtree(temp_parent, ignore_errors=True)
 
-    _run_git_command(
-        "git",
-        "-c",
-        f"http.extraheader={auth_header}",
-        "clone",
-        "--depth",
-        "1",
-        "--branch",
-        settings.github_default_branch,
-        repo_url,
-        str(repo_path),
-    )
     return str(repo_path)
+
+
+def _try_sync_local_repository_checkout(
+    settings: Settings,
+    *,
+    repo_name: str,
+    repo_full_name: str | None = None,
+) -> tuple[str | None, str | None]:
+    try:
+        local_repo_path = _sync_local_repository_checkout(
+            settings,
+            repo_name=repo_name,
+            repo_full_name=repo_full_name,
+        )
+        return local_repo_path, None
+    except WebsiteProvisioningError as exc:
+        logger.warning("Local repository checkout sync failed for %s: %s", repo_name, exc)
+        return None, str(exc)
 
 
 def _sync_self_hosted_domains(

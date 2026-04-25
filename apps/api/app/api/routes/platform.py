@@ -122,6 +122,8 @@ def tenants_create(
             business_type=payload.business_type,
             admin_email=payload.admin_email,
             primary_domains=payload.primary_domains,
+            languages=payload.languages,
+            primary_language=payload.primary_language,
             feature_flags=payload.feature_flags,
             dedicated_profile_id=payload.dedicated_profile_id,
         )
