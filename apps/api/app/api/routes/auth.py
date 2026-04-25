@@ -57,28 +57,9 @@ def register(
 ) -> RegisterResponse:
     user = create_user(db, payload)
     session_payload = _serialize_user_session(db, user)
-    expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
-    token = create_access_token(
-        id=user.id,
-        email=user.email,
-        tenant_id=session_payload.tenant_id,
-        role=user.role,
-        settings=settings,
-    )
-
-    response.set_cookie(
-        key="auth_token",
-        value=token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=1440 * 60,
-        path="/",
-    )
-
     return RegisterResponse(
-        access_token=token,
-        expires_at=expires_at.isoformat(),
+        access_token="",
+        expires_at="",
         session=session_payload,
     )
 

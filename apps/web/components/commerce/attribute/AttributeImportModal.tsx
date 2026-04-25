@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { Upload, X, CheckCircle2, AlertCircle, Download, ListFilter, FileJson, Globe, Sparkles } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/lib/store';
+import { AppDispatch, RootState } from '@/hook/store/store';
 import { bulkImportAttributes } from '@/hook/slices/commerce/attribute/attributeThunk';
 import { motion, AnimatePresence } from 'framer-motion';
 

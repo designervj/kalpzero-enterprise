@@ -1,0 +1,69 @@
+export const metadata = {
+  title: "Business Website Creation",
+  description:
+    "How Kalp can create a GitHub repo, connect Vercel, and return a live website URL during onboarding."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Websites and Deployment</div>
+
+# Business website creation
+
+Kalp can do more than create a business record. If GitHub and Vercel are configured, it can also create a separate website repo for that business and make the first website deployment live.
+
+<h2 id="what-it-does">What it does</h2>
+
+This website flow is optional, but when it is enabled Kalp can:
+
+- create a new business repo from a template
+- connect that repo to Vercel
+- wait for the first live deploy
+- return the repo URL and website URL in the onboarding response
+
+<h2 id="what-you-need">What you need</h2>
+
+Kalp needs working GitHub and Vercel credentials in the root `.env`.
+
+```env
+KALPZERO_GITHUB_TOKEN=
+KALPZERO_GITHUB_REPO_OWNER=
+KALPZERO_GITHUB_TEMPLATE_OWNER=
+KALPZERO_GITHUB_TEMPLATE_REPO=
+KALPZERO_VERCEL_TOKEN=
+```
+
+If those values are missing, the business can still be created, but the website will not be created automatically.
+
+<h2 id="flow">Flow</h2>
+
+<WebsiteAutomationDiagram />
+
+The simple version of the flow is:
+
+1. create the business
+2. generate the new business repo from the GitHub template
+3. create the Vercel project
+4. wait for the first live deploy
+5. return the repo URL and website URL
+
+<h2 id="response">Response</h2>
+
+The business response can include a `website_deployment` block like this:
+
+```json
+{
+  "website_deployment": {
+    "status": "ready",
+    "repo_name": "kalp-biz-hotel-sunrise",
+    "repo_url": "https://github.com/your-org/kalp-biz-hotel-sunrise",
+    "production_url": "https://kalp-biz-hotel-sunrise.vercel.app"
+  }
+}
+```
+
+<Callout title="Important note">
+  This website flow is optional. The main business setup still works even when GitHub or Vercel are not configured.
+</Callout>
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/websites-and-deployment/live-deploy-flow">Live Deploy Flow</a> to see how pushes to `main` become live changes on the Kalp server.
+</Callout>

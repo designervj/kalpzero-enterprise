@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.authz import require_permission
+from app.core.config import get_settings
 from app.core.security import SessionContext
 from app.db.mongo import RuntimeDocumentStore, get_runtime_document_store
 from app.db.session import get_db_session
@@ -11,6 +12,7 @@ from app.schemas.requests import (
     UpsertPublishingPageRequest,
 )
 from app.services.errors import NotFoundError
+from app.services.platform import resolve_public_tenant_by_host
 from app.services.publishing import (
     get_blueprint,
     get_discovery,
@@ -185,6 +187,18 @@ def publishing_public_site(
 ):
     try:
         return get_public_site_payload(db, store, tenant_slug=tenant_slug, page_slug=page_slug)
+    except Exception as exc:
+        _raise_http_error(exc)
+
+
+@router.get("/public/resolve-host")
+def publishing_public_resolve_host(
+    host: str,
+    db: Session = Depends(get_db_session),
+    settings=Depends(get_settings),
+):
+    try:
+        return resolve_public_tenant_by_host(db, settings, host=host)
     except Exception as exc:
         _raise_http_error(exc)
 

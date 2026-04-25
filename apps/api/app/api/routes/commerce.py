@@ -633,7 +633,7 @@ async def commerce_products(
         )
         return {
             "tenant_id": session.tenant_id,
-            "products": data["data"],
+            "data": data["data"],
             "totalProducts": data["total"],
             "filters": data["filters"]
         }

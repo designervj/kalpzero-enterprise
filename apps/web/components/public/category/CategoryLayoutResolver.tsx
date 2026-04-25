@@ -27,7 +27,7 @@ export function CategoryLayoutResolver(props: CategoryLayoutProps) {
     defaultCategoryTemplateForType(normalizedType),
   );
 
-  console.log("====>>>", props);
+
   const LayoutComponent = LAYOUT_MAP[templateKey] || CategoryLayoutSidebar;
 
   return <LayoutComponent {...props} />;

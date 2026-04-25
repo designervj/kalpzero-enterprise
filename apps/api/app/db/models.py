@@ -80,6 +80,30 @@ class TenantWebsiteDeploymentModel(Base):
     )
 
 
+class TenantWebsiteDomainModel(Base):
+    __tablename__ = "tenant_website_domains"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), index=True)
+    host: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    domain_kind: Mapped[str] = mapped_column(String(32), default="custom", index=True)
+    ssl_status: Mapped[str] = mapped_column(String(32), default="pending")
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        onupdate=utc_now,
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("host", name="uq_tenant_website_domains_host"),
+    )
+
+
 class CustomerModel(TimestampMixin, Base):
     __tablename__ = "customers"
 
@@ -546,5 +570,4 @@ class HotelMaintenanceTicketModel(TimestampMixin, Base):
     priority: Mapped[str] = mapped_column(String(32), default="medium")
     assigned_staff_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("hotel_staff_members.id"), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
-
 

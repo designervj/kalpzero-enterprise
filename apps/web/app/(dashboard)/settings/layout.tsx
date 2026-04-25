@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { canRoleAccessAdminPath } from '@/lib/role-scope';
 import { useSelector } from 'react-redux';
-import { RootState } from '@/lib/store';
+import { RootState } from '@/hook/store/store';
 import { motion, Variants } from 'framer-motion';
 
 interface ControlCenterGroup {

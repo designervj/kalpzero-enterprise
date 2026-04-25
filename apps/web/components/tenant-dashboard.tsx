@@ -132,7 +132,9 @@ export function TenantDashboard() {
                   <Link href={`/studio/${data.tenant?.slug ?? "tenant_demo"}`}>Studio preview</Link>
                 </Button>
                 <Button asChild>
-                  <Link href={`/${data.tenant?.slug ?? "tenant_demo"}`}>Open public site</Link>
+                  <Link href={data.tenant?.website_deployment?.production_url ?? `/${data.tenant?.slug ?? "tenant_demo"}`}>
+                    Open public site
+                  </Link>
                 </Button>
               </div>
             </CardHeader>

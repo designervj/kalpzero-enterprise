@@ -19,11 +19,19 @@ function siteVariables(site: PublicSitePayloadDto): CSSProperties {
   return vars;
 }
 
-function tenantHref(tenantSlug: string, href: string) {
+function resolveTenantHref(tenantSlug: string, href: string, hostMode: boolean) {
+  if (/^https?:\/\//i.test(href)) {
+    return href;
+  }
+
+  if (hostMode) {
+    return href === "/" ? "/" : href;
+  }
+
   return href === "/" ? `/${tenantSlug}` : `/${tenantSlug}${href}`;
 }
 
-function renderBlock(block: PageBlockDto, tenantSlug: string) {
+function renderBlock(block: PageBlockDto, tenantSlug: string, hostMode: boolean) {
   if (block.kind === "hero") {
     return (
       <section key={block.id} className="kz-site__hero">
@@ -32,7 +40,7 @@ function renderBlock(block: PageBlockDto, tenantSlug: string) {
         {block.body ? <p className="kz-site__lead">{block.body}</p> : null}
         {block.ctaLabel && block.ctaHref ? (
           <div className="kz-site__actions">
-            <Link href={tenantHref(tenantSlug, block.ctaHref)} className="kz-site__cta">
+            <Link href={resolveTenantHref(tenantSlug, block.ctaHref, hostMode)} className="kz-site__cta">
               {block.ctaLabel}
             </Link>
           </div>
@@ -49,7 +57,11 @@ function renderBlock(block: PageBlockDto, tenantSlug: string) {
         <div className="kz-site__grid">
           {(block.items ?? []).map((item) => (
             item.href ? (
-              <Link key={item.title} href={tenantHref(tenantSlug, item.href)} className="kz-site__card kz-site__card--link">
+              <Link
+                key={item.title}
+                href={resolveTenantHref(tenantSlug, item.href, hostMode)}
+                className="kz-site__card kz-site__card--link"
+              >
                 <h3>{item.title}</h3>
                 {item.value ? <strong>{item.value}</strong> : null}
                 {item.description ? <p>{item.description}</p> : null}
@@ -86,7 +98,7 @@ function renderBlock(block: PageBlockDto, tenantSlug: string) {
         {block.headline ? <h2>{block.headline}</h2> : null}
         {block.body ? <p className="kz-site__copy">{block.body}</p> : null}
         {block.ctaLabel && block.ctaHref ? (
-          <Link href={tenantHref(tenantSlug, block.ctaHref)} className="kz-site__cta">
+          <Link href={resolveTenantHref(tenantSlug, block.ctaHref, hostMode)} className="kz-site__cta">
             {block.ctaLabel}
           </Link>
         ) : null}
@@ -102,27 +114,29 @@ function renderBlock(block: PageBlockDto, tenantSlug: string) {
   );
 }
 
-export function RuntimeSite({ site }: { site: PublicSitePayloadDto }) {
+export function RuntimeSite({ site, hostMode = false }: { site: PublicSitePayloadDto; hostMode?: boolean }) {
   if (!site) return null;
 
   return (
     <main className="kz-site" style={siteVariables(site)}>
       <header className="kz-site__header">
-        <Link href={`/${site.tenantSlug}`} className="kz-site__brand">
+        <Link href={hostMode ? "/" : `/${site.tenantSlug}`} className="kz-site__brand">
           {site.businessLabel}
         </Link>
         <nav className="kz-site__nav">
           {(site.publicNavigation || []).map((item) => (
             <Link
               key={`${item.label}:${item.href}`}
-              href={item.href === "/" ? `/${site.tenantSlug}` : `/${site.tenantSlug}${item.href}`}
+              href={resolveTenantHref(site.tenantSlug, item.href, hostMode)}
             >
               {item.label}
             </Link>
           ))}
         </nav>
       </header>
-      <div className="kz-site__content">{(site.page?.blocks || []).map((block) => renderBlock(block, site.tenantSlug))}</div>
+      <div className="kz-site__content">
+        {(site.page?.blocks || []).map((block) => renderBlock(block, site.tenantSlug, hostMode))}
+      </div>
       {site.discovery ? (
         <section className="kz-site__discovery">
           <p className="kz-site__eyebrow">Discovery</p>
@@ -133,7 +147,7 @@ export function RuntimeSite({ site }: { site: PublicSitePayloadDto }) {
               <article key={card.href} className="kz-site__card">
                 <h3>{card.title}</h3>
                 <p>{card.summary}</p>
-                <Link href={card.href === "/" ? `/${site.tenantSlug}` : `/${site.tenantSlug}${card.href}`}>
+                <Link href={resolveTenantHref(site.tenantSlug, card.href, hostMode)}>
                   Open
                 </Link>
               </article>

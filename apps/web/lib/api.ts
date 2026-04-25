@@ -51,6 +51,18 @@ export interface RuntimeBootstrapDto {
   page_slugs: string[];
 }
 
+export interface TenantWebsiteDomainDto {
+  id: string;
+  host: string;
+  domain_kind: string;
+  ssl_status: string;
+  is_primary: boolean;
+  active: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface TenantWebsiteDeploymentDto {
   id: string;
   provider: string;
@@ -65,6 +77,10 @@ export interface TenantWebsiteDeploymentDto {
   production_url: string | null;
   message: string | null;
   last_error: string | null;
+  local_repo_path?: string | null;
+  platform_url?: string | null;
+  platform_host?: string | null;
+  domains?: TenantWebsiteDomainDto[];
   metadata: Record<string, unknown>;
   created_at: string | null;
   updated_at: string | null;
@@ -376,6 +392,7 @@ export async function createTenant(
     vertical_pack: string;
     business_type?: string;
     admin_email?: string;
+    primary_domains?: string[];
     feature_flags: string[];
     dedicated_profile_id?: string;
     username?: string;
@@ -388,6 +405,17 @@ export async function createTenant(
     {
       method: "POST",
       body: JSON.stringify(payload)
+    },
+    token
+  );
+}
+
+export async function syncTenantWebsite(token: string, tenantSlug: string) {
+  return request<TenantDto>(
+    `/platform/tenants/${encodeURIComponent(tenantSlug)}/website/sync`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
     },
     token
   );

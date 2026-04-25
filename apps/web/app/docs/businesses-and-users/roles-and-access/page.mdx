@@ -1,0 +1,54 @@
+export const metadata = {
+  title: "Roles and Access",
+  description:
+    "Who can do what inside Kalp and how the system keeps one business separate from another."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Businesses and Users</div>
+
+# Roles and access
+
+Kalp lets many businesses live inside the same product, so access control matters. The system decides what a person can do based on who they are, which business they belong to, and which permission is required for the current action.
+
+<h2 id="main-roles">Main roles</h2>
+
+| Role | What this person can usually do |
+| --- | --- |
+| Platform admin | Create agencies, create businesses, view platform-wide data, and manage cross-business setup |
+| Tenant admin | Manage one business's pages, modules, settings, and users |
+| Public visitor | View the business website only |
+
+<h2 id="how-access-is-checked">How access is checked</h2>
+
+Kalp follows a simple access pattern:
+
+1. the user logs in
+2. the API reads the current session
+3. the route checks the required permission
+4. the system checks which business the user belongs to
+5. the action is allowed or denied
+
+If a route needs a permission the user does not have, the request is rejected.
+
+<h2 id="tenant-boundaries">Tenant boundaries</h2>
+
+Even though Kalp is shared, each business is still separated from the others.
+
+- a tenant admin should only work inside their own business
+- content and settings are stored with a business scope
+- public website data is resolved by business slug
+- platform-wide access is limited to higher-level roles such as platform admin
+
+This is what lets one Kalp product safely serve many businesses.
+
+<h2 id="common-scenarios">Common scenarios</h2>
+
+Here are a few normal examples:
+
+- a platform admin can create a new business under an agency
+- a tenant admin can update pages and business settings for their own business
+- a public visitor can read a business website but cannot access the dashboard
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/managing-data/how-kalp-stores-data">How Kalp Stores Data</a> to see how Kalp keeps business records, content, and queue data separate.
+</Callout>

@@ -74,7 +74,7 @@ def test_commerce_pack_supports_catalog_and_order_flow(client: TestClient) -> No
     overview_response = client.get("/commerce/overview", headers=headers)
     assert products_response.status_code == 200
     assert overview_response.status_code == 200
-    assert products_response.json()["products"][0]["variants"][0]["inventory_quantity"] == 10
+    assert products_response.json()["data"][0]["variants"][0]["inventory_quantity"] == 10
     assert overview_response.json()["orders"]["placed"] == 1
 
     cancel_response = client.patch(
@@ -86,7 +86,7 @@ def test_commerce_pack_supports_catalog_and_order_flow(client: TestClient) -> No
     assert cancel_response.json()["status"] == "cancelled"
 
     refreshed_products = client.get("/commerce/products", headers=headers)
-    assert refreshed_products.json()["products"][0]["variants"][0]["inventory_quantity"] == 12
+    assert refreshed_products.json()["data"][0]["variants"][0]["inventory_quantity"] == 12
 
 
 def test_legacy_commerce_plan_endpoint_exposes_adapter(client: TestClient) -> None:
@@ -281,7 +281,7 @@ def test_commerce_import_jobs_support_dry_run_execute_and_idempotent_replay(clie
     assert overview_response.json()["price_lists"] == 1
     assert overview_response.json()["coupons"] == 1
     assert categories_response.json()["categories"][0]["slug"] in {"footwear", "sneakers"}
-    assert products_response.json()["products"][0]["variants"][0]["sku"] in {"RUN-42-BLK", "RUN-43-WHT"}
+    assert products_response.json()["data"][0]["variants"][0]["sku"] in {"RUN-42-BLK", "RUN-43-WHT"}
     assert warehouses_response.json()["warehouses"][0]["slug"] == "central-warehouse"
     assert len(stock_levels_response.json()["stock_levels"]) == 2
     assert price_lists_response.json()["price_lists"][0]["slug"] == "retail-default"
@@ -408,9 +408,9 @@ def test_commerce_pack_supports_brands_vendors_collections_and_product_linkage(c
     assert overview_response.json()["brands"] == 1
     assert overview_response.json()["vendors"] == 1
     assert overview_response.json()["collections"] == 1
-    assert products_response.json()["products"][0]["brand_id"] == brand_id
-    assert products_response.json()["products"][0]["vendor_id"] == vendor_id
-    assert products_response.json()["products"][0]["collection_ids"] == [collection_id]
+    assert products_response.json()["data"][0]["brand_id"] == brand_id
+    assert products_response.json()["data"][0]["vendor_id"] == vendor_id
+    assert products_response.json()["data"][0]["collection_ids"] == [collection_id]
 
 
 def test_commerce_pack_supports_price_lists_coupons_and_tax_profiles(client: TestClient) -> None:
@@ -977,7 +977,7 @@ def test_commerce_pack_supports_warehouse_stock_fulfillment_and_shipment_flow(cl
 
     products_response = client.get("/commerce/products", headers=headers)
     assert products_response.status_code == 200
-    assert products_response.json()["products"][0]["variants"][0]["inventory_quantity"] == 20
+    assert products_response.json()["data"][0]["variants"][0]["inventory_quantity"] == 20
 
     order_response = client.post(
         "/commerce/orders",

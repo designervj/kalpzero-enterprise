@@ -1,0 +1,74 @@
+export const metadata = {
+  title: "How Kalp Stores Data",
+  description:
+    "A plain-language explanation of what lives in Postgres, MongoDB, and Redis."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Managing Data</div>
+
+# How Kalp stores data
+
+Kalp uses more than one data store because not all data behaves the same way. Business records, website content, and short-lived queue data each need a different tool.
+
+<h2 id="why-three-stores">Why three stores</h2>
+
+<StorageMatrixDiagram />
+
+Kalp splits its data like this:
+
+- Postgres for strict business records
+- MongoDB for flexible website and content documents
+- Redis for fast cache and queue-style data
+
+<h2 id="postgres">Postgres</h2>
+
+Postgres is used for the data that should stay strict and reliable.
+
+Examples:
+
+- agencies
+- businesses
+- users
+- permissions
+- audit records
+
+This is the place for the main records that define who belongs to which business and what they can do.
+
+<h2 id="mongodb">MongoDB</h2>
+
+MongoDB is used for flexible business content.
+
+Examples:
+
+- business settings
+- public website pages
+- discovery content
+- preview and publish data
+
+This is useful because page content and website data change shape more often than login and business records.
+
+<h2 id="redis">Redis</h2>
+
+Redis is used for fast, short-lived data.
+
+Examples:
+
+- cache
+- queue state
+- temporary job coordination
+
+It helps Kalp move faster without turning the main databases into a queue system.
+
+<h2 id="how-it-works-together">How it works together</h2>
+
+One example flow looks like this:
+
+1. a person logs in and opens a business page
+2. Kalp checks the user and business in Postgres
+3. Kalp reads the page content from MongoDB
+4. Kalp uses Redis if cached data or queued work is involved
+5. the website page or dashboard screen is shown
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/core-concepts/business-blueprint-runtime">Business Settings and Modules</a> to see how Kalp changes menus, modules, and themes per business.
+</Callout>

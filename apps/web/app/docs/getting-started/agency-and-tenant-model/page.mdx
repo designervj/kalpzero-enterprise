@@ -1,0 +1,76 @@
+export const metadata = {
+  title: "Agencies and Businesses",
+  description:
+    "How Kalp groups businesses, what an agency is, and what gets created during onboarding."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Businesses and Users</div>
+
+# Agencies and businesses
+
+Kalp uses a simple ownership model. An agency can manage one or more businesses, and each business gets its own data, website, users, and settings.
+
+<Callout title="Internal word">
+  Inside the database and API, a business is often called a `tenant`. In the docs, we mostly say `business` because it is easier to understand.
+</Callout>
+
+<h2 id="agency">Agency</h2>
+
+An agency is the parent group above businesses.
+
+- it can own many businesses
+- it gives you a clean way to group related customers
+- it can later carry shared business rules or infrastructure choices
+
+If you run services for multiple clients, the agency is the top-level container you work with first.
+
+<h2 id="business">Business</h2>
+
+A business is the actual hotel, store, travel company, or other customer you run on Kalp.
+
+Each business gets:
+
+- a unique slug
+- a display name
+- its own users
+- business settings and enabled modules
+- page and website content
+- website deployment status
+
+<h2 id="what-is-created">What is created</h2>
+
+When you create a business, Kalp can create several things at once:
+
+<DocsCardGrid>
+  <DocsCard title="System records" eyebrow="Required">
+    The business record, related users, permissions, and setup data are created in the main system database.
+  </DocsCard>
+  <DocsCard title="Business content" eyebrow="Required">
+    Starter page data, business settings, and discovery content can be seeded for the new business.
+  </DocsCard>
+  <DocsCard title="Website repo and Vercel project" eyebrow="Optional">
+    If GitHub and Vercel are configured, Kalp can also create a repo and first live website for that business.
+  </DocsCard>
+  <DocsCard title="Business modules" eyebrow="Optional">
+    The selected vertical pack and feature flags decide which modules the business will see in its dashboard.
+  </DocsCard>
+</DocsCardGrid>
+
+<h2 id="onboarding-flow">Onboarding flow</h2>
+
+The normal flow is:
+
+1. Create an agency.
+2. Check onboarding readiness.
+3. Create a business under that agency.
+4. Let Kalp create the starter data for that business.
+5. Optionally let Kalp create a website repo and live website.
+6. Hand the business over to the people who will manage it.
+
+<Callout title="Why Kalp does this in one flow">
+  Kalp treats onboarding as a full setup flow, not just a single database insert. That is why business creation, starter data, and optional website setup are all connected.
+</Callout>
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/businesses-and-users/roles-and-access">Roles and Access</a> to see who can manage what inside Kalp.
+</Callout>

@@ -172,7 +172,9 @@ export function PlatformDashboard() {
                           Open tenant admin
                         </Button>
                         <Button asChild>
-                          <Link href={`/${tenant.slug}`}>Open public site</Link>
+                          <Link href={tenant.website_deployment?.production_url ?? `/${tenant.slug}`}>
+                            Open public site
+                          </Link>
                         </Button>
                       </div>
                     </div>
@@ -183,7 +185,7 @@ export function PlatformDashboard() {
                     </div>
                     {tenant.website_deployment?.production_url ? (
                       <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
-                        <span>Vercel URL:</span>
+                        <span>Live URL:</span>
                         <a
                           className="font-medium text-foreground underline-offset-4 hover:underline"
                           href={tenant.website_deployment.production_url}

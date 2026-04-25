@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { fetchAttributes } from "@/hook/slices/commerce/attribute/attributeThunk";
 import { useSelector } from "react-redux";
-import { AppDispatch, RootState } from "@/lib/store";
+import { AppDispatch, RootState } from "@/hook/store/store";
 import { usePathname } from "next/navigation";
 
 

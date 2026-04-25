@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
-import { AppDispatch, RootState } from "@/lib/store";
+import { AppDispatch, RootState } from "@/hook/store/store";
 import { usePathname } from "next/navigation";
 import { fetchCategories } from "@/hook/slices/commerce/category/categoryThunk";
 
@@ -12,7 +12,7 @@ export default function GetAllCategories() {
     const dispatch = useDispatch<AppDispatch>();
     const pathName = usePathname();
     const segment = pathName.split("/")[1];
-    console.log("segment", segment);
+  ;
    const isApi= useRef<boolean>(false);
     const { authUser } = useSelector((state: RootState) => state.auth);
     const { currentTenant } = useSelector((state: RootState) => state.tenant);

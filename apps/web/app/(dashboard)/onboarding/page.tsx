@@ -42,6 +42,16 @@ import {
 import { getAppLabel } from "@/lib/app-labels";
 import { TagInput } from "@/components/ui/tag-input";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/components/providers/auth-provider";
+import {
+  createAgency,
+  createTenant,
+  isApiError,
+  register,
+  syncTenantWebsite,
+  type TenantDto,
+  type TenantWebsiteDomainDto,
+} from "@/lib/api";
 
 const STEPS = [
   {
@@ -200,20 +210,150 @@ function normalizeAiResponseContent(value: string): string {
 type DeploymentSummary = {
   tenantKey: string;
   tenantName: string;
+  agencySlug: string;
   provisioningMode: "full_tenant" | "lite_profile";
   loginUrl: string;
   ownerAdminEmail: string;
   ownerAdminPassword: string;
   primaryDomains: string[];
+  websiteProvider: string | null;
+  websiteStatus: string;
+  websiteUrl: string | null;
+  repoUrl: string | null;
+  platformUrl: string | null;
+  platformHost: string | null;
+  websiteMessage: string | null;
+  domains: TenantWebsiteDomainDto[];
+  ownerAccountMessage: string | null;
   publicSlug: string;
   databaseMode: string;
   databaseName: string;
 };
 
+type SupportedVerticalPack = "commerce" | "hotel";
+
+function slugifyValue(value: string, fallback: string, maxLength = 80) {
+  const normalized = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .replace(/-{2,}/g, "-");
+  const trimmed = normalized.slice(0, maxLength).replace(/-$/g, "");
+  return trimmed || fallback;
+}
+
+function normalizeDomain(value: string) {
+  let host = value.trim().toLowerCase();
+  if (!host) {
+    return "";
+  }
+  host = host.replace(/^https?:\/\//, "");
+  host = host.split("/", 1)[0] ?? "";
+  host = host.split(":", 1)[0] ?? "";
+  return host.replace(/^\.+|\.+$/g, "");
+}
+
+function normalizePrimaryDomains(values: string[]) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => normalizeDomain(value))
+        .filter((value) => value.includes("."))
+    )
+  );
+}
+
+function inferVerticalPack(selectedBusinessTypes: any[], enabledModules: string[]): SupportedVerticalPack {
+  const tokens = [
+    ...selectedBusinessTypes.flatMap((item) => {
+      if (typeof item === "string") {
+        return [item];
+      }
+      return [item?.name, item?.key, item?.type].filter(Boolean);
+    }),
+    ...enabledModules,
+  ]
+    .map((value) => String(value).toLowerCase())
+    .join(" ");
+
+  if (/(hotel|hospitality|stay|room|resort|property)/.test(tokens)) {
+    return "hotel";
+  }
+
+  if (/(travel|tour|trip|package)/.test(tokens)) {
+    throw new Error(
+      "Travel onboarding is not live in this workflow yet. Use a commerce or hotel business configuration."
+    );
+  }
+
+  return "commerce";
+}
+
+function buildFeatureFlags(enabledModules: string[], featureFlags: Record<string, boolean>, primaryDomains: string[]) {
+  const flags = Object.entries(featureFlags)
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([key]) => key);
+
+  if (enabledModules.includes("website")) {
+    flags.push("seo-suite");
+  }
+  if (primaryDomains.length > 0) {
+    flags.push("custom-domain");
+  }
+  if (enabledModules.includes("kalpbodh")) {
+    flags.push("tenant-ai-governance");
+  }
+
+  return Array.from(new Set(flags));
+}
+
+function buildDeploymentSummary(
+  tenant: TenantDto,
+  options: {
+    agencySlug: string;
+    businessName: string;
+    provisioningMode: "full_tenant" | "lite_profile";
+    ownerAdminEmail: string;
+    ownerAdminPassword: string;
+    primaryDomains: string[];
+    ownerAccountMessage?: string | null;
+  }
+): DeploymentSummary {
+  const websiteDeployment = tenant.website_deployment;
+  return {
+    tenantKey: tenant.slug,
+    tenantName: options.businessName || "Unnamed Business",
+    agencySlug: options.agencySlug,
+    provisioningMode: options.provisioningMode,
+    loginUrl: "/login",
+    ownerAdminEmail: options.ownerAdminEmail,
+    ownerAdminPassword: options.ownerAdminPassword,
+    primaryDomains: options.primaryDomains,
+    websiteProvider: websiteDeployment?.provider ?? null,
+    websiteStatus: websiteDeployment?.status ?? "disabled",
+    websiteUrl: websiteDeployment?.production_url ?? `${window.location.origin}/${tenant.slug}`,
+    repoUrl: websiteDeployment?.repo_url ?? null,
+    platformUrl: websiteDeployment?.platform_url ?? null,
+    platformHost: websiteDeployment?.platform_host ?? null,
+    websiteMessage: websiteDeployment?.message ?? null,
+    domains: websiteDeployment?.domains ?? [],
+    ownerAccountMessage: options.ownerAccountMessage ?? null,
+    publicSlug: tenant.slug,
+    databaseMode: tenant.infra_mode === "dedicated" ? "dedicated" : "shared",
+    databaseName:
+      tenant.runtime_documents?.database ??
+      (tenant.infra_mode === "dedicated"
+        ? `kalpzero_runtime__tenant__${tenant.slug}`
+        : "shared runtime database"),
+  };
+}
+
 export default function OnboardingWizard() {
   const router = useRouter();
+  const { session, status, token } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [isSyncingDomains, setIsSyncingDomains] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wizardShellRef = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -281,6 +421,15 @@ export default function OnboardingWizard() {
   const [aiInput, setAiInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const canProvision =
+    status === "authenticated" &&
+    (session?.role === "platform_admin" || session?.role === "platform_owner");
+
+  useEffect(() => {
+    if (status === "anonymous") {
+      router.push("/login");
+    }
+  }, [router, status]);
 
   // Load data from kalp_system on mount
   useEffect(() => {
@@ -626,6 +775,11 @@ export default function OnboardingWizard() {
   };
 
   const handleDeploy = async () => {
+    if (!token || !canProvision) {
+      alert("Log in as a platform admin before onboarding a business.");
+      return;
+    }
+
     if (
       !formData.ownerAdminEmail ||
       !formData.ownerAdminPassword ||
@@ -637,82 +791,107 @@ export default function OnboardingWizard() {
       return;
     }
     setIsDeploying(true);
-    const key =
-      formData.businessName.toLowerCase().replace(/[^a-z0-9]/g, "") ||
-      `biz_${Date.now()}`;
+    const tenantSlug = slugifyValue(
+      formData.businessName,
+      `business-${Date.now().toString().slice(-6)}`,
+      64,
+    );
+    const agencySlug = slugifyValue(`${tenantSlug}-agency`, `agency-${tenantSlug}`, 80);
+    const primaryDomains = normalizePrimaryDomains(formData.primaryDomains);
+    const websiteFeatureFlags = buildFeatureFlags(
+      formData.enabledModules,
+      formData.featureFlags,
+      primaryDomains,
+    );
+    const verticalPack = inferVerticalPack(formData.businessType, formData.enabledModules);
+    const infraMode = formData.provisioningMode === "lite_profile" ? "shared" : "dedicated";
+    const adminEmail = formData.ownerAdminEmail.trim().toLowerCase();
+    let ownerAccountMessage: string | null = null;
 
     try {
-      const tenantRes = await fetch("/api/tenants", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key,
-          name: formData.businessName || "Unnamed Business",
-          subscriptionLevel: "enterprise",
-          industry: formData.industry,
-          businessType: formData.businessType,
-          accountType: formData.accountType,
-          provisioningMode: formData.provisioningMode,
-          primaryDomain: formData.primaryDomains,
-          brand: formData.brand,
-          enabledModules: formData.enabledModules,
-          categorySeedPreset: formData.categorySeedPreset,
-          attributePool: formData.attributePool,
-          featureFlags: formData.featureFlags,
-          languages: formData.languages,
-          primaryLanguage: formData.primaryLanguage,
-          frontendProfile: {
-            defaultLandingTemplateKey: formData.defaultLandingTemplateKey,
-          },
-          adminTheme:
-            formData.provisioningMode === "full_tenant"
-              ? formData.adminTheme
-              : undefined,
-          ownerAdmin: {
-            name:
-              formData.ownerAdminName ||
-              `${formData.businessName || "Business"} Admin`,
-            email: formData.ownerAdminEmail,
-            password: formData.ownerAdminPassword,
-          },
-        }),
+      try {
+        await createAgency(token, {
+          slug: agencySlug,
+          name: `${formData.businessName || "Business"} Agency`,
+          region: "in",
+          owner_user_id: adminEmail || session?.email || "platform-admin@kalptree.xyz",
+        });
+      } catch (error) {
+        if (!isApiError(error) || error.status !== 409) {
+          throw error;
+        }
+      }
+
+      const tenant = await createTenant(token, {
+        agency_slug: agencySlug,
+        slug: tenantSlug,
+        display_name: formData.businessName || "Unnamed Business",
+        infra_mode: infraMode,
+        vertical_pack: verticalPack,
+        business_type: verticalPack,
+        admin_email: adminEmail,
+        primary_domains: primaryDomains,
+        dedicated_profile_id:
+          infraMode === "dedicated" ? "dedicated-infra-demo" : undefined,
+        feature_flags: websiteFeatureFlags,
       });
 
-      if (!tenantRes.ok) {
-        const payload = await tenantRes.json().catch(() => ({}));
-        throw new Error(payload?.error || "Tenant provisioning failed.");
+      try {
+        await register({
+          email: adminEmail,
+          password: formData.ownerAdminPassword,
+          tenant_slug: tenant.slug,
+        });
+      } catch (error) {
+        ownerAccountMessage =
+          error instanceof Error
+            ? error.message
+            : "The workspace is ready, but owner login creation needs attention.";
       }
-      const payload = await tenantRes.json();
-      setDeploymentResult({
-        tenantKey: payload?.tenantKey || key,
-        tenantName: formData.businessName || "Unnamed Business",
-        provisioningMode: payload?.provisioningMode || formData.provisioningMode,
-        loginUrl: payload?.loginUrl || "/login",
-        ownerAdminEmail: formData.ownerAdminEmail,
-        ownerAdminPassword: formData.ownerAdminPassword,
-        primaryDomains: Array.isArray(payload?.primaryDomains)
-          ? payload.primaryDomains
-          : formData.primaryDomains,
-        publicSlug:
-          typeof payload?.publicSlug === "string" ? payload.publicSlug : key,
-        databaseMode:
-          typeof payload?.infraAssignments?.databaseMode === "string"
-            ? payload.infraAssignments.databaseMode
-            : formData.provisioningMode === "full_tenant"
-              ? "kalp_managed"
-              : "shared_master_only",
-        databaseName:
-          typeof payload?.infraAssignments?.databaseName === "string"
-            ? payload.infraAssignments.databaseName
-            : formData.provisioningMode === "full_tenant"
-              ? `kalp_tenant_${key}`
-              : "Shared master database",
-      });
+
+      setDeploymentResult(
+        buildDeploymentSummary(tenant, {
+          agencySlug,
+          businessName: formData.businessName,
+          provisioningMode: formData.provisioningMode,
+          ownerAdminEmail: adminEmail,
+          ownerAdminPassword: formData.ownerAdminPassword,
+          primaryDomains,
+          ownerAccountMessage,
+        })
+      );
     } catch (err: any) {
       console.error(err);
       alert(err?.message || "Tenant provisioning failed.");
     } finally {
       setIsDeploying(false);
+    }
+  };
+
+  const handleSyncDomains = async () => {
+    if (!token || !deploymentResult) {
+      return;
+    }
+
+    setIsSyncingDomains(true);
+    try {
+      const tenant = await syncTenantWebsite(token, deploymentResult.publicSlug);
+      setDeploymentResult(
+        buildDeploymentSummary(tenant, {
+          agencySlug: deploymentResult.agencySlug,
+          businessName: deploymentResult.tenantName,
+          provisioningMode: deploymentResult.provisioningMode,
+          ownerAdminEmail: deploymentResult.ownerAdminEmail,
+          ownerAdminPassword: deploymentResult.ownerAdminPassword,
+          primaryDomains: deploymentResult.primaryDomains,
+          ownerAccountMessage: deploymentResult.ownerAccountMessage,
+        })
+      );
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Domain sync failed.");
+    } finally {
+      setIsSyncingDomains(false);
     }
   };
 
@@ -2030,15 +2209,15 @@ export default function OnboardingWizard() {
                             <CheckCircle2 className="relative z-10 h-10 w-10 text-emerald-300" />
                           </div>
                           <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
-                            Workspace Deployed
+                            Workspace Ready
                           </h2>
                           <p className="mt-3 max-w-2xl text-sm md:text-base font-medium text-slate-400">
-                            Full-tenant provisioning is complete for{" "}
+                            Kalp created the business workspace for{" "}
                             <span className="font-black text-white">
                               {deploymentResult.tenantName}
                             </span>
-                            . The business owner can now sign in with the
-                            credentials below and see only this workspace.
+                            , synced the website repo, and prepared the live
+                            website URL shown below.
                           </p>
                         </div>
 
@@ -2097,33 +2276,108 @@ export default function OnboardingWizard() {
 
                               <div className="mt-4 rounded-2xl border border-cyan-500/15 bg-cyan-500/5 p-4 text-xs leading-relaxed text-slate-300">
                                 The uploaded business logo is now the default
-                                identity for the full-tenant admin workspace
-                                and the initial seeded frontend website.
+                                identity for the admin workspace and the first
+                                business website build.
                               </div>
+                              {deploymentResult.ownerAccountMessage ? (
+                                <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-100">
+                                  {deploymentResult.ownerAccountMessage}
+                                </div>
+                              ) : null}
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-2">
                               <div className="rounded-3xl border border-white/5 bg-black/40 p-6">
                                 <div className="text-[10px] uppercase tracking-widest text-slate-500">
-                                  Access Details
+                                  Website Delivery
                                 </div>
                                 <div className="mt-4 space-y-4 text-sm">
                                   <div>
-                                    <div className="text-slate-500">
-                                      Login Page
-                                    </div>
-                                    <div className="mt-1 font-mono text-cyan-300">
-                                      {deploymentResult.loginUrl}
+                                    <div className="text-slate-500">Website Status</div>
+                                    <div className="mt-1 text-white">
+                                      {deploymentResult.websiteStatus}
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-slate-500">
-                                      Public Slug
-                                    </div>
+                                    <div className="text-slate-500">Live Website</div>
+                                    {deploymentResult.websiteUrl ? (
+                                      <a
+                                        href={deploymentResult.websiteUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="mt-1 block break-all font-mono text-cyan-300 underline-offset-4 hover:underline"
+                                      >
+                                        {deploymentResult.websiteUrl}
+                                      </a>
+                                    ) : (
+                                      <div className="mt-1 text-slate-500">Pending</div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="text-slate-500">Platform Host</div>
+                                    {deploymentResult.platformUrl ? (
+                                      <a
+                                        href={deploymentResult.platformUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="mt-1 block break-all font-mono text-cyan-300 underline-offset-4 hover:underline"
+                                      >
+                                        {deploymentResult.platformUrl}
+                                      </a>
+                                    ) : deploymentResult.platformHost ? (
+                                      <div className="mt-1 break-all font-mono text-white">
+                                        {deploymentResult.platformHost}
+                                      </div>
+                                    ) : (
+                                      <div className="mt-1 text-slate-500">Pending</div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="text-slate-500">GitHub Repo</div>
+                                    {deploymentResult.repoUrl ? (
+                                      <a
+                                        href={deploymentResult.repoUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="mt-1 block break-all font-mono text-cyan-300 underline-offset-4 hover:underline"
+                                      >
+                                        {deploymentResult.repoUrl}
+                                      </a>
+                                    ) : (
+                                      <div className="mt-1 text-slate-500">Pending</div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="text-slate-500">Login Page</div>
                                     <div className="mt-1 font-mono text-white">
-                                      /{deploymentResult.publicSlug}
+                                      {deploymentResult.loginUrl}
                                     </div>
                                   </div>
+                                  {deploymentResult.websiteMessage ? (
+                                    <div className="rounded-2xl border border-cyan-500/15 bg-cyan-500/10 px-3 py-3 text-xs leading-relaxed text-cyan-100">
+                                      {deploymentResult.websiteMessage}
+                                    </div>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    onClick={handleSyncDomains}
+                                    disabled={isSyncingDomains}
+                                    className={`inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold uppercase tracking-widest transition ${
+                                      isSyncingDomains
+                                        ? "cursor-wait border-slate-700 bg-slate-900 text-slate-400"
+                                        : "border-cyan-500/30 bg-cyan-500/10 text-cyan-100 hover:border-cyan-400 hover:bg-cyan-500/20"
+                                    }`}
+                                  >
+                                    {isSyncingDomains ? "Syncing Domains..." : "Sync Domains & SSL"}
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="rounded-3xl border border-white/5 bg-black/40 p-6">
+                                <div className="text-[10px] uppercase tracking-widest text-slate-500">
+                                  Database
+                                </div>
+                                <div className="mt-4 space-y-4 text-sm">
                                   <div>
                                     <div className="text-slate-500">
                                       Workspace Mode
@@ -2135,14 +2389,6 @@ export default function OnboardingWizard() {
                                         : "Lite Profile"}
                                     </div>
                                   </div>
-                                </div>
-                              </div>
-
-                              <div className="rounded-3xl border border-white/5 bg-black/40 p-6">
-                                <div className="text-[10px] uppercase tracking-widest text-slate-500">
-                                  Database
-                                </div>
-                                <div className="mt-4 space-y-4 text-sm">
                                   <div>
                                     <div className="text-slate-500">
                                       Database Mode
@@ -2160,11 +2406,9 @@ export default function OnboardingWizard() {
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-slate-500">
-                                      Selected Modules
-                                    </div>
-                                    <div className="mt-1 text-white">
-                                      {selectedModules.length}
+                                    <div className="text-slate-500">Agency Slug</div>
+                                    <div className="mt-1 font-mono text-white">
+                                      {deploymentResult.agencySlug}
                                     </div>
                                   </div>
                                 </div>
@@ -2177,21 +2421,30 @@ export default function OnboardingWizard() {
                               <div className="text-[10px] uppercase tracking-widest text-slate-500">
                                 Connected Domains
                               </div>
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                {deploymentResult.primaryDomains.length > 0 ? (
-                                  deploymentResult.primaryDomains.map(
-                                    (domain) => (
-                                      <div
-                                        key={domain}
-                                        className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-200"
-                                      >
-                                        {domain}
+                              <div className="mt-4 space-y-3">
+                                {deploymentResult.domains.length > 0 ? (
+                                  deploymentResult.domains.map((domain) => (
+                                    <div
+                                      key={domain.id}
+                                      className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-xs"
+                                    >
+                                      <div className="font-mono text-cyan-100">
+                                        {domain.host}
                                       </div>
-                                    ),
-                                  )
+                                      <div className="mt-1 text-slate-300">
+                                        {domain.domain_kind} • SSL {domain.ssl_status}
+                                        {domain.is_primary ? " • primary" : ""}
+                                      </div>
+                                      {typeof domain.metadata?.message === "string" ? (
+                                        <div className="mt-2 leading-relaxed text-slate-400">
+                                          {domain.metadata.message}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  ))
                                 ) : (
                                   <div className="rounded-full border border-slate-800 bg-black/20 px-3 py-2 text-xs text-slate-500">
-                                    No custom domain configured yet
+                                    No connected domains stored yet
                                   </div>
                                 )}
                               </div>
@@ -2199,17 +2452,34 @@ export default function OnboardingWizard() {
 
                             <div className="rounded-3xl border border-white/5 bg-black/40 p-6">
                               <div className="text-[10px] uppercase tracking-widest text-slate-500">
-                                Enabled Modules
+                                Workspace Summary
                               </div>
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                {selectedModules.map((module) => (
-                                  <div
-                                    key={module.key}
-                                    className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-widest text-emerald-200"
-                                  >
-                                    {module.label}
+                              <div className="mt-4 space-y-4 text-sm">
+                                <div>
+                                  <div className="text-slate-500">Tenant Slug</div>
+                                  <div className="mt-1 font-mono text-white">
+                                    {deploymentResult.publicSlug}
                                   </div>
-                                ))}
+                                </div>
+                                <div>
+                                  <div className="text-slate-500">Website Provider</div>
+                                  <div className="mt-1 text-white">
+                                    {deploymentResult.websiteProvider ?? "not configured"}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-slate-500">Selected Modules</div>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {selectedModules.map((module) => (
+                                      <div
+                                        key={module.key}
+                                        className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-widest text-emerald-200"
+                                      >
+                                        {module.label}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
                             </div>
 
@@ -2378,6 +2648,17 @@ export default function OnboardingWizard() {
                     <div className="flex gap-3">
                   {activeStep === STEPS.length - 1 && deploymentResult ? (
                     <>
+                      {deploymentResult.websiteUrl ? (
+                        <a
+                          href={deploymentResult.websiteUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-6 py-3 text-xs font-black uppercase tracking-wider text-cyan-100 transition-all hover:border-cyan-300 hover:text-white"
+                        >
+                          <Globe size={16} />
+                          <span>Open Website</span>
+                        </a>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => router.push("/tenants")}

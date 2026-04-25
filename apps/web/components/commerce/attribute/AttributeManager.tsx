@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch } from "@/lib/store";
+import { RootState, AppDispatch } from "@/hook/store/store";
 import { 
   Plus, 
   Search, 

@@ -11,11 +11,14 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@mdx-js/react": "^3.1.1",
     "@aws-sdk/client-s3": "^3.1032.0",
     "@hookform/resolvers": "^5.2.2",
     "@kalpzero/contracts": "workspace:*",
     "@kalpzero/ui": "workspace:*",
+    "@next/mdx": "^15.5.14",
     "@next/third-parties": "^16.2.4",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@reduxjs/toolkit": "^2.5.0",
     "class-variance-authority": "^0.7.1",
@@ -37,6 +40,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@mdx-js/loader": "^3.1.1",
+    "@types/mdx": "^2.0.13",
     "@eslint/eslintrc": "^3.3.1",
     "@types/node": "^22.14.0",
     "@types/react": "^19.1.0",

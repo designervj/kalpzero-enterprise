@@ -70,8 +70,7 @@ export const updatePage = createAsyncThunk<PageRecord, { id: string; data: Parti
                 throw new Error('Failed to update page');
             }
             const updatedData = await response.json();
-            console.log("updatedData response",updatedData)
-            console.log("updatedData",updatedData.updatedData)
+       
             return updatedData.updatedData as PageRecord;
         } catch (error: any) {
             return rejectWithValue(error.message || 'Failed to update page');

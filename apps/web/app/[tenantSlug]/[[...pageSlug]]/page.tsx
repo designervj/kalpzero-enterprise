@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { RuntimeSite } from "../../../components/runtime-site";
+import { isTenantHostRequest } from "../../../lib/public-hosts";
 import { getPublicSitePayload } from "../../../lib/runtime-publishing";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,8 @@ export async function generateMetadata({ params }: TenantSitePageProps): Promise
 
 export default async function TenantSitePage({ params }: TenantSitePageProps) {
   const { tenantSlug, pageSlug } = await params;
+  const host = (await headers()).get("host");
   const payload = await getPublicSitePayload(tenantSlug, resolvePageSlug(pageSlug));
 
-  return <RuntimeSite site={payload} />;
+  return <RuntimeSite site={payload} hostMode={isTenantHostRequest(host)} />;
 }

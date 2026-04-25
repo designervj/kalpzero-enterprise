@@ -1,0 +1,70 @@
+export const metadata = {
+  title: "Publishing API",
+  description:
+    "Read and update business settings, pages, discovery content, and public website payloads."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">APIs</div>
+
+# Publishing API
+
+Kalp keeps publishing routes under `/publishing`. These routes are used to manage business settings, website pages, discovery content, and the public website payload.
+
+<h2 id="overview">Overview</h2>
+
+Use:
+
+```text
+GET /publishing/overview
+```
+
+This gives a high-level publishing summary for the current business.
+
+<h2 id="business-settings">Business settings</h2>
+
+Use:
+
+```text
+GET /publishing/blueprint
+PUT /publishing/blueprint
+```
+
+These routes read and update the main business settings document. In the codebase, this document is still called the `blueprint`.
+
+<h2 id="pages">Pages</h2>
+
+Use:
+
+```text
+GET /publishing/pages
+GET /publishing/pages/{page_slug}
+PUT /publishing/pages/{page_slug}
+```
+
+These routes read and update public website pages for the current business.
+
+<h2 id="discovery">Discovery</h2>
+
+Use:
+
+```text
+GET /publishing/discovery
+PUT /publishing/discovery
+```
+
+These routes manage the discovery document used for search-friendly summaries, cards, and listing-style content.
+
+<h2 id="public-site-data">Public site data</h2>
+
+Use:
+
+```text
+GET /publishing/public/{tenant_slug}/site?page_slug=home
+GET /publishing/public/{tenant_slug}/blueprint-preview
+```
+
+These routes are meant for the public website and preview flows. They return the data needed to render a business website page or a preview of the business settings.
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/operations/business-website-provisioning">Business Website Creation</a> to see how Kalp can create a repo and live website during onboarding.
+</Callout>

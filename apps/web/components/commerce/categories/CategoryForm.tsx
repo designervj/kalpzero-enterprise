@@ -12,7 +12,7 @@ import { CategoryType } from '@/hook/slices/commerce/category/categoryType';
 import { X, Loader2, Globe, Layout, Shield, FileText, Tag, Hash, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/lib/store';
+import { AppDispatch, RootState } from '@/hook/store/store';
 import { setCurrentCategories } from '@/hook/slices/commerce/category/categorySlice';
 import { motion } from 'framer-motion';
 

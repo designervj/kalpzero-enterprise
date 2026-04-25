@@ -149,6 +149,28 @@ These ports come from `ecosystem.config.cjs`.
 - Certificate file: `/etc/letsencrypt/live/kalptree.xyz/fullchain.pem`
 - Private key file: `/etc/letsencrypt/live/kalptree.xyz/privkey.pem`
 
+### Tenant Domains And SSL
+
+- Self-hosted business websites still run through the shared frontend on `127.0.0.1:3002`.
+- Per-domain Nginx and Certbot activation is handled by the root-owned wrapper:
+  - `/usr/local/sbin/kalpzero-domain-provision`
+- The app user should only be allowed to run that one command through sudo:
+  - `/etc/sudoers.d/kalpzero-domain-provision`
+- The repo installer that writes both files is:
+  - `scripts/install-domain-automation.sh`
+
+One-time install:
+
+```bash
+cd /mnt/data/kalpzero-enterprise
+sudo ./scripts/install-domain-automation.sh dzinly
+```
+
+After that, platform onboarding and the tenant website sync endpoint can provision:
+- an Nginx host config for the tenant domain
+- a Let’s Encrypt certificate via Certbot webroot validation
+- HTTPS proxying for both `/` and `/api/`
+
 ### Important note about `/api`
 
 - `kalptree.xyz/api/...` is handled by the Nginx site file at `/etc/nginx/sites-available/kalptree.xyz`.

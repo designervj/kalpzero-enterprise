@@ -1,0 +1,66 @@
+export const metadata = {
+  title: "Business Settings and Modules",
+  description:
+    "How Kalp changes menus, modules, labels, and colors for each business without a separate app."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Managing Data</div>
+
+# Business settings and modules
+
+Kalp changes from business to business through settings, not through separate codebases. These settings decide which modules a business sees, what its navigation looks like, and how its public website should feel.
+
+<Callout title="Internal name" tone="brand">
+  In the codebase, this group of settings is called the `Business Blueprint`. In plain language, it is the main business settings document.
+</Callout>
+
+<h2 id="what-these-settings-control">What these settings control</h2>
+
+The business settings document controls the parts of Kalp that a business should experience differently.
+
+<DocsCardGrid>
+  <DocsCard title="Business words and labels">
+    A business can use its own labels and names so the dashboard language matches the business model.
+  </DocsCard>
+  <DocsCard title="Menus and routes">
+    Navigation items and available routes can change from one business to another.
+  </DocsCard>
+  <DocsCard title="Theme and colors">
+    A business can have its own public and admin look without needing a different frontend codebase.
+  </DocsCard>
+  <DocsCard title="Enabled modules">
+    Kalp can show hotel tools to one business and commerce tools to another using the same product.
+  </DocsCard>
+</DocsCardGrid>
+
+<h2 id="navigation-and-modules">Navigation and modules</h2>
+
+This is where Kalp decides what each business can use.
+
+- enabled modules decide which product areas appear in the dashboard
+- navigation rules decide which menu items are shown
+- feature flags allow controlled rollout without changing the app itself
+
+That is why two businesses can log into the same product and still see different tools.
+
+<h2 id="look-and-feel">Look and feel</h2>
+
+Kalp separates the shared app from the business-specific look and feel.
+
+- the app stays shared
+- the business colors, wording, and navigation can change
+- the public website and admin area can each have their own theme settings
+
+This gives each business a clear identity without making Kalp harder to maintain.
+
+<h2 id="why-kalp-uses-settings">Why Kalp uses settings</h2>
+
+If every business had its own forked app, simple fixes would become expensive and slow. Kalp avoids that by keeping the code shared and moving business-specific changes into settings and content.
+
+<blockquote>
+  Change the app once, and every business can benefit. Change a business setting once, and only that business changes.
+</blockquote>
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/core-concepts/runtime-documents-and-publishing">Pages, Content, and Publishing</a> to see how website pages and publishable data are stored.
+</Callout>

@@ -1,0 +1,83 @@
+export const metadata = {
+  title: "Business Onboarding API",
+  description:
+    "Check readiness, create agencies, create businesses, and read the onboarding response."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">APIs</div>
+
+# Business onboarding API
+
+Kalp creates agencies and businesses through the `/platform` routes.
+
+<h2 id="readiness-check">Readiness check</h2>
+
+Use:
+
+```text
+GET /platform/onboarding-readiness
+```
+
+This tells you whether the requested business type and infrastructure mode are allowed before you create the business.
+
+Example query values:
+
+- `requested_vertical_packs=hotel`
+- `infra_mode=shared`
+
+<h2 id="create-an-agency">Create an agency</h2>
+
+Use:
+
+```text
+POST /platform/agencies
+```
+
+Example request:
+
+```json
+{
+  "slug": "hotel-agency-demo",
+  "name": "Hotel Agency Demo",
+  "region": "in",
+  "owner_user_id": "platform-admin@example.com"
+}
+```
+
+<h2 id="create-a-business">Create a business</h2>
+
+Use:
+
+```text
+POST /platform/tenants
+```
+
+Example request:
+
+```json
+{
+  "agency_slug": "hotel-agency-demo",
+  "slug": "hotel-sunrise",
+  "display_name": "Hotel Sunrise",
+  "infra_mode": "shared",
+  "vertical_pack": "hotel",
+  "business_type": "hotel",
+  "admin_email": "owner@hotelsunrise.com",
+  "feature_flags": ["seo-suite", "custom-domain"],
+  "dedicated_profile_id": null
+}
+```
+
+<h2 id="response">Response</h2>
+
+The business creation response can include:
+
+- the business slug and display name
+- enabled modules and packs
+- website deployment details
+
+When GitHub and Vercel are configured, the response can also include `website_deployment.repo_url` and `website_deployment.production_url`.
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/apis/publishing-api">Publishing API</a> for the routes that update business settings, pages, and public website data.
+</Callout>

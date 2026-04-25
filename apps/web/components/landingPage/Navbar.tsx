@@ -68,6 +68,12 @@ export default function Navbar({ setView, currentView }: NavbarProps) {
               )}
             </button>
           ))}
+          <Link
+            href="/docs"
+            className="relative px-1 py-2 text-gray-300 transition-colors hover:text-pink-400"
+          >
+            Docs
+          </Link>
         </div>
 
         <div className="hidden lg:flex items-center gap-3">
@@ -111,6 +117,13 @@ export default function Navbar({ setView, currentView }: NavbarProps) {
               {item.label}
             </button>
           ))}
+          <Link
+            href="/docs"
+            className="text-left py-2 text-gray-300 hover:text-pink-400"
+            onClick={() => setIsOpen(false)}
+          >
+            Docs
+          </Link>
           <button 
             onClick={() => handleNav('onboard')}
             className="flex items-center justify-center gap-2 px-5 py-3 mt-2 text-sm font-medium text-white bg-gradient-to-r from-pink-500 to-blue-500 rounded-full hover:from-pink-400 hover:to-blue-400"

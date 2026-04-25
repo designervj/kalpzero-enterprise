@@ -1,0 +1,62 @@
+export const metadata = {
+  title: "API Overview",
+  description:
+    "The main API groups in Kalp and when to use each one."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">APIs</div>
+
+# API overview
+
+Kalp exposes one main API with route groups for login, onboarding, publishing, commerce, travel, hotel, and more.
+
+<h2 id="base-url">Base URL</h2>
+
+From the web app, requests go through:
+
+```text
+/api
+```
+
+On the live domain, that becomes:
+
+```text
+https://kalptree.xyz/api
+```
+
+<h2 id="main-route-groups">Main route groups</h2>
+
+| Route group | Purpose |
+| --- | --- |
+| `/auth` | Login, logout, current session, register, and profile updates |
+| `/platform` | Agencies, businesses, onboarding, business settings, and platform data |
+| `/publishing` | Business settings, pages, discovery content, and public website payloads |
+| `/commerce` | Commerce product and order flows |
+| `/forms` | Form and response flows |
+| `/travel` | Travel business flows |
+| `/hotel` | Hotel business flows |
+| `/messaging` | Messaging APIs |
+| `/ai` | AI-related routes |
+| `/theme` | Theme-related routes |
+| `/health` | Health checks |
+| `/imports` | Import jobs and import APIs |
+
+<h2 id="auth-and-session">Auth and session</h2>
+
+Most admin and business routes require a logged-in user. In practice, Kalp uses:
+
+- a bearer token in API responses
+- an `auth_token` cookie for the web app
+- the current user session to decide which business they belong to
+
+<h2 id="how-to-pick-an-endpoint">How to pick an endpoint</h2>
+
+Use these simple rules:
+
+- use `/auth` when you need login or session data
+- use `/platform` when you are creating or managing agencies and businesses
+- use `/publishing` when you are working with pages, business settings, or public website data
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/apis/authentication-api">Authentication API</a> for the login and session endpoints.
+</Callout>

@@ -46,9 +46,7 @@ def test_build_runtime_database_name_normalizes_tenant_slug() -> None:
         KALPZERO_PUBLIC_API_URL="http://localhost:8000",
     )
 
-    assert build_runtime_database_name(settings, tenant_slug="Tenant Demo / Prime") == (
-        "kalpzero_runtime__tenant__tenant_demo_prime"
-    )
+    assert build_runtime_database_name(settings, tenant_slug="Tenant Demo / Prime") == "kp_tenant_demo_prime"
 
 
 if __name__ == "__main__":

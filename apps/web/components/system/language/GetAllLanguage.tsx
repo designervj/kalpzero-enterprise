@@ -9,7 +9,7 @@ const GetAllLanguage = () => {
     const dispatch= useDispatch<AppDispatch>()
    
      const isAPi= useRef(false)
-     console.log("isAPi",isAPi.current)
+
     useEffect(() => {
         if(!isFetchedLanguage && !isAPi.current){
             dispatch(fetchLanguages())

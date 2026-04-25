@@ -11,7 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/hook/store/store";
+import { setCurrentProduct } from "@/hook/slices/commerce/products/ProductSlice";
 
 interface ShowProductTableProps {
   records: Product[];
@@ -28,6 +31,10 @@ export default function ShowProductTable({
   isLoading,
   search,
 }: ShowProductTableProps) {
+  const router = useRouter();
+
+ const dispatch= useDispatch<AppDispatch>();
+
   const filtered = useMemo(() => {
     const keyword = search.toLowerCase().trim();
     if (!keyword) return records;
@@ -49,7 +56,10 @@ export default function ShowProductTable({
       </div>
     );
   }
-
+const handleView = (product: Product) => {
+  dispatch(setCurrentProduct(product))
+    router.push(`/commerce/product/${product.id}`);
+}
   if (filtered.length === 0) {
     return (
       <div className="h-80 flex flex-col items-center justify-center gap-8 bg-slate-900/40 backdrop-blur-md border border-slate-800/50 rounded-[3rem] opacity-20 group">
@@ -147,7 +157,7 @@ export default function ShowProductTable({
               <TableCell className="text-right px-10">
                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                   <button
-                     onClick={() => window.open(`/commerce/product/${product.slug}`, '_blank')}
+                    onClick={() => handleView(product)}
                     className="h-9 w-9 bg-slate-900 border border-white/5 text-white/40 hover:text-indigo-400 hover:border-indigo-500/30 transition-all flex items-center justify-center"
                    title="View Asset"
                   >

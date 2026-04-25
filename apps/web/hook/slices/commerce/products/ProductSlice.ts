@@ -23,6 +23,51 @@ const productSlice = createSlice({
     setCurrentProduct: (state, action: PayloadAction<Product | null>) => {
       state.currentProduct = action.payload;
     },
+    setProductFormField: (state, action: PayloadAction<{ field: keyof Product; value: any }>) => {
+      if (state.currentProduct) {
+        (state.currentProduct as any)[action.payload.field] = action.payload.value;
+      }
+    },
+    setPricingField: (state, action: PayloadAction<{ field: keyof any; value: any }>) => {
+      if (state.currentProduct) {
+        if (!state.currentProduct.pricing) {
+          state.currentProduct.pricing = {
+            price: 0,
+            compareAtPrice: 0,
+            costPerItem: 0,
+            chargeTax: true,
+            trackQuantity: true,
+          };
+        }
+        (state.currentProduct.pricing as any)[action.payload.field] = action.payload.value;
+      }
+    },
+    resetProductForm: (state) => {
+      state.currentProduct = {
+        name: "",
+        sku: "",
+        slug: "",
+        description: "",
+        status: "active",
+        type: "physical",
+        categoryIds: [],
+        attributeSetIds: [],
+        pricing: {
+          price: 0,
+          compareAtPrice: 0,
+          costPerItem: 0,
+          chargeTax: true,
+          trackQuantity: true,
+        },
+        options: [],
+        variants: [],
+        gallery: [],
+        primaryImageId: "",
+        primaryCategoryId: "",
+        relatedProductIds: [],
+        templateKey: "product-split",
+      };
+    },
     setProductLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
@@ -102,6 +147,9 @@ const productSlice = createSlice({
 export const { 
   setAllProducts, 
   setCurrentProduct, 
+  setProductFormField,
+  setPricingField,
+  resetProductForm,
   setProductLoading, 
   setProductError 
 } = productSlice.actions;

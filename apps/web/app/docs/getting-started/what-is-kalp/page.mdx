@@ -1,0 +1,84 @@
+export const metadata = {
+  title: "What is Kalp",
+  description:
+    "A simple introduction to Kalp, what it does, and when it is a good fit."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Start Here</div>
+
+# What is Kalp?
+
+Kalp is one product for creating businesses, running their dashboards, and publishing their websites. Instead of building a separate app for every hotel, store, or travel business, you create each business inside the same system.
+
+<Callout title="Simple definition" tone="brand">
+  One codebase, many businesses. Each business gets its own users, settings, pages, and website, but Kalp stays one product to build and maintain.
+</Callout>
+
+<h2 id="what-kalp-does">What Kalp does</h2>
+
+Kalp handles four big jobs in one place:
+
+<DocsCardGrid>
+  <DocsCard title="Create businesses" eyebrow="Setup">
+    Platform admins can create agencies and businesses from the same product instead of managing separate apps.
+  </DocsCard>
+  <DocsCard title="Run daily work" eyebrow="Dashboard">
+    Each business gets its own dashboard, modules, and user access inside the same web app.
+  </DocsCard>
+  <DocsCard title="Store website content" eyebrow="Content">
+    Kalp keeps page data, discovery content, and business settings so each business can look and behave differently.
+  </DocsCard>
+  <DocsCard title="Publish websites" eyebrow="Website">
+    Kalp can serve the public website itself and can also create a separate GitHub repo and Vercel project when needed.
+  </DocsCard>
+</DocsCardGrid>
+
+<h2 id="what-stays-shared">What stays shared</h2>
+
+Kalp is shared on purpose. These parts stay common across all businesses:
+
+- one main codebase
+- one main API
+- one deploy flow
+- one dashboard app
+- one set of business modules for hotel, commerce, travel, and other packs
+
+What changes per business are the settings, pages, users, feature flags, and website content.
+
+<h2 id="main-parts">Main parts</h2>
+
+In this repo, the main parts are:
+
+| Part | What it does |
+| --- | --- |
+| `apps/web` | The web app for the public website, login, admin area, and preview pages |
+| `apps/api` | The FastAPI backend for auth, onboarding, publishing, and business APIs |
+| `apps/worker` | Background jobs and worker-side logic |
+
+This split keeps the web app, the API, and background work cleanly separated, while still shipping as one product.
+
+<h2 id="technical-view">Technical view</h2>
+
+<ExecutionFlowDiagram />
+
+Here is the short version of that diagram:
+
+1. A person uses the admin area or opens a business website.
+2. Kalp checks the business context and the user session.
+3. The API reads the right data from Postgres, MongoDB, and Redis.
+4. The web app shows the right website page, dashboard screen, or preview.
+
+<h2 id="when-to-use-kalp">When to use Kalp</h2>
+
+Kalp is a good fit when:
+
+- you want one product to serve many businesses
+- each business needs its own website and dashboard
+- you want central control over login, onboarding, and deployment
+- you want to add new businesses faster without creating new repos every time
+
+Kalp is a poor fit when every customer must own a completely separate product with no shared code or shared deployment path.
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/getting-started/key-terms">Key Terms</a> to learn the main words used throughout the Kalp docs.
+</Callout>

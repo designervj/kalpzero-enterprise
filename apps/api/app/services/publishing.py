@@ -83,88 +83,32 @@ def _format_minor_currency(amount_minor: int, currency: str) -> str:
 
 
 def _theme_for_vertical(vertical_pack: str, *, admin: bool) -> dict[str, object]:
-    presets = {
-        "commerce": {
-            "public": {
-                "primary_color": "#be3f14",
-                "accent_color": "#0f766e",
-                "surface_color": "#fff8f1",
-                "ink_color": "#102033",
-                "muted_color": "#5a6776",
-                "heading_font": "Fraunces",
-                "body_font": "Space Grotesk",
-                "radius_scale": "rounded",
-                "density": "comfortable",
-                "motion_profile": "lively",
-            },
-            "admin": {
-                "primary_color": "#102033",
-                "accent_color": "#be3f14",
-                "surface_color": "#f7f8fb",
-                "ink_color": "#102033",
-                "muted_color": "#6a7481",
-                "heading_font": "Space Grotesk",
-                "body_font": "Space Grotesk",
-                "radius_scale": "soft",
-                "density": "compact",
-                "motion_profile": "minimal",
+    """
+    Returns the theme configuration for the given vertical.
+    Now standardized to return the same premium theme for all vertical packs.
+    """
+    return {
+        "colors": {
+            "primary": "#f3f1f1",
+            "secondary": "#33335b",
+            "accent": "#f0bd14",
+            "surface": "#120c0c",
+            "background": "#130606",
+            "text": "#f5fff5",
+            "buttons": {
+                "primary": "#ca591c",
+                "primaryText": "#ffffff",
+                "secondary": "#c41212",
+                "secondaryText": "#ffffff",
             },
         },
-        "travel": {
-            "public": {
-                "primary_color": "#0f766e",
-                "accent_color": "#d97706",
-                "surface_color": "#effcf8",
-                "ink_color": "#0c1e28",
-                "muted_color": "#56707e",
-                "heading_font": "Fraunces",
-                "body_font": "Space Grotesk",
-                "radius_scale": "rounded",
-                "density": "comfortable",
-                "motion_profile": "calm",
-            },
-            "admin": {
-                "primary_color": "#0c1e28",
-                "accent_color": "#0f766e",
-                "surface_color": "#f4fbfa",
-                "ink_color": "#0c1e28",
-                "muted_color": "#5d717e",
-                "heading_font": "Space Grotesk",
-                "body_font": "Space Grotesk",
-                "radius_scale": "soft",
-                "density": "compact",
-                "motion_profile": "minimal",
-            },
-        },
-        "hotel": {
-            "public": {
-                "primary_color": "#7c3e1d",
-                "accent_color": "#215c4f",
-                "surface_color": "#fbf5ee",
-                "ink_color": "#20150f",
-                "muted_color": "#6d625c",
-                "heading_font": "Fraunces",
-                "body_font": "Space Grotesk",
-                "radius_scale": "soft",
-                "density": "spacious",
-                "motion_profile": "calm",
-            },
-            "admin": {
-                "primary_color": "#20150f",
-                "accent_color": "#7c3e1d",
-                "surface_color": "#f8f4ef",
-                "ink_color": "#20150f",
-                "muted_color": "#746b64",
-                "heading_font": "Space Grotesk",
-                "body_font": "Space Grotesk",
-                "radius_scale": "soft",
-                "density": "comfortable",
-                "motion_profile": "minimal",
-            },
+        "typography": {
+            "bodyFont": "Inter",
+            "headingFont": "Inter",
+            "customFonts": [],
         },
     }
-    preset = presets.get(vertical_pack, presets["commerce"])
-    return preset["admin" if admin else "public"]
+
 
 
 def _default_vocabulary(vertical_pack: str) -> dict[str, str]:
@@ -245,12 +189,9 @@ def _default_dashboard_widgets(vertical_pack: str) -> list[dict[str, object]]:
 
 
 def _default_blueprint(tenant, extra_metadata: dict[str, Any] | None = None) -> dict[str, object]:
-    primary_vertical = tenant.vertical_packs or "commerce"
-    public_theme = {"brand_name": tenant.display_name, **_theme_for_vertical(primary_vertical, admin=False)}
-    admin_theme = {
-        "brand_name": f"{tenant.display_name} Admin",
-        **_theme_for_vertical(primary_vertical, admin=True),
-    }
+    public_theme = _theme_for_vertical("", admin=False)
+    admin_theme = _theme_for_vertical("", admin=True)
+
 
     public_navigation = [
         {"label": "Home", "href": "/", "kind": "link", "icon": "home"},

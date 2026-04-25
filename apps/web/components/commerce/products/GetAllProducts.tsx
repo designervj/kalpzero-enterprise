@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { fetchProducts } from "@/hook/slices/commerce/products/ProductThunk"
 
 import { usePathname } from "next/navigation"
-import { AppDispatch, RootState } from "@/lib/store"
+import { AppDispatch, RootState } from "@/hook/store/store"
 
 
 export default function GetAllProducts() {

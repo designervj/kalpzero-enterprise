@@ -114,8 +114,12 @@ main() {
   debug_log "Remote SHA: $remote_sha"
 
   if [[ "$local_sha" == "$remote_sha" ]]; then
-    if [[ "$DEPLOY_FORCE_SYNC" == "1" && "$repo_dirty" == "1" ]]; then
-      log "Local and remote SHAs match, but the deploy checkout is dirty. Running force-sync deployment."
+    if [[ "$DEPLOY_FORCE_SYNC" == "1" ]]; then
+      if [[ "$repo_dirty" == "1" ]]; then
+        log "Local and remote SHAs match, but the deploy checkout is dirty. Running force-sync deployment."
+      else
+        log "Local and remote SHAs already match at $local_sha. Running force-sync deployment anyway."
+      fi
       "$DEPLOY_SCRIPT" 2>&1 | tee -a "$LOG_FILE"
       log "Auto-deploy completed. Current commit: $(git rev-parse HEAD)"
       exit 0

@@ -9,7 +9,7 @@ from app.db.session import get_db_session
 from app.schemas.requests import (
     CreateAgencyRequest,
     CreateTenantRequest,
-    PatchBusinessBlueprintRequest,
+    BusinessBlueprintPayloadRequest,
 )
 from app.services.errors import ConflictError, NotFoundError, ValidationError
 from app.services.infrastructure import get_storage_topology
@@ -24,7 +24,8 @@ from app.services.platform import (
     list_all_tenants,
     list_audit_events_for_scope,
     list_outbox_events_for_scope,
-    patch_business_blueprint,
+    put_business_blueprint,
+    sync_tenant_website_domains,
 )
 
 router = APIRouter()
@@ -120,6 +121,7 @@ def tenants_create(
             vertical_pack=payload.vertical_pack,
             business_type=payload.business_type,
             admin_email=payload.admin_email,
+            primary_domains=payload.primary_domains,
             feature_flags=payload.feature_flags,
             dedicated_profile_id=payload.dedicated_profile_id,
         )
@@ -129,6 +131,26 @@ def tenants_create(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post("/tenants/{tenant_slug}/website/sync")
+def tenant_website_sync(
+    tenant_slug: str,
+    session: SessionContext = Depends(require_permission("platform.tenants.manage")),
+    db: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+):
+    try:
+        return sync_tenant_website_domains(
+            db,
+            settings,
+            actor_user_id=session.user_id,
+            tenant_slug=tenant_slug,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/audit")
@@ -189,30 +211,42 @@ def business_blueprint_get(
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return get_business_blueprint(
+        business_blueprint = get_business_blueprint(
             store,
             tenant_slug=session.tenant_id,
             database_name=session.tenant_db_name,
         )
+        return {
+            "message": "Business blueprint retrieved successfully",
+            "success": True,
+            "data": business_blueprint,
+        }
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
 
-@router.patch("/business-blueprint")
-def business_blueprint_patch(
-    payload: PatchBusinessBlueprintRequest,
+@router.put("/business-blueprint")
+def business_blueprint_put(
+    payload: BusinessBlueprintPayloadRequest,
     session: SessionContext = Depends(require_permission("publishing.blueprints.manage")),
     store: RuntimeDocumentStore = Depends(get_runtime_document_store),
 ):
     try:
-        return patch_business_blueprint(
+        
+        result = put_business_blueprint(
             store,
             tenant_slug=session.tenant_id,
             database_name=session.tenant_db_name,
-            payload=payload.model_dump(exclude_unset=True),
+            payload=payload
         )
+
+        return {
+            "message": "Business blueprint updated successfully",
+            "success": True,
+            "data": result,
+        }
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except Exception as exc:

@@ -11,6 +11,10 @@ import productReducer from '../slices/commerce/products/ProductSlice';
 import authReducer from '../slices/auth/authSlice';
 import categoryReducer from '../slices/commerce/category/categorySlice';
 import attributeReducer from '../slices/commerce/attribute/attributeSlice';
+import brandReducer from '../slices/commerce/brand/BrandSlice';
+import vendorReducer from '../slices/commerce/vendor/VendorSlice';
+import warehouseReducer from '../slices/commerce/warehouse/WarehouseSlice';
+
 export const store = configureStore({
     reducer: {
         auth: authReducer,
@@ -24,10 +28,13 @@ export const store = configureStore({
         plugin: pluginReducer,
         option:optionReducer,
         feature:featureReducer,
-        product: productReducer
-       
+        product: productReducer,
+        brand: brandReducer,
+        vendor: vendorReducer,
+        warehouse: warehouseReducer
     },
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+export type AppStore = typeof store;

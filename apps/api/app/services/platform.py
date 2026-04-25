@@ -2,14 +2,13 @@ from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
 
-from app.core.config import Settings
 from app.db.mongo import (
+    RuntimeDocumentStore,
     build_runtime_database_name,
     describe_tenant_runtime_document_store,
     get_runtime_document_store,
     get_runtime_mongo_database,
     provision_runtime_document_store_for_tenant,
-    RuntimeDocumentStore,
 )
 from app.core.config import Settings, get_settings
 from app.repositories import platform as platform_repository
@@ -17,8 +16,17 @@ from app.services.errors import ConflictError, NotFoundError, ValidationError
 from app.services.website_provisioning import (
     get_missing_website_automation_settings,
     provision_business_website,
+    resolve_public_website_host,
     serialize_website_deployment,
+    sync_self_hosted_website_domains,
 )
+from app.utlis.utlis import serialize_mongo
+from pymongo import ReturnDocument
+from app.schemas.requests import (
+    BusinessBlueprintPayloadRequest,
+)
+from datetime import datetime, UTC
+from typing import Any
 
 BASE_MODULES = [
     "platform.auth",
@@ -112,6 +120,7 @@ def serialize_tenant(
     settings: Settings | None = None,
     bootstrap: dict[str, object] | None = None,
     website_deployment=None,
+    website_domains: list[object] | None = None,
 ) -> dict[str, object]:
     vertical_packs = tenant.vertical_packs if isinstance(tenant.vertical_packs, list) else [tenant.vertical_packs]
     payload = {
@@ -142,7 +151,7 @@ def serialize_tenant(
             **describe_tenant_runtime_document_store(settings, tenant_slug=tenant.slug),
             "bootstrap": resolved_bootstrap,
         }
-    payload["website_deployment"] = serialize_website_deployment(website_deployment)
+    payload["website_deployment"] = serialize_website_deployment(website_deployment, domains=website_domains)
     return payload
 
 
@@ -254,11 +263,16 @@ def get_onboarding_readiness(
         warnings.append(detail)
         checks.append({"key": "website_automation", "status": "warn", "detail": detail})
     else:
+        automation_detail = (
+            "GitHub template repo automation and self-hosted website deployment are configured."
+            if settings.website_provider == "github_self_hosted"
+            else "GitHub template repo automation and Vercel deployment automation are configured."
+        )
         checks.append(
             {
                 "key": "website_automation",
                 "status": "pass",
-                "detail": "GitHub template repo automation and Vercel deployment automation are configured.",
+                "detail": automation_detail,
             }
         )
 
@@ -349,6 +363,7 @@ def create_tenant(
     vertical_pack: str,
     business_type: str | None,
     admin_email: str | None,
+    primary_domains: list[str] | None,
     feature_flags: list[str],
     dedicated_profile_id: str | None,
 ) -> dict[str, object]:
@@ -394,6 +409,7 @@ def create_tenant(
         "agency_slug": agency_slug,
         "business_type": business_type,
         "infra_mode": infra_mode,
+        "db_name": mongo_db_name,
     }
 
  
@@ -439,7 +455,9 @@ def create_tenant(
         tenant=tenant,
         actor_user_id=actor_user_id,
         admin_email=admin_email,
+        primary_domains=primary_domains,
     )
+    website_domains = platform_repository.list_tenant_website_domains(db, tenant_id=str(tenant.id))
     return serialize_tenant(
         tenant,
         settings=settings,
@@ -448,6 +466,7 @@ def create_tenant(
             **runtime_bootstrap,
         },
         website_deployment=website_deployment,
+        website_domains=website_domains,
     )
 
 
@@ -508,6 +527,35 @@ def get_current_tenant_summary(db: Session, settings: Settings, *, tenant_slug: 
     return _serialize_tenant_with_details(db, settings, tenant)
 
 
+def sync_tenant_website_domains(
+    db: Session,
+    settings: Settings,
+    *,
+    actor_user_id: str,
+    tenant_slug: str,
+) -> dict[str, object]:
+    tenant = get_tenant_or_raise(db, tenant_slug=tenant_slug)
+    deployment = platform_repository.get_tenant_website_deployment(db, tenant_id=str(tenant.id))
+    provider = (deployment.provider if deployment is not None else settings.website_provider).strip().lower()
+    if provider != "github_self_hosted":
+        raise ValidationError("Website domain sync is available only for the self-hosted website provider.")
+
+    sync_self_hosted_website_domains(
+        db,
+        settings,
+        tenant=tenant,
+        actor_user_id=actor_user_id,
+    )
+    return _serialize_tenant_with_details(db, settings, tenant)
+
+
+def resolve_public_tenant_by_host(db: Session, settings: Settings, *, host: str) -> dict[str, object]:
+    resolved = resolve_public_website_host(db, settings, host=host)
+    if resolved is None:
+        raise NotFoundError(f"Host '{host}' is not mapped to a public tenant.")
+    return resolved
+
+
 def list_audit_events_for_scope(db: Session, *, tenant_slug: str) -> list[dict[str, object]]:
     tenant_id = None if tenant_slug == "platform_control" else get_tenant_or_raise(db, tenant_slug=tenant_slug).id
     return [serialize_audit_event(item) for item in platform_repository.list_audit_events(db, tenant_id=tenant_id)]
@@ -526,11 +574,13 @@ def _serialize_tenant_with_details(
     bootstrap: dict[str, object] | None = None,
 ) -> dict[str, object]:
     website_deployment = platform_repository.get_tenant_website_deployment(db, tenant_id=str(tenant.id))
+    website_domains = platform_repository.list_tenant_website_domains(db, tenant_id=str(tenant.id))
     return serialize_tenant(
         tenant,
         settings=settings,
         bootstrap=bootstrap,
         website_deployment=website_deployment,
+        website_domains=website_domains,
     )
 
 
@@ -555,35 +605,23 @@ def get_business_blueprint(
     if doc is None:
         raise NotFoundError(f"Blueprint not found in database '{database_name}'")
 
-    if "_id" in doc:
-        from bson import ObjectId
-        if isinstance(doc["_id"], ObjectId):
-            doc["_id"] = str(doc["_id"])
-
-    return doc
+    return serialize_mongo(doc)
 
 
-def patch_business_blueprint(
+def put_business_blueprint(
     store: RuntimeDocumentStore,
     *,
-    payload: dict[str, object],
-    tenant_slug: str | None = None,
+    payload: BusinessBlueprintPayloadRequest,
+    tenant_slug: str,
     database_name: str | None = None,
-) -> dict[str, object]:
-    existing = get_business_blueprint(store, tenant_slug=tenant_slug, database_name=database_name)
-
-    # Merge top-level fields into the internal "payload"
-    current_payload = existing.get("payload", {})
-    for key, value in payload.items():
-        if value is not None:
-            current_payload[key] = value
-
-    slug = tenant_slug or str(existing.get("tenant_slug"))
-
-    return store.upsert_document(
-        collection="business_blueprints",
-        tenant_slug=slug,
-        document_key="blueprint",
-        payload=current_payload,
-        database_name=database_name,
+) -> dict[str, Any]:
+    db = get_runtime_mongo_database(get_settings(), database_name=database_name)
+    result = db["business_blueprints"].find_one_and_update(
+        {"document_key": "blueprint"},
+        {"$set": {
+            "payload": payload.model_dump(),
+            "updatedAt": datetime.now(tz=UTC)
+        }},
+        return_document=ReturnDocument.AFTER
     )
+    return serialize_mongo(result)

@@ -6,6 +6,7 @@ from app.db.models import (
     AuditEventModel,
     OutboxEventModel,
     TenantModel,
+    TenantWebsiteDomainModel,
     TenantWebsiteDeploymentModel,
 )
 
@@ -62,6 +63,67 @@ def get_or_create_tenant_website_deployment(
     db.add(deployment)
     db.flush()
     return deployment
+
+
+def list_tenant_website_domains(db: Session, *, tenant_id: str) -> list[TenantWebsiteDomainModel]:
+    query = (
+        select(TenantWebsiteDomainModel)
+        .where(TenantWebsiteDomainModel.tenant_id == tenant_id)
+        .order_by(TenantWebsiteDomainModel.is_primary.desc(), TenantWebsiteDomainModel.created_at.asc())
+    )
+    return list(db.scalars(query))
+
+
+def get_tenant_website_domain_by_host(db: Session, *, host: str) -> TenantWebsiteDomainModel | None:
+    return db.scalar(select(TenantWebsiteDomainModel).where(TenantWebsiteDomainModel.host == host))
+
+
+def update_tenant_website_domain(
+    db: Session,
+    domain: TenantWebsiteDomainModel,
+    **fields,
+) -> TenantWebsiteDomainModel:
+    for key, value in fields.items():
+        setattr(domain, key, value)
+
+    db.add(domain)
+    db.flush()
+    return domain
+
+
+def upsert_tenant_website_domain(
+    db: Session,
+    *,
+    tenant_id: str,
+    host: str,
+    domain_kind: str,
+    ssl_status: str = "pending",
+    is_primary: bool = False,
+    active: bool = True,
+    metadata_json: dict[str, object] | None = None,
+) -> TenantWebsiteDomainModel:
+    domain = get_tenant_website_domain_by_host(db, host=host)
+    if domain is None:
+        domain = TenantWebsiteDomainModel(
+            tenant_id=tenant_id,
+            host=host,
+            domain_kind=domain_kind,
+            ssl_status=ssl_status,
+            is_primary=is_primary,
+            active=active,
+            metadata_json=metadata_json or {},
+        )
+    else:
+        domain.tenant_id = tenant_id
+        domain.domain_kind = domain_kind
+        domain.ssl_status = ssl_status
+        domain.is_primary = is_primary
+        domain.active = active
+        domain.metadata_json = metadata_json or {}
+
+    db.add(domain)
+    db.flush()
+    return domain
 
 
 def update_tenant_website_deployment(

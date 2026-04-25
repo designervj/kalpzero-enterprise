@@ -64,7 +64,6 @@ export const updateTenant = createAsyncThunk<
       throw new Error(errorData.error || "Failed to update tenant");
     }
     const result = await response.json();
-    console.log("get update tenant", result);
     // The API returns { success: true, modifiedCount: N }.
     // We need to return the updated tenant data for the slice.
     // Since the API doesn't return the full doc, we'll return the input data merged with identifier.
@@ -126,7 +125,7 @@ export const  fetchTenantById = createAsyncThunk<
     }
   
     const data = await response.json();
-      console.log("fetch tenant by id-->", data);
+   
     return data as Tenant;
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch tenant");

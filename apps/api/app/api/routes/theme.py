@@ -12,7 +12,10 @@ async def get_theme(
 ):
     db_name = session.tenant_db_name or "default"
     forms = await get_theme_service(db_name)
-    return {"data": forms["public_theme"], "success": True, "id": forms["id"]}
+    payload = forms["payload"]
+    return {"data": payload["public_theme"], "success": True, "id": forms["id"]}
+
+    
 
 @router.put("/{id}")
 async def update_theme(
@@ -21,5 +24,7 @@ async def update_theme(
     session: SessionContext = Depends(get_current_session)
 ):
     db_name = session.tenant_db_name or "default"
-    form = await update_theme_service(db_name, id, data)
-    return {"data": form["public_theme"], "success": True, "id": form["id"]}
+    forms = await update_theme_service(db_name, id, data)
+    print(forms)
+    payload = forms["payload"]
+    return {"data": payload["public_theme"], "success": True, "id": forms["id"]}

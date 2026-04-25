@@ -21,7 +21,7 @@ def test_publishing_blueprint_and_public_site_payload_flow(client: TestClient) -
     blueprint_response = client.get("/publishing/blueprint", headers=headers)
     assert blueprint_response.status_code == 200
     assert blueprint_response.json()["business_label"] == "Tenant Demo"
-    assert blueprint_response.json()["public_theme"]["brand_name"] == "Tenant Demo"
+    assert blueprint_response.json()["public_theme"]["colors"]["primary"] == "#f3f1f1"
 
     update_response = client.put(
         "/publishing/blueprint",

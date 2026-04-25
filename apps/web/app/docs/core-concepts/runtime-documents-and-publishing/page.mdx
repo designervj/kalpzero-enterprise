@@ -1,0 +1,75 @@
+export const metadata = {
+  title: "Pages, Content, and Publishing",
+  description:
+    "How Kalp stores website pages, preview data, discovery content, and published output."
+}
+
+<div className="text-[11px] font-black uppercase tracking-[0.32em] text-blue-700">Managing Data</div>
+
+# Pages, content, and publishing
+
+After a business exists, Kalp still needs to answer a simple question: what should the public website show? This page explains how Kalp stores website pages, preview data, and discovery content so a business can edit and publish its site.
+
+<h2 id="what-is-published">What is published</h2>
+
+Kalp usually publishes two kinds of website data:
+
+<DocsCardGrid>
+  <DocsCard title="Website pages" eyebrow="Pages">
+    The main public pages such as home, catalog, offers, or custom landing pages.
+  </DocsCard>
+  <DocsCard title="Discovery content" eyebrow="Discovery">
+    Summary content, cards, headlines, and other data used for search, listings, and discovery surfaces.
+  </DocsCard>
+</DocsCardGrid>
+
+<h2 id="page-flow">Page flow</h2>
+
+When a visitor opens a business website page, Kalp follows a simple flow:
+
+```text
+Visitor opens a page
+  -> the web app reads the business slug and page slug
+  -> Kalp finds the right business
+  -> Kalp reads the saved page content
+  -> the page is rendered in the shared web app
+```
+
+The important point is that the website route is shared, but the page data is business-specific.
+
+<h2 id="preview-and-editing">Preview and editing</h2>
+
+Kalp also supports preview and editing flows for teams.
+
+- a team can edit content without changing the frontend code
+- preview uses the same business data model as the public website
+- this reduces mismatch between what the editor sees and what the visitor sees
+
+<h2 id="public-website-route">Public website route</h2>
+
+The shared public route is:
+
+```text
+/[tenantSlug]/[[...pageSlug]]
+```
+
+In plain language:
+
+- `tenantSlug` identifies the business
+- `pageSlug` identifies the page inside that business website
+
+That is how one app can serve many different business websites.
+
+<h2 id="publish-cycle">Publish cycle</h2>
+
+The normal content flow is:
+
+1. create the business
+2. seed starter pages and starter content
+3. edit the business settings and page data
+4. preview the result
+5. publish the website content for public use
+
+<Callout title="Next read" tone="success">
+  Continue to <a href="/docs/apis/api-overview">API Overview</a> to see which endpoints Kalp uses for login, onboarding, and publishing.
+</Callout>
