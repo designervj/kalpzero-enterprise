@@ -17,9 +17,12 @@ import {
   X,
   Folder,
   Menu,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { useTranslation } from "@/lib/i18n/context";
+import { getThemeMode, setThemeMode } from "@/lib/theme-runtime";
 import { PermissionEngine } from "@engine/permission-engine";
 import type { NavEntrySpec, RegistrySnapshot } from "@core/contracts/registry";
 import { canRoleAccessAdminPath, type RoleProfileKey } from "@/lib/role-scope";
@@ -142,6 +145,22 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
     return window.localStorage.getItem("kalp_admin_sidebar_collapsed") === "1";
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [themeMode, setThemeModeState] = useState<'light' | 'dark'>('dark');
+
+  useEffect(() => {
+    setThemeModeState(getThemeMode());
+    
+    const handleThemeChange = (e: any) => {
+      setThemeModeState(e.detail.mode);
+    };
+    window.addEventListener('kalp-theme-mode-change', handleThemeChange);
+    return () => window.removeEventListener('kalp-theme-mode-change', handleThemeChange);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = themeMode === 'light' ? 'dark' : 'light';
+    setThemeMode(next);
+  };
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -1004,18 +1023,16 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   };
   const isDashboardHome = pathname === "/dashboard";
   const shellStyle: React.CSSProperties = {
-    color: "#e2e8f0",
-    background:
-      "radial-gradient(circle at top left, rgba(34,211,238,0.12), transparent 24%), radial-gradient(circle at top right, rgba(129,140,248,0.12), transparent 28%), linear-gradient(180deg, #020617 0%, #020817 42%, #030712 100%)",
+    color: themeMode === 'light' ? "#1e293b" : "#e2e8f0",
+    background: themeMode === 'light' ? "#f8fafc" : "radial-gradient(circle at top left, rgba(34,211,238,0.12), transparent 24%), radial-gradient(circle at top right, rgba(129,140,248,0.12), transparent 28%), linear-gradient(180deg, #020617 0%, #020817 42%, #030712 100%)",
   };
   const chromeSurfaceStyle: React.CSSProperties = {
-    backgroundColor: "rgba(2, 6, 23, 0.82)",
-    borderColor: "rgba(51, 65, 85, 0.72)",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+    backgroundColor: themeMode === 'light' ? "rgba(255, 255, 255, 1)" : "rgba(2, 6, 23, 0.82)",
+    borderColor: themeMode === 'light' ? "#e2e8f0" : "rgba(51, 65, 85, 0.72)",
+    boxShadow: themeMode === 'light' ? "0 1px 3px rgba(0,0,0,0.05)" : "inset 0 1px 0 rgba(255,255,255,0.03)",
   };
   const mainStyle: React.CSSProperties = {
-    background:
-      "linear-gradient(180deg, rgba(2,6,23,0.24) 0%, rgba(2,6,23,0.56) 100%)",
+    background: themeMode === 'light' ? "#f8fafc" : "linear-gradient(180deg, rgba(2,6,23,0.24) 0%, rgba(2,6,23,0.56) 100%)",
   };
   return (
     <>
@@ -1410,6 +1427,21 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
                   Ask
                 </button>
               )}
+              
+              {/* Theme Toggle */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`flex items-center justify-center w-9 h-9 rounded-full border transition-all duration-300 ${
+                  themeMode === 'light'
+                    ? "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 shadow-sm"
+                    : "border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500 hover:text-white"
+                }`}
+                title={themeMode === 'light' ? "Switch to Dark Mode" : "Switch to Light Mode"}
+              >
+                {themeMode === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+              </button>
+
               {/* Language Switcher */}
               <LanguageSwitcher />
               <div className="hidden sm:flex items-center gap-4 bg-slate-900/50 px-2 py-1.5 rounded-full border border-slate-800 shadow-inner">
