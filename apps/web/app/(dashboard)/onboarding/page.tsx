@@ -40,6 +40,7 @@ import {
   mergeAdminTheme,
 } from "@/lib/admin-theme";
 import { getAppLabel } from "@/lib/app-labels";
+import { resolveOnboardingVerticalSelection } from "@/lib/onboarding-verticals";
 import { TagInput } from "@/components/ui/tag-input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -230,8 +231,6 @@ type DeploymentSummary = {
   databaseName: string;
 };
 
-type SupportedVerticalPack = "commerce" | "hotel";
-
 function slugifyValue(value: string, fallback: string, maxLength = 80) {
   const normalized = value
     .toLowerCase()
@@ -309,30 +308,14 @@ function buildPlatformUrlFallback(tenantSlug: string) {
   return `${window.location.protocol}//${tenantSlug}.${rootHost}`;
 }
 
-function inferVerticalPack(selectedBusinessTypes: any[], enabledModules: string[]): SupportedVerticalPack {
-  const tokens = [
-    ...selectedBusinessTypes.flatMap((item) => {
-      if (typeof item === "string") {
-        return [item];
-      }
-      return [item?.name, item?.key, item?.type].filter(Boolean);
-    }),
-    ...enabledModules,
-  ]
-    .map((value) => String(value).toLowerCase())
-    .join(" ");
-
-  if (/(hotel|hospitality|stay|room|resort|property)/.test(tokens)) {
-    return "hotel";
+function formatVerticalPackLabel(verticalPack: string | null) {
+  if (verticalPack === "commerce") {
+    return "Commerce / E-Commerce";
   }
-
-  if (/(travel|tour|trip|package)/.test(tokens)) {
-    throw new Error(
-      "Travel onboarding is not live in this workflow yet. Use a commerce or hotel business configuration."
-    );
+  if (verticalPack === "hotel") {
+    return "Hotel";
   }
-
-  return "commerce";
+  return "Not resolved";
 }
 
 function buildFeatureFlags(enabledModules: string[], featureFlags: Record<string, boolean>, primaryDomains: string[]) {
@@ -953,6 +936,26 @@ export default function OnboardingWizard() {
       );
       return;
     }
+    if (formData.businessType.length === 0) {
+      alert("Select a business type before provisioning the workspace.");
+      return;
+    }
+
+    const verticalResolution = resolveOnboardingVerticalSelection(
+      formData.businessType,
+      formData.enabledModules,
+    );
+    if (
+      verticalResolution.status !== "supported" ||
+      !verticalResolution.verticalPack
+    ) {
+      alert(
+        verticalResolution.message ||
+          "Kalp could not resolve a supported onboarding vertical from the selected business type.",
+      );
+      return;
+    }
+
     setIsDeploying(true);
     const tenantSlug = slugifyValue(
       formData.businessName,
@@ -976,7 +979,7 @@ export default function OnboardingWizard() {
       formData.featureFlags,
       primaryDomains,
     );
-    const verticalPack = inferVerticalPack(formData.businessType, formData.enabledModules);
+    const verticalPack = verticalResolution.verticalPack;
     const infraMode = formData.provisioningMode === "lite_profile" ? "shared" : "dedicated";
     const adminEmail = formData.ownerAdminEmail.trim().toLowerCase();
     let ownerAccountMessage: string | null = null;
@@ -1001,7 +1004,8 @@ export default function OnboardingWizard() {
         display_name: formData.businessName || "Unnamed Business",
         infra_mode: infraMode,
         vertical_pack: verticalPack,
-        business_type: verticalPack,
+        business_type:
+          verticalResolution.primaryBusinessType || verticalPack,
         admin_email: adminEmail,
         primary_domains: primaryDomains,
         languages: onboardingLanguages,
@@ -1077,6 +1081,13 @@ export default function OnboardingWizard() {
   const currentLogoUrl = logoPreview || formData.brand.logo.url;
   const selectedModules = ALL_MODULES.filter((mod) =>
     formData.enabledModules.includes(mod.key),
+  );
+  const verticalResolution = resolveOnboardingVerticalSelection(
+    formData.businessType,
+    formData.enabledModules,
+  );
+  const resolvedVerticalLabel = formatVerticalPackLabel(
+    verticalResolution.verticalPack,
   );
   const inactiveModules = ALL_MODULES.length - selectedModules.length;
   const isLiteProfile = formData.provisioningMode === "lite_profile";
@@ -1369,8 +1380,9 @@ export default function OnboardingWizard() {
                         Business Identity
                       </h2>
                       <p className="text-slate-400 text-sm md:text-base">
-                        Select your industry to auto-configure apps and
-                        attribute sets.
+                        Select your industry and business type. Kalp resolves
+                        the onboarding vertical automatically and pre-configures
+                        apps and attribute sets from that choice.
                       </p>
                     </div>
 
@@ -1591,6 +1603,46 @@ export default function OnboardingWizard() {
                           </div>
                         </div>
                       )}
+
+                      <div
+                        className={`rounded-2xl border p-4 ${
+                          verticalResolution.status === "supported"
+                            ? "border-emerald-500/20 bg-emerald-500/10"
+                            : verticalResolution.status === "pending"
+                              ? "border-slate-800 bg-black/20"
+                              : "border-amber-500/20 bg-amber-500/10"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-widest text-slate-500">
+                              Resolved Vertical
+                            </div>
+                            <div className="mt-2 text-sm font-semibold text-white">
+                              {resolvedVerticalLabel}
+                            </div>
+                          </div>
+                          <div
+                            className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${
+                              verticalResolution.status === "supported"
+                                ? "bg-emerald-500/15 text-emerald-200"
+                                : verticalResolution.status === "pending"
+                                  ? "bg-slate-800 text-slate-400"
+                                  : "bg-amber-500/15 text-amber-100"
+                            }`}
+                          >
+                            {verticalResolution.status === "supported"
+                              ? "Ready"
+                              : verticalResolution.status === "pending"
+                                ? "Pending"
+                                : "Needs Attention"}
+                          </div>
+                        </div>
+                        <p className="mt-3 text-xs leading-relaxed text-slate-400">
+                          {verticalResolution.message ||
+                            "Kalp uses the selected business type to keep the vertical and initial app stack aligned."}
+                        </p>
+                      </div>
 
                       {/* Default Front Template */}
                       {landingTemplates.length > 0 && (
@@ -2819,6 +2871,14 @@ export default function OnboardingWizard() {
                               <span className="text-xs font-bold text-white">
                                 {selectedIndustry?.icon}{" "}
                                 {formData.industry || "Not selected"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                Vertical
+                              </span>
+                              <span className="text-xs font-bold text-white">
+                                {resolvedVerticalLabel}
                               </span>
                             </div>
                             <div className="flex justify-between items-center border-b border-white/5 pb-3">

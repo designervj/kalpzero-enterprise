@@ -1,4 +1,5 @@
 from urllib.parse import urlparse
+import re
 
 from sqlalchemy.orm import Session
 
@@ -101,6 +102,120 @@ VERTICAL_READINESS = {
         ],
     },
 }
+
+_COMMERCE_BUSINESS_TYPE_KEYWORDS = (
+    "apparel",
+    "beauty retail",
+    "catalog",
+    "commerce",
+    "cosmetic",
+    "d2c",
+    "ecommerce",
+    "e commerce",
+    "fashion",
+    "furniture",
+    "inventory",
+    "medicine product",
+    "pharmacy",
+    "product",
+    "retail",
+    "shop",
+    "shopping",
+    "store",
+    "supplement",
+)
+_HOTEL_BUSINESS_TYPE_KEYWORDS = (
+    "banquet",
+    "dining",
+    "guest house",
+    "guesthouse",
+    "homestay",
+    "hostel",
+    "hospitality",
+    "hotel",
+    "lodge",
+    "resort",
+    "restaurant",
+    "room",
+    "stay",
+    "vacation rental",
+    "villa",
+)
+_TRAVEL_BUSINESS_TYPE_KEYWORDS = (
+    "activity experience",
+    "adventure",
+    "departure",
+    "destination",
+    "excursion",
+    "itinerary",
+    "package",
+    "tour",
+    "travel",
+    "trip",
+)
+
+
+def _normalize_business_type_signal(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def infer_vertical_pack_from_business_type(
+    business_type: str | None,
+    *,
+    fallback_vertical_pack: str | None = None,
+) -> str | None:
+    if not isinstance(business_type, str) or not business_type.strip():
+        return None
+
+    normalized = _normalize_business_type_signal(business_type)
+    if not normalized:
+        return None
+
+    if normalized in {"commerce", "ecommerce", "e commerce"}:
+        return "commerce"
+    if normalized == "hotel":
+        return "hotel"
+    if normalized in {"other", "general", "default"} and fallback_vertical_pack in ONBOARDING_VERTICALS:
+        return fallback_vertical_pack
+
+    if any(keyword in normalized for keyword in _TRAVEL_BUSINESS_TYPE_KEYWORDS):
+        return "travel"
+    if any(keyword in normalized for keyword in _HOTEL_BUSINESS_TYPE_KEYWORDS):
+        return "hotel"
+    if any(keyword in normalized for keyword in _COMMERCE_BUSINESS_TYPE_KEYWORDS):
+        return "commerce"
+    return None
+
+
+def assert_business_type_matches_vertical_pack(
+    *,
+    business_type: str | None,
+    vertical_pack: str,
+) -> None:
+    if not isinstance(business_type, str) or not business_type.strip():
+        return
+
+    inferred_vertical = infer_vertical_pack_from_business_type(
+        business_type,
+        fallback_vertical_pack=vertical_pack,
+    )
+    if inferred_vertical is None:
+        raise ValidationError(
+            f"Business type '{business_type}' does not map to the current onboarding pilot. "
+            "Choose a commerce/ecommerce or hotel business type."
+        )
+
+    if inferred_vertical not in ONBOARDING_VERTICALS:
+        raise ValidationError(
+            f"Business type '{business_type}' maps to '{inferred_vertical}', "
+            "which is not approved for onboarding yet."
+        )
+
+    if inferred_vertical != vertical_pack:
+        raise ValidationError(
+            f"Business type '{business_type}' maps to '{inferred_vertical}', "
+            f"but vertical_pack '{vertical_pack}' was requested."
+        )
 
 
 def serialize_agency(agency) -> dict[str, object]:
@@ -375,6 +490,11 @@ def create_tenant(
 
     if platform_repository.get_tenant_by_slug(db, slug):
         raise ConflictError(f"Tenant slug '{slug}' already exists.")
+
+    assert_business_type_matches_vertical_pack(
+        business_type=business_type,
+        vertical_pack=vertical_pack,
+    )
 
     assert_onboarding_ready(
         settings,

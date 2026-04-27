@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
 import { headers } from "next/headers";
-// import CanonicalBusinessProfilePage from "../(public)/[slug]/page";
-
-// import { PLATFORM_HOME_HOSTS } from "@/lib/server-env";
+import { RuntimeSite } from "@/components/runtime-site";
 import PublicHomeClient from "@/components/landingPage/PublicHomeClient";
+import { isTenantHostRequest, normalizeHost } from "@/lib/public-hosts";
+import { getPublicSitePayload, getTenantSlugForHost } from "@/lib/runtime-publishing";
 import { toAbsolutePublicUrl } from "@/lib/seo/public-seo";
 
 export const dynamic = "force-dynamic";
@@ -39,29 +39,15 @@ function JsonLd() {
 
 export default async function KalpPublicHomePage() {
   const headerList = await headers();
-  const host = (headerList.get("host") || "").toLowerCase();
-  const parts = host.split(".");
-//   const homeHosts = PLATFORM_HOME_HOSTS;
-//   const isPlatformHome = homeHosts.includes(host);
-//   let subdomain = null;
+  const host = normalizeHost(headerList.get("host"));
 
-//   if (
-//     !isPlatformHome &&
-//     (parts.length > 2 || (parts.length > 1 && parts.includes("localhost:3000")))
-//   ) {
-//     subdomain =
-//       parts.length > 1 && parts.includes("localhost:3000")
-//         ? true
-//         : parts.slice(0, parts.length - 2).join(".");
-//   }
-
-//   if (subdomain) {
-//     return (
-//       <CanonicalBusinessProfilePage
-//         params={Promise.resolve({ slug: "nothing" })}
-//       />
-//     );
-//   }
+  if (isTenantHostRequest(host)) {
+    const tenantSlug = await getTenantSlugForHost(host);
+    if (tenantSlug) {
+      const payload = await getPublicSitePayload(tenantSlug, "home");
+      return <RuntimeSite site={payload} hostMode />;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white selection:bg-fuchsia-500/30 font-sans overflow-x-hidden">

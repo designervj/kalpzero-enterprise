@@ -28,8 +28,8 @@ const VERTICAL_PACK_OPTIONS = [
     value: "travel",
     label: "Travel",
     description: "Planned for onboarding after the pilot scope.",
-    badge: "Approved",
-    available: true
+    badge: "Planned",
+    available: false
   }
 ] as const;
 

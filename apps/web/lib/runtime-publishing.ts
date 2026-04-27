@@ -1,6 +1,13 @@
 import type {
+  BlueprintRouteDto,
   BusinessBlueprintDto,
+  DashboardWidgetDto,
+  DiscoveryDocumentDto,
+  NavigationItemDto,
+  PageBlockDto,
+  PageBlockItemDto,
   PublicSitePayloadDto,
+  PublishedPageDocumentDto,
   ThemeTokensDto
 } from "@kalpzero/contracts";
 
@@ -185,31 +192,478 @@ function fallbackPublicSitePayload(tenantSlug: string, pageSlug: string): Public
   };
 }
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+type JsonRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is JsonRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readString(record: JsonRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function readStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === "string" && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+}
+
+function normalizeThemeTokens(
+  value: unknown,
+  tenantSlug: string,
+  mode: "public" | "admin",
+): ThemeTokensDto {
+  const fallback = fallbackTheme(tenantSlug, mode);
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  const colors = isRecord(value.colors) ? value.colors : {};
+  const typography = isRecord(value.typography) ? value.typography : {};
+  const radiusScale = readString(value, ["radiusScale", "radius_scale"]);
+  const density = readString(value, ["density"]);
+  const motionProfile = readString(value, ["motionProfile", "motion_profile"]);
+
+  return {
+    brandName:
+      readString(value, ["brandName", "brand_name"]) ?? fallback.brandName,
+    primaryColor:
+      readString(value, ["primaryColor", "primary_color"]) ??
+      readString(colors, ["primary"]) ??
+      fallback.primaryColor,
+    accentColor:
+      readString(value, ["accentColor", "accent_color"]) ??
+      readString(colors, ["accent"]) ??
+      fallback.accentColor,
+    surfaceColor:
+      readString(value, ["surfaceColor", "surface_color"]) ??
+      readString(colors, ["surface", "background"]) ??
+      fallback.surfaceColor,
+    inkColor:
+      readString(value, ["inkColor", "ink_color"]) ??
+      readString(colors, ["text"]) ??
+      fallback.inkColor,
+    mutedColor:
+      readString(value, ["mutedColor", "muted_color"]) ??
+      fallback.mutedColor,
+    headingFont:
+      readString(value, ["headingFont", "heading_font"]) ??
+      readString(typography, ["headingFont", "heading_font"]) ??
+      fallback.headingFont,
+    bodyFont:
+      readString(value, ["bodyFont", "body_font"]) ??
+      readString(typography, ["bodyFont", "body_font"]) ??
+      fallback.bodyFont,
+    radiusScale:
+      radiusScale === "sharp" || radiusScale === "soft" || radiusScale === "rounded"
+        ? radiusScale
+        : fallback.radiusScale,
+    density:
+      density === "compact" || density === "comfortable" || density === "spacious"
+        ? density
+        : fallback.density,
+    motionProfile:
+      motionProfile === "minimal" || motionProfile === "calm" || motionProfile === "lively"
+        ? motionProfile
+        : fallback.motionProfile,
+  };
+}
+
+function normalizeNavigationItem(value: unknown): NavigationItemDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const label = readString(value, ["label"]);
+  const href = readString(value, ["href"]);
+  const kind = readString(value, ["kind"]);
+  if (!label || !href) {
+    return null;
+  }
+
+  return {
+    label,
+    href,
+    kind:
+      kind === "link" || kind === "cta" || kind === "module"
+        ? kind
+        : "link",
+    icon: readString(value, ["icon"]),
+  };
+}
+
+function normalizeBlueprintRoute(value: unknown): BlueprintRouteDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const key = readString(value, ["key"]);
+  const path = readString(value, ["path"]);
+  const pageSlug = readString(value, ["pageSlug", "page_slug"]);
+  const visibility = readString(value, ["visibility"]);
+  if (!key || !path || !pageSlug) {
+    return null;
+  }
+
+  return {
+    key,
+    path,
+    pageSlug,
+    visibility: visibility === "private" ? "private" : "public",
+  };
+}
+
+function normalizeDashboardWidget(value: unknown): DashboardWidgetDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const key = readString(value, ["key"]);
+  const title = readString(value, ["title"]);
+  const metric = readString(value, ["metric"]);
+  const description = readString(value, ["description"]);
+  if (!key || !title || !metric || !description) {
+    return null;
+  }
+
+  return { key, title, metric, description };
+}
+
+function normalizePageBlockItem(value: unknown): PageBlockItemDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const title = readString(value, ["title"]);
+  if (!title) {
+    return null;
+  }
+
+  return {
+    title,
+    description: readString(value, ["description"]),
+    value: readString(value, ["value"]),
+    href: readString(value, ["href"]),
+  };
+}
+
+function normalizePageBlock(value: unknown, index: number): PageBlockDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const kind = readString(value, ["kind"]);
+  if (!kind) {
+    return null;
+  }
+
+  return {
+    id: readString(value, ["id"]) ?? `block-${index + 1}`,
+    kind:
+      kind === "hero" ||
+      kind === "feature_grid" ||
+      kind === "stat_strip" ||
+      kind === "cta" ||
+      kind === "rich_text"
+        ? kind
+        : "rich_text",
+    eyebrow: readString(value, ["eyebrow"]),
+    headline: readString(value, ["headline"]),
+    body: readString(value, ["body"]),
+    ctaLabel: readString(value, ["ctaLabel", "cta_label"]),
+    ctaHref: readString(value, ["ctaHref", "cta_href"]),
+    items: Array.isArray(value.items)
+      ? value.items
+          .map((item) => normalizePageBlockItem(item))
+          .filter((item): item is PageBlockItemDto => Boolean(item))
+      : [],
+  };
+}
+
+function normalizePublishedPageDocument(
+  value: unknown,
+  tenantSlug: string,
+  pageSlug: string,
+): PublishedPageDocumentDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const status = readString(value, ["status"]);
+  const layout = readString(value, ["layout"]);
+
+  return {
+    id: readString(value, ["id"]) ?? `${tenantSlug}:${pageSlug}`,
+    tenantSlug:
+      readString(value, ["tenantSlug", "tenant_slug"]) ?? tenantSlug,
+    pageSlug: readString(value, ["pageSlug", "page_slug"]) ?? pageSlug,
+    routePath:
+      readString(value, ["routePath", "route_path"]) ??
+      (pageSlug === "home" ? "/" : `/${pageSlug}`),
+    title:
+      readString(value, ["title"]) ??
+      `${titleCaseFromSlug(tenantSlug)} ${titleCaseFromSlug(pageSlug)}`,
+    status:
+      status === "draft" || status === "preview" || status === "live"
+        ? status
+        : "preview",
+    seoTitle: readString(value, ["seoTitle", "seo_title"]),
+    seoDescription: readString(value, ["seoDescription", "seo_description"]),
+    layout:
+      layout === "landing" || layout === "content" || layout === "catalog"
+        ? layout
+        : "landing",
+    blocks: Array.isArray(value.blocks)
+      ? value.blocks
+          .map((item, index) => normalizePageBlock(item, index))
+          .filter((item): item is PageBlockDto => Boolean(item))
+      : [],
+  };
+}
+
+function normalizeDiscoveryDocument(
+  value: unknown,
+  tenantSlug: string,
+): DiscoveryDocumentDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const cards = Array.isArray(value.cards)
+    ? value.cards
+        .map((item) => {
+          if (!isRecord(item)) {
+            return null;
+          }
+          const title = readString(item, ["title"]);
+          const summary = readString(item, ["summary"]);
+          const href = readString(item, ["href"]);
+          if (!title || !summary || !href) {
+            return null;
+          }
+          return {
+            title,
+            summary,
+            href,
+            tags: readStringList(item.tags),
+          };
+        })
+        .filter(
+          (item): item is DiscoveryDocumentDto["cards"][number] =>
+            Boolean(item),
+        )
+    : [];
+
+  return {
+    tenantSlug:
+      readString(value, ["tenantSlug", "tenant_slug"]) ?? tenantSlug,
+    headline:
+      readString(value, ["headline"]) ??
+      `${titleCaseFromSlug(tenantSlug)} discovery surface`,
+    summary:
+      readString(value, ["summary"]) ??
+      "Discovery metadata is available for this tenant.",
+    tags: readStringList(value.tags),
+    cards,
+  };
+}
+
+function normalizeVocabulary(value: unknown): Record<string, string> {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce<Record<string, string>>((acc, [key, item]) => {
+    if (typeof item === "string" && item.trim()) {
+      acc[key] = item.trim();
+    }
+    return acc;
+  }, {});
+}
+
+function normalizeBusinessBlueprint(
+  value: unknown,
+  tenantSlug: string,
+): BusinessBlueprintDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const fallback = fallbackBlueprintPreview(tenantSlug);
+  const verticalPacks = readStringList(
+    value.verticalPacks ?? value.vertical_packs ?? value.vertical_pack,
+  );
+  const enabledModules = readStringList(
+    value.enabledModules ?? value.enabled_modules,
+  );
+  const rawDashboardWidgets = value.dashboardWidgets ?? value.dashboard_widgets;
+  const rawPublicNavigation = value.publicNavigation ?? value.public_navigation;
+  const rawAdminNavigation = value.adminNavigation ?? value.admin_navigation;
+  const routes = Array.isArray(value.routes)
+    ? value.routes
+        .map((item) => normalizeBlueprintRoute(item))
+        .filter((item): item is BlueprintRouteDto => Boolean(item))
+    : [];
+  const dashboardWidgets = Array.isArray(rawDashboardWidgets)
+    ? rawDashboardWidgets
+        .map((item: unknown) => normalizeDashboardWidget(item))
+        .filter((item): item is DashboardWidgetDto => Boolean(item))
+    : [];
+  const publicNavigation = Array.isArray(rawPublicNavigation)
+    ? rawPublicNavigation
+        .map((item: unknown) => normalizeNavigationItem(item))
+        .filter((item): item is NavigationItemDto => Boolean(item))
+    : [];
+  const adminNavigation = Array.isArray(rawAdminNavigation)
+    ? rawAdminNavigation
+        .map((item: unknown) => normalizeNavigationItem(item))
+        .filter((item): item is NavigationItemDto => Boolean(item))
+    : [];
+  const versionValue = value.version;
+
+  return {
+    tenantId: readString(value, ["tenantId", "tenant_id"]) ?? tenantSlug,
+    tenantSlug:
+      readString(value, ["tenantSlug", "tenant_slug"]) ?? tenantSlug,
+    version:
+      typeof versionValue === "number" && Number.isFinite(versionValue)
+        ? versionValue
+        : fallback.version,
+    businessLabel:
+      readString(value, ["businessLabel", "business_label"]) ??
+      fallback.businessLabel,
+    verticalPacks:
+      verticalPacks.length > 0 ? verticalPacks : fallback.verticalPacks,
+    enabledModules:
+      enabledModules.length > 0 ? enabledModules : fallback.enabledModules,
+    publicTheme: normalizeThemeTokens(
+      value.publicTheme ?? value.public_theme,
+      tenantSlug,
+      "public",
+    ),
+    adminTheme: normalizeThemeTokens(
+      value.adminTheme ?? value.admin_theme,
+      tenantSlug,
+      "admin",
+    ),
+    publicNavigation:
+      publicNavigation.length > 0 ? publicNavigation : fallback.publicNavigation,
+    adminNavigation:
+      adminNavigation.length > 0 ? adminNavigation : fallback.adminNavigation,
+    routes: routes.length > 0 ? routes : fallback.routes,
+    dashboardWidgets:
+      dashboardWidgets.length > 0
+        ? dashboardWidgets
+        : fallback.dashboardWidgets,
+    vocabulary: {
+      ...fallback.vocabulary,
+      ...normalizeVocabulary(value.vocabulary),
+    },
+    mobileCapabilities:
+      readStringList(value.mobileCapabilities ?? value.mobile_capabilities)
+        .length > 0
+        ? readStringList(value.mobileCapabilities ?? value.mobile_capabilities)
+        : fallback.mobileCapabilities,
+  };
+}
+
+function normalizePublicSitePayload(
+  value: unknown,
+  tenantSlug: string,
+  pageSlug: string,
+): PublicSitePayloadDto | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const fallback = fallbackPublicSitePayload(tenantSlug, pageSlug);
+  const rawPublicNavigation = value.publicNavigation ?? value.public_navigation;
+  const publicNavigation = Array.isArray(rawPublicNavigation)
+    ? rawPublicNavigation
+        .map((item: unknown) => normalizeNavigationItem(item))
+        .filter((item): item is NavigationItemDto => Boolean(item))
+    : [];
+  const page = normalizePublishedPageDocument(value.page, tenantSlug, pageSlug);
+  const discovery = normalizeDiscoveryDocument(value.discovery, tenantSlug);
+  const vocabulary = normalizeVocabulary(value.vocabulary);
+
+  return {
+    tenantSlug:
+      readString(value, ["tenantSlug", "tenant_slug"]) ?? tenantSlug,
+    businessLabel:
+      readString(value, ["businessLabel", "business_label"]) ??
+      fallback.businessLabel,
+    publicTheme: normalizeThemeTokens(
+      value.publicTheme ?? value.public_theme,
+      tenantSlug,
+      "public",
+    ),
+    publicNavigation:
+      publicNavigation.length > 0 ? publicNavigation : fallback.publicNavigation,
+    vocabulary:
+      Object.keys(vocabulary).length > 0 ? vocabulary : fallback.vocabulary,
+    page: page ?? fallback.page,
+    discovery: discovery ?? fallback.discovery,
+  };
+}
+
+async function fetchJson(url: string): Promise<unknown | null> {
   try {
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) {
       return null;
     }
-    return (await response.json()) as T;
+    return await response.json();
   } catch {
     return null;
   }
+}
+
+export async function getTenantSlugForHost(host: string): Promise<string | null> {
+  const payload = await fetchJson(
+    `${apiBaseUrl}/publishing/public/resolve-host?host=${encodeURIComponent(host)}`,
+  );
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  return (
+    readString(payload, ["tenantSlug", "tenant_slug"]) ?? null
+  );
 }
 
 export async function getPublicSitePayload(
   tenantSlug: string,
   pageSlug: string
 ): Promise<PublicSitePayloadDto> {
-  const payload = await fetchJson<PublicSitePayloadDto>(
+  const payload = await fetchJson(
     `${apiBaseUrl}/publishing/public/${tenantSlug}/site?page_slug=${encodeURIComponent(pageSlug)}`
   );
-  return payload ?? fallbackPublicSitePayload(tenantSlug, pageSlug);
+  return (
+    normalizePublicSitePayload(payload, tenantSlug, pageSlug) ??
+    fallbackPublicSitePayload(tenantSlug, pageSlug)
+  );
 }
 
 export async function getBlueprintPreview(tenantSlug: string): Promise<BusinessBlueprintDto> {
-  const payload = await fetchJson<BusinessBlueprintDto>(
+  const payload = await fetchJson(
     `${apiBaseUrl}/publishing/public/${tenantSlug}/blueprint-preview`
   );
-  return payload ?? fallbackBlueprintPreview(tenantSlug);
+  return (
+    normalizeBusinessBlueprint(payload, tenantSlug) ??
+    fallbackBlueprintPreview(tenantSlug)
+  );
 }

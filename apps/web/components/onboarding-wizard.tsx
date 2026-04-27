@@ -54,8 +54,6 @@ export function OnboardingWizard() {
     tenant_name: "",
   });
 
-  console.log(tenantForm);
-
   const [createdAgency, setCreatedAgency] = useState<AgencyDto | null>(null);
   const [createdTenant, setCreatedTenant] = useState<TenantDto | null>(null);
   const [isSubmittingAgency, setIsSubmittingAgency] = useState(false);
@@ -133,7 +131,7 @@ export function OnboardingWizard() {
         display_name: tenantForm.display_name,
         infra_mode: "dedicated",
         vertical_pack: tenantForm.businessType,
-        business_type: tenantForm.vertical_pack,
+        business_type: tenantForm.vertical_pack || tenantForm.businessType,
         admin_email: tenantForm.tenant_name,
         dedicated_profile_id: tenantForm.dedicated_profile_id,
         feature_flags: tenantForm.feature_flags

@@ -862,6 +862,70 @@ def test_platform_admin_cannot_onboard_planned_verticals(client: TestClient) -> 
     assert "not approved for onboarding yet" in tenant_response.json()["detail"]
 
 
+def test_platform_admin_rejects_business_type_when_vertical_pack_mismatches(client: TestClient) -> None:
+    platform_token = login(client, email="founder@kalpzero.com")
+    agency_response = client.post(
+        "/platform/agencies",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "slug": "mismatch-agency",
+            "name": "Mismatch Agency",
+            "region": "in",
+            "owner_user_id": "founder@kalpzero.com",
+        },
+    )
+    assert agency_response.status_code == 201
+
+    tenant_response = client.post(
+        "/platform/tenants",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "agency_slug": "mismatch-agency",
+            "slug": "mismatch-tenant",
+            "display_name": "Mismatch Tenant",
+            "infra_mode": "shared",
+            "vertical_pack": "hotel",
+            "business_type": "Apparel",
+            "feature_flags": [],
+        },
+    )
+
+    assert tenant_response.status_code == 400
+    assert "maps to 'commerce'" in tenant_response.json()["detail"]
+
+
+def test_platform_admin_rejects_business_type_outside_current_onboarding_pilot(client: TestClient) -> None:
+    platform_token = login(client, email="founder@kalpzero.com")
+    agency_response = client.post(
+        "/platform/agencies",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "slug": "pilot-agency",
+            "name": "Pilot Agency",
+            "region": "in",
+            "owner_user_id": "founder@kalpzero.com",
+        },
+    )
+    assert agency_response.status_code == 201
+
+    tenant_response = client.post(
+        "/platform/tenants",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={
+            "agency_slug": "pilot-agency",
+            "slug": "pilot-tenant",
+            "display_name": "Pilot Tenant",
+            "infra_mode": "shared",
+            "vertical_pack": "commerce",
+            "business_type": "Property Listing & Brokerage",
+            "feature_flags": [],
+        },
+    )
+
+    assert tenant_response.status_code == 400
+    assert "does not map to the current onboarding pilot" in tenant_response.json()["detail"]
+
+
 def test_platform_admin_cannot_create_dedicated_tenant_without_profile(client: TestClient) -> None:
     platform_token = login(client, email="founder@kalpzero.com")
     agency_response = client.post(
