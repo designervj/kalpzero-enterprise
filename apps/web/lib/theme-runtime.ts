@@ -17,22 +17,22 @@ function hexToRgb(hex: string): string {
     return `${r} ${g} ${b}`;
 }
 
-export function getThemeMode(): 'light' | 'dark' {
+export function getThemeMode(storageKey: string = 'kalp-theme-mode'): 'light' | 'dark' {
     if (typeof window === 'undefined') return 'dark';
-    const saved = localStorage.getItem('kalp-theme-mode');
+    const saved = localStorage.getItem(storageKey);
     if (saved === 'light' || saved === 'dark') return saved;
     return window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
 }
 
-export function setThemeMode(mode: 'light' | 'dark'): void {
+export function setThemeMode(mode: 'light' | 'dark', storageKey: string = 'kalp-theme-mode'): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('kalp-theme-mode', mode);
+    localStorage.setItem(storageKey, mode);
     document.documentElement.setAttribute('data-theme-mode', mode);
     // Dispatch event to notify components if needed
-    window.dispatchEvent(new CustomEvent('kalp-theme-mode-change', { detail: { mode } }));
+    window.dispatchEvent(new CustomEvent('kalp-theme-mode-change', { detail: { mode, storageKey } }));
 }
 
-export function applyRuntimeTheme(payload: ThemePayload): void {
+export function applyRuntimeTheme(payload: ThemePayload, storageKey: string = 'kalp-theme-mode'): void {
     const root = document.documentElement;
     const colors = payload.colors || payload.brand || {};
     const buttons = payload.buttons || {};
@@ -45,7 +45,7 @@ export function applyRuntimeTheme(payload: ThemePayload): void {
     const accent = colors.accent || '#10b981';
     
     // Default mode logic
-    const savedMode = typeof window !== 'undefined' ? localStorage.getItem('kalp-theme-mode') : null;
+    const savedMode = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
     const requestedMode = appearance.mode;
     let mode: 'light' | 'dark' = 'dark';
     

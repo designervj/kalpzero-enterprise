@@ -13,19 +13,25 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({ 
+  children, 
+  storageKey = "kalp-theme-mode" 
+}: { 
+  children: React.ReactNode;
+  storageKey?: string;
+}) {
   const [themeMode, setThemeModeState] = useState<ThemeMode>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const saved = getThemeMode();
+    const saved = getThemeMode(storageKey);
     setThemeModeState(saved);
     document.documentElement.setAttribute("data-theme-mode", saved);
 
     // Sync with other tabs/windows
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === "kalp-theme-mode") {
+      if (e.key === storageKey) {
         const next = (e.newValue as ThemeMode) || "dark";
         setThemeModeState(next);
         document.documentElement.setAttribute("data-theme-mode", next);
@@ -34,11 +40,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+  }, [storageKey]);
 
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);
-    setPersistedThemeMode(mode);
+    setPersistedThemeMode(mode, storageKey);
     document.documentElement.setAttribute("data-theme-mode", mode);
   };
 
@@ -47,8 +53,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeMode(next);
   };
 
-  // Prevent flash by avoiding rendering children until mounted if necessary
-  // or just render and let the data-attribute handle it via CSS
+  // When unmounting, we don't necessarily want to reset the attribute 
+  // because another provider might be mounting immediately.
+  // But if we are a nested provider, we might want to let the parent take over.
+  // For now, we'll just set it on mount/update.
+
   return (
     <ThemeContext.Provider value={{ themeMode, toggleThemeMode, setThemeMode }}>
       {children}

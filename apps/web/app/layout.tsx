@@ -40,7 +40,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             __html: `
               (function() {
                 try {
-                  var mode = localStorage.getItem('kalp-theme-mode');
+                  var mode = localStorage.getItem('kalp-front-mode');
                   var supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
                   if (!mode && supportDarkMode) mode = 'dark';
                   if (!mode) mode = 'dark';
@@ -53,7 +53,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       </head>
       <body className={`${headingFont.variable} ${bodyFont.variable} font-body antialiased`}>
         <ChunkErrorListener />
-        <ThemeProvider>
+        <ThemeProvider storageKey="kalp-front-mode">
           <ReduxProvider>
             <AuthProvider>{children}</AuthProvider>
           </ReduxProvider>

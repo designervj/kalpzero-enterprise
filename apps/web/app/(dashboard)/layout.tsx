@@ -43,6 +43,8 @@ async function resolveActiveTenant() {
   }
 }
 
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
 export default async function DashboardLayout({
   children,
 }: Readonly<{
@@ -51,15 +53,17 @@ export default async function DashboardLayout({
   const activeTenant = await resolveActiveTenant();
 
   return (
-    <AuthProvider>
-      <I18nProvider>
-        <ThemeInjector />
-        <KoshieProvider>
-          <AdminLayout activeTenant={activeTenant}>
-            {children}
-          </AdminLayout>
-        </KoshieProvider>
-      </I18nProvider>
-    </AuthProvider>
+    <ThemeProvider storageKey="kalp-admin-mode">
+      <AuthProvider>
+        <I18nProvider>
+          <ThemeInjector />
+          <KoshieProvider>
+            <AdminLayout activeTenant={activeTenant}>
+              {children}
+            </AdminLayout>
+          </KoshieProvider>
+        </I18nProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
