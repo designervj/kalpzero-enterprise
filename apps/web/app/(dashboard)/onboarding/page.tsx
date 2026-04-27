@@ -40,6 +40,10 @@ import {
   mergeAdminTheme,
 } from "@/lib/admin-theme";
 import { getAppLabel } from "@/lib/app-labels";
+import {
+  findBusinessTemplateFromCatalog,
+  getBusinessAttributeCatalog,
+} from "@/lib/business-template-catalog";
 import { resolveOnboardingVerticalSelection } from "@/lib/onboarding-verticals";
 import { TagInput } from "@/components/ui/tag-input";
 import { Badge } from "@/components/ui/badge";
@@ -192,6 +196,60 @@ const ALL_MODULES = [
     desc: "Tours, departures, itineraries, travelers",
   },
 ];
+
+async function fetchJson(path: string) {
+  try {
+    const response = await fetch(path, { cache: "no-store" });
+    if (!response.ok) {
+      return null;
+    }
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function buildFallbackIndustryTemplates() {
+  const catalog = getBusinessAttributeCatalog();
+
+  return catalog.industries.map((industryEntry) => {
+    const businessTypes = industryEntry.businessTypes.map((entry) => {
+      const resolved = findBusinessTemplateFromCatalog({
+        industry: industryEntry.industry,
+        businessType: entry.name,
+      });
+
+      return {
+        key: resolved?.businessTypeKey || entry.key,
+        name: resolved?.businessType || entry.name,
+        icon: resolved?.industryIcon || "🏢",
+        description: resolved?.description || entry.description || "",
+        enabledModules: resolved?.enabledModules || [
+          "branding",
+          "website",
+          "kalpbodh",
+        ],
+        featureFlags: resolved?.featureFlags || {},
+        businessContexts: resolved?.businessContexts || [],
+        attributePool: resolved?.attributePool || [],
+        attributeSetPreset: resolved?.attributeSetPresets || [],
+        attributeSets: resolved?.attributeSetPresets || [],
+        categorySeedPreset: resolved?.categorySeedPreset || [],
+      };
+    });
+
+    return {
+      key: industryEntry.key,
+      industry: industryEntry.industry,
+      icon: businessTypes[0]?.icon || "🏢",
+      businessTypes,
+      source: "business-attributes-catalog",
+    };
+  });
+}
+
+const FALLBACK_INDUSTRY_TEMPLATES = buildFallbackIndustryTemplates();
+const FALLBACK_ATTRIBUTE_CATALOG = getBusinessAttributeCatalog();
 
 const AI_QUICK_PROMPTS = [
   "Explain why these modules were selected",
@@ -398,6 +456,7 @@ export default function OnboardingWizard() {
   const [availableLanguages, setAvailableLanguages] = useState<any[]>([]);
   const [landingTemplates, setLandingTemplates] = useState<any[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isUsingCatalogFallback, setIsUsingCatalogFallback] = useState(false);
 
   const [formData, setFormData] = useState({
     businessName: "",
@@ -469,19 +528,32 @@ export default function OnboardingWizard() {
 
   // Load data from kalp_system on mount
   useEffect(() => {
+    let active = true;
     setIsLoadingData(true);
     Promise.all([
-      fetch("/api/system/templates").then((r) => r.json()),
-      fetch("/api/system/languages").then((r) => r.json()),
-      fetch("/api/system/landing-templates").then((r) => r.json()),
-      fetch("/api/system/business-attributes")
-        .then((r) => r.json())
-        .catch(() => null),
+      fetchJson("/api/system/templates"),
+      fetchJson("/api/system/languages"),
+      fetchJson("/api/system/landing-templates"),
+      fetchJson("/api/system/business-attributes"),
     ])
       .then(([templates, langs, landing, attrCatalog]) => {
-        setIndustries(Array.isArray(templates) ? templates : []);
+        if (!active) {
+          return;
+        }
+        const hasLiveIndustryTemplates =
+          Array.isArray(templates) && templates.length > 0;
+        setIndustries(
+          hasLiveIndustryTemplates ? templates : FALLBACK_INDUSTRY_TEMPLATES,
+        );
+        setIsUsingCatalogFallback(!hasLiveIndustryTemplates);
         setAvailableLanguages(Array.isArray(langs) ? langs : []);
-        setAttributeCatalog(attrCatalog);
+        setAttributeCatalog(
+          attrCatalog &&
+            typeof attrCatalog === "object" &&
+            Array.isArray((attrCatalog as any).industries)
+            ? attrCatalog
+            : FALLBACK_ATTRIBUTE_CATALOG,
+        );
         const landingList = Array.isArray(landing) ? landing : [];
         setLandingTemplates(landingList);
         if (landingList.length > 0) {
@@ -492,8 +564,14 @@ export default function OnboardingWizard() {
           }));
         }
       })
-      .catch(console.error)
-      .finally(() => setIsLoadingData(false));
+      .finally(() => {
+        if (active) {
+          setIsLoadingData(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // When industry changes, load the matching business types
@@ -1510,6 +1588,13 @@ export default function OnboardingWizard() {
                         <label className="block text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">
                           Industry Sector
                         </label>
+                        {!isLoadingData && isUsingCatalogFallback && (
+                          <p className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+                            Live industry templates are unavailable right now.
+                            Kalp is using the bundled onboarding catalog so you
+                            can still select an industry and business type.
+                          </p>
+                        )}
                         {isLoadingData ? (
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {[...Array(6)].map((_, i) => (
@@ -1545,6 +1630,13 @@ export default function OnboardingWizard() {
                                 </div>
                               </button>
                             ))}
+                          </div>
+                        )}
+                        {!isLoadingData && industries.length === 0 && (
+                          <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100">
+                            No industry templates are available for onboarding.
+                            Sync the system template registry or use the bundled
+                            business catalog.
                           </div>
                         )}
                       </div>
