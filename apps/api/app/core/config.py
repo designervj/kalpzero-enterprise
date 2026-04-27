@@ -49,6 +49,13 @@ class Settings(BaseSettings):
         default="/mnt/data/kalpzero-enterprise/.business-sites",
         alias="KALPZERO_WEBSITE_LOCAL_REPO_ROOT",
     )
+    website_app_host: str = Field(default="127.0.0.1", alias="KALPZERO_WEBSITE_APP_HOST")
+    website_app_port_start: int = Field(default=3400, alias="KALPZERO_WEBSITE_APP_PORT_START")
+    website_app_port_end: int = Field(default=4399, alias="KALPZERO_WEBSITE_APP_PORT_END")
+    website_app_process_prefix: str = Field(
+        default="kalpzero-site",
+        alias="KALPZERO_WEBSITE_APP_PROCESS_PREFIX",
+    )
     website_public_url_mode: str = Field(default="path", alias="KALPZERO_WEBSITE_PUBLIC_URL_MODE")
     website_domain_provisioner_command: str = Field(
         default="/usr/local/sbin/kalpzero-domain-provision",

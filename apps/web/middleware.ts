@@ -6,6 +6,10 @@ type HostResolutionPayload = {
   tenant_slug?: string;
 };
 
+function shouldForceInternalHttp(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
 function normalizeAbsoluteUrl(value: string | undefined) {
   const trimmed = (value || "").trim();
   if (!trimmed) {
@@ -73,6 +77,9 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === "/"
       ? `/${tenantSlug}`
       : `/${tenantSlug}${request.nextUrl.pathname}`;
+  if (shouldForceInternalHttp(rewriteUrl.hostname)) {
+    rewriteUrl.protocol = "http";
+  }
   return NextResponse.rewrite(rewriteUrl);
 }
 

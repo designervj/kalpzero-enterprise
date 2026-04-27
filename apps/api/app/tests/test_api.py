@@ -340,6 +340,19 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
     )
     monkeypatch.setattr(
         website_provisioning,
+        "_deploy_local_repository_website_app",
+        lambda db, settings, *, deployment, tenant_slug, repo_path: {
+            "local_repo_path": repo_path,
+            "local_runtime_path": f"/tmp/kalp-runtime/{Path(repo_path).name}",
+            "local_app_host": "127.0.0.1",
+            "local_app_port": 3400,
+            "local_app_upstream": "127.0.0.1:3400",
+            "local_app_url": "http://127.0.0.1:3400",
+            "local_app_process_name": f"kalpzero-site-{tenant_slug}",
+        },
+    )
+    monkeypatch.setattr(
+        website_provisioning,
         "_resolve_server_public_ips",
         lambda settings: {"103.80.161.222"},
     )
@@ -351,10 +364,11 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
     monkeypatch.setattr(
         website_provisioning,
         "_run_domain_provisioner",
-        lambda settings, *, host, email: {
+        lambda settings, *, host, email, web_upstream: {
             "host": host,
             "config_path": f"/etc/nginx/sites-available/{host}.conf",
             "certificate_path": f"/etc/letsencrypt/live/{host}/fullchain.pem",
+            "web_upstream": web_upstream,
         },
     )
 
@@ -395,6 +409,12 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
     assert website_deployment["production_url"] == "https://hotel-demo.example.com"
     assert website_deployment["deployment_url"] == "https://hotel-demo.example.com"
     assert website_deployment["local_repo_path"] == "/tmp/kalp-sites/kalp-biz-self-hosted-tenant"
+    assert website_deployment["local_runtime_path"] == "/tmp/kalp-runtime/kalp-biz-self-hosted-tenant"
+    assert website_deployment["local_app_host"] == "127.0.0.1"
+    assert website_deployment["local_app_port"] == 3400
+    assert website_deployment["local_app_upstream"] == "127.0.0.1:3400"
+    assert website_deployment["local_app_url"] == "http://127.0.0.1:3400"
+    assert website_deployment["local_app_process_name"] == "kalpzero-site-self-hosted-tenant"
     assert website_deployment["platform_host"] == "self-hosted-tenant.kalptree.xyz"
     assert website_deployment["platform_url"] == "https://self-hosted-tenant.kalptree.xyz"
     assert len(website_deployment["domains"]) == 2
@@ -414,6 +434,7 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
         "host": "hotel-demo.example.com",
         "config_path": "/etc/nginx/sites-available/hotel-demo.example.com.conf",
         "certificate_path": "/etc/letsencrypt/live/hotel-demo.example.com/fullchain.pem",
+        "web_upstream": "127.0.0.1:3400",
     }
     assert "last_error" not in primary_domain["metadata"]
     assert primary_domain["metadata"]["last_checked_at"]
@@ -435,11 +456,11 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
     assert platform_domain["metadata"]["last_checked_at"]
     assert (
         website_deployment["message"]
-        == "Business website provisioning completed. 1 domain is live: hotel-demo.example.com. 1 domain is waiting for DNS: self-hosted-tenant.kalptree.xyz. The GitHub repo is also mirrored on this server."
+        == "Business website provisioning completed. 1 domain is live: hotel-demo.example.com. 1 domain is waiting for DNS: self-hosted-tenant.kalptree.xyz. The GitHub website is deployed on this server."
     )
 
 
-def test_self_hosted_provisioning_stays_ready_when_repo_mirror_sync_fails(
+def test_self_hosted_sync_keeps_last_running_site_when_repo_mirror_sync_fails(
     client: TestClient,
     monkeypatch,
 ) -> None:
@@ -468,6 +489,28 @@ def test_self_hosted_provisioning_stays_ready_when_repo_mirror_sync_fails(
             "default_branch": "master",
         },
     )
+    monkeypatch.setattr(
+        website_provisioning,
+        "_deploy_local_repository_website_app",
+        lambda db, settings, *, deployment, tenant_slug, repo_path: {
+            "local_repo_path": repo_path,
+            "local_runtime_path": f"/tmp/kalp-runtime/{Path(repo_path).name}",
+            "local_app_host": "127.0.0.1",
+            "local_app_port": 3401,
+            "local_app_upstream": "127.0.0.1:3401",
+            "local_app_url": "http://127.0.0.1:3401",
+            "local_app_process_name": f"kalpzero-site-{tenant_slug}",
+        },
+    )
+    monkeypatch.setattr(
+        website_provisioning,
+        "_sync_local_repository_checkout",
+        lambda settings, *, repo_name, repo_full_name=None, default_branch=None: (
+            f"/tmp/kalp-sites/{repo_name}"
+            if default_branch == "master"
+            else (_ for _ in ()).throw(AssertionError(f"Unexpected branch: {default_branch}"))
+        ),
+    )
 
     def fail_checkout(settings, *, repo_name, repo_full_name=None, default_branch=None):
         assert default_branch == "master"
@@ -476,7 +519,6 @@ def test_self_hosted_provisioning_stays_ready_when_repo_mirror_sync_fails(
             f"{repo_full_name or repo_name}. Update the GitHub token so it can read repository contents, then run website sync again."
         )
 
-    monkeypatch.setattr(website_provisioning, "_sync_local_repository_checkout", fail_checkout)
     monkeypatch.setattr(
         website_provisioning,
         "_resolve_server_public_ips",
@@ -490,7 +532,7 @@ def test_self_hosted_provisioning_stays_ready_when_repo_mirror_sync_fails(
     monkeypatch.setattr(
         website_provisioning,
         "_run_domain_provisioner",
-        lambda settings, *, host, email: {"host": host},
+        lambda settings, *, host, email, web_upstream: {"host": host, "web_upstream": web_upstream},
     )
 
     platform_token = login(client, email="founder@kalpzero.com")
@@ -522,12 +564,30 @@ def test_self_hosted_provisioning_stays_ready_when_repo_mirror_sync_fails(
     )
 
     assert tenant_response.status_code == 201
-    website_deployment = tenant_response.json()["website_deployment"]
+    initial_deployment = tenant_response.json()["website_deployment"]
+    assert initial_deployment["status"] == "ready"
+    assert initial_deployment["local_runtime_path"] == "/tmp/kalp-runtime/kalp-biz-partial-sync-tenant"
+    assert initial_deployment["local_app_upstream"] == "127.0.0.1:3401"
+
+    monkeypatch.setattr(website_provisioning, "_sync_local_repository_checkout", fail_checkout)
+    sync_response = client.post(
+        "/platform/tenants/partial-sync-tenant/website/sync",
+        headers={"Authorization": f"Bearer {platform_token}"},
+    )
+
+    assert sync_response.status_code == 200
+    website_deployment = sync_response.json()["website_deployment"]
     assert website_deployment["status"] == "ready"
     assert website_deployment["production_url"] == "https://partial-sync.example.com"
     assert website_deployment["platform_url"] == "https://partial-sync-tenant.kalptree.xyz"
     assert website_deployment["repo_url"] == "https://github.com/kalp-sites/kalp-biz-partial-sync-tenant"
-    assert website_deployment["local_repo_path"] is None
+    assert website_deployment["local_repo_path"] == "/tmp/kalp-sites/kalp-biz-partial-sync-tenant"
+    assert website_deployment["local_runtime_path"] == "/tmp/kalp-runtime/kalp-biz-partial-sync-tenant"
+    assert website_deployment["local_app_upstream"] == "127.0.0.1:3401"
+    assert (
+        "The current GitHub website remains live on this server."
+        in website_deployment["message"]
+    )
     assert (
         "Server repo mirror needs attention. GitHub checkout could not be authenticated"
         in website_deployment["message"]
@@ -638,6 +698,19 @@ def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
     )
     monkeypatch.setattr(
         website_provisioning,
+        "_deploy_local_repository_website_app",
+        lambda db, settings, *, deployment, tenant_slug, repo_path: {
+            "local_repo_path": repo_path,
+            "local_runtime_path": f"/tmp/kalp-runtime/{Path(repo_path).name}",
+            "local_app_host": "127.0.0.1",
+            "local_app_port": 3402,
+            "local_app_upstream": "127.0.0.1:3402",
+            "local_app_url": "http://127.0.0.1:3402",
+            "local_app_process_name": f"kalpzero-site-{tenant_slug}",
+        },
+    )
+    monkeypatch.setattr(
+        website_provisioning,
         "_resolve_server_public_ips",
         lambda settings: {"103.80.161.222"},
     )
@@ -682,6 +755,7 @@ def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
         for domain in website_deployment["domains"]
     )
     assert "Use https://kalptree.xyz/sync-tenant until DNS is ready." in website_deployment["message"]
+    assert "The GitHub website is deployed on this server." in website_deployment["message"]
 
     monkeypatch.setattr(
         website_provisioning,
@@ -691,10 +765,11 @@ def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
     monkeypatch.setattr(
         website_provisioning,
         "_run_domain_provisioner",
-        lambda settings, *, host, email: {
+        lambda settings, *, host, email, web_upstream: {
             "host": host,
             "config_path": f"/etc/nginx/sites-available/{host}.conf",
             "certificate_path": f"/etc/letsencrypt/live/{host}/fullchain.pem",
+            "web_upstream": web_upstream,
         },
     )
 
@@ -710,6 +785,7 @@ def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
     assert payload["domains"][0]["ssl_status"] == "ready"
     assert payload["domains"][1]["host"] == "sync-tenant.kalptree.xyz"
     assert payload["domains"][1]["ssl_status"] == "ready"
+    assert payload["local_app_upstream"] == "127.0.0.1:3402"
 
 
 def test_public_host_resolution_returns_tenant_slug_for_self_hosted_domains(
@@ -750,6 +826,19 @@ def test_public_host_resolution_returns_tenant_slug_for_self_hosted_domains(
     )
     monkeypatch.setattr(
         website_provisioning,
+        "_deploy_local_repository_website_app",
+        lambda db, settings, *, deployment, tenant_slug, repo_path: {
+            "local_repo_path": repo_path,
+            "local_runtime_path": f"/tmp/kalp-runtime/{Path(repo_path).name}",
+            "local_app_host": "127.0.0.1",
+            "local_app_port": 3403,
+            "local_app_upstream": "127.0.0.1:3403",
+            "local_app_url": "http://127.0.0.1:3403",
+            "local_app_process_name": f"kalpzero-site-{tenant_slug}",
+        },
+    )
+    monkeypatch.setattr(
+        website_provisioning,
         "_resolve_server_public_ips",
         lambda settings: {"103.80.161.222"},
     )
@@ -761,7 +850,7 @@ def test_public_host_resolution_returns_tenant_slug_for_self_hosted_domains(
     monkeypatch.setattr(
         website_provisioning,
         "_run_domain_provisioner",
-        lambda settings, *, host, email: {"host": host},
+        lambda settings, *, host, email, web_upstream: {"host": host, "web_upstream": web_upstream},
     )
 
     platform_token = login(client, email="founder@kalpzero.com")
