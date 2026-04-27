@@ -193,7 +193,7 @@ def test_platform_admin_can_provision_business_website_repo_and_vercel_project(
                 "name": "kalp-biz-vercel-tenant",
                 "full_name": "kalp-sites/kalp-biz-vercel-tenant",
                 "html_url": "https://github.com/kalp-sites/kalp-biz-vercel-tenant",
-                "default_branch": "main",
+                "default_branch": "master",
             }
 
         if url == "https://api.vercel.com/v11/projects":
@@ -236,7 +236,7 @@ def test_platform_admin_can_provision_business_website_repo_and_vercel_project(
                 "gitSource": {
                     "type": "github",
                     "repo": "kalp-biz-vercel-tenant",
-                    "ref": "main",
+                    "ref": "master",
                     "org": "kalp-sites",
                 },
             }
@@ -323,7 +323,7 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
                 "name": "kalp-biz-self-hosted-tenant",
                 "full_name": "kalp-sites/kalp-biz-self-hosted-tenant",
                 "html_url": "https://github.com/kalp-sites/kalp-biz-self-hosted-tenant",
-                "default_branch": "main",
+                "default_branch": "master",
             }
 
         raise AssertionError(f"Unexpected external request: {method} {url}")
@@ -332,7 +332,11 @@ def test_platform_admin_can_provision_business_website_repo_with_self_hosted_run
     monkeypatch.setattr(
         website_provisioning,
         "_sync_local_repository_checkout",
-        lambda settings, *, repo_name, repo_full_name=None: f"/tmp/kalp-sites/{repo_name}",
+        lambda settings, *, repo_name, repo_full_name=None, default_branch=None: (
+            f"/tmp/kalp-sites/{repo_name}"
+            if default_branch == "master"
+            else (_ for _ in ()).throw(AssertionError(f"Unexpected branch: {default_branch}"))
+        ),
     )
     monkeypatch.setattr(
         website_provisioning,
@@ -461,11 +465,12 @@ def test_self_hosted_provisioning_stays_ready_when_repo_mirror_sync_fails(
             "name": "kalp-biz-partial-sync-tenant",
             "full_name": "kalp-sites/kalp-biz-partial-sync-tenant",
             "html_url": "https://github.com/kalp-sites/kalp-biz-partial-sync-tenant",
-            "default_branch": "main",
+            "default_branch": "master",
         },
     )
 
-    def fail_checkout(settings, *, repo_name, repo_full_name=None):
+    def fail_checkout(settings, *, repo_name, repo_full_name=None, default_branch=None):
+        assert default_branch == "master"
         raise website_provisioning.WebsiteProvisioningError(
             "GitHub checkout could not be authenticated for "
             f"{repo_full_name or repo_name}. Update the GitHub token so it can read repository contents, then run website sync again."
@@ -558,6 +563,41 @@ def test_sync_local_repository_checkout_cleans_failed_clone_directories(monkeypa
     assert list(tmp_path.iterdir()) == []
 
 
+def test_sync_local_repository_checkout_uses_repo_default_branch_for_clone(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("KALPZERO_GITHUB_TOKEN", "ghs_test_token")
+    monkeypatch.setenv("KALPZERO_GITHUB_REPO_OWNER", "kalp-sites")
+    monkeypatch.setenv("KALPZERO_WEBSITE_LOCAL_REPO_ROOT", str(tmp_path))
+
+    from app.core.config import get_settings
+    from app.services import website_provisioning
+
+    get_settings.cache_clear()
+    settings = get_settings()
+    recorded_calls: list[tuple[tuple[str, ...], Path | None]] = []
+
+    def fake_run_git_command(*args, cwd=None):
+        recorded_calls.append((args, cwd))
+        if "clone" in args:
+            clone_target = Path(args[-1])
+            clone_target.mkdir(parents=True, exist_ok=True)
+            (clone_target / ".git").mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(website_provisioning, "_run_git_command", fake_run_git_command)
+
+    repo_path = website_provisioning._sync_local_repository_checkout(
+        settings,
+        repo_name="kalp-biz-branch-check",
+        repo_full_name="kalp-sites/kalp-biz-branch-check",
+        default_branch="master",
+    )
+
+    clone_args = next(args for args, _ in recorded_calls if "clone" in args)
+    assert "--branch" in clone_args
+    assert clone_args[clone_args.index("--branch") + 1] == "master"
+    assert Path(repo_path) == tmp_path / "kalp-biz-branch-check"
+    assert (Path(repo_path) / ".git").exists()
+
+
 def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
     client: TestClient,
     monkeypatch,
@@ -584,13 +624,17 @@ def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
             "name": "kalp-biz-sync-tenant",
             "full_name": "kalp-sites/kalp-biz-sync-tenant",
             "html_url": "https://github.com/kalp-sites/kalp-biz-sync-tenant",
-            "default_branch": "main",
+            "default_branch": "master",
         },
     )
     monkeypatch.setattr(
         website_provisioning,
         "_sync_local_repository_checkout",
-        lambda settings, *, repo_name, repo_full_name=None: f"/tmp/kalp-sites/{repo_name}",
+        lambda settings, *, repo_name, repo_full_name=None, default_branch=None: (
+            f"/tmp/kalp-sites/{repo_name}"
+            if default_branch == "master"
+            else (_ for _ in ()).throw(AssertionError(f"Unexpected branch: {default_branch}"))
+        ),
     )
     monkeypatch.setattr(
         website_provisioning,
@@ -690,13 +734,17 @@ def test_public_host_resolution_returns_tenant_slug_for_self_hosted_domains(
             "name": "kalp-biz-host-tenant",
             "full_name": "kalp-sites/kalp-biz-host-tenant",
             "html_url": "https://github.com/kalp-sites/kalp-biz-host-tenant",
-            "default_branch": "main",
+            "default_branch": "master",
         },
     )
     monkeypatch.setattr(
         website_provisioning,
         "_sync_local_repository_checkout",
-        lambda settings, *, repo_name, repo_full_name=None: f"/tmp/kalp-sites/{repo_name}",
+        lambda settings, *, repo_name, repo_full_name=None, default_branch=None: (
+            f"/tmp/kalp-sites/{repo_name}"
+            if default_branch == "master"
+            else (_ for _ in ()).throw(AssertionError(f"Unexpected branch: {default_branch}"))
+        ),
     )
     monkeypatch.setattr(
         website_provisioning,

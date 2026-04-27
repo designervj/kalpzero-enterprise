@@ -274,10 +274,12 @@ def sync_self_hosted_website_domains(
     )
     repo_name = deployment.repo_name or build_repository_name(settings, tenant_slug=tenant.slug)
     repo_full_name = deployment.metadata_json.get("github_full_name")
+    github_default_branch = deployment.metadata_json.get("github_default_branch")
     local_repo_path, repo_sync_warning = _try_sync_local_repository_checkout(
         settings,
         repo_name=repo_name,
         repo_full_name=repo_full_name if isinstance(repo_full_name, str) else None,
+        default_branch=github_default_branch if isinstance(github_default_branch, str) else None,
     )
     _, production_url, message = _activate_self_hosted_domains(
         db,
@@ -401,6 +403,7 @@ def _provision_github_vercel(
         settings,
         project_name=deployment.vercel_project_name or project_name,
         repo_name=deployment.repo_name or repo_name,
+        git_ref=repo_response.get("default_branch") if isinstance(repo_response.get("default_branch"), str) else None,
     )
     deployment_url = _select_vercel_public_url(create_response)
     deployment = _update_deployment(
@@ -541,6 +544,7 @@ def _provision_github_self_hosted(
         settings,
         repo_name=deployment.repo_name or repo_name,
         repo_full_name=repo_response.get("full_name") if isinstance(repo_response.get("full_name"), str) else None,
+        default_branch=repo_response.get("default_branch") if isinstance(repo_response.get("default_branch"), str) else None,
     )
     message = _combine_self_hosted_status_message(
         domain_message=provisioning_message,
@@ -1077,7 +1081,12 @@ def _remove_checkout_path(path: Path) -> None:
     path.unlink(missing_ok=True)
 
 
-def _format_checkout_sync_error(detail: str, *, repo_full_name: str) -> str:
+def _format_checkout_sync_error(
+    detail: str,
+    *,
+    repo_full_name: str,
+    branch_name: str | None = None,
+) -> str:
     normalized = " ".join((detail or "").split())
     lowered = normalized.lower()
     if "authentication failed" in lowered or "invalid credentials" in lowered:
@@ -1090,6 +1099,12 @@ def _format_checkout_sync_error(detail: str, *, repo_full_name: str) -> str:
             f"GitHub checkout could not find {repo_full_name}. "
             "Check the repository owner and token access, then run website sync again."
         )
+    if "remote branch" in lowered and "not found in upstream origin" in lowered and branch_name:
+        return (
+            f"GitHub checkout could not be synced for {repo_full_name}. "
+            f"Branch '{branch_name}' was not found in the repository. "
+            "Use the repository default branch and run website sync again."
+        )
     if normalized:
         return f"GitHub checkout could not be synced for {repo_full_name}. {normalized}"
     return f"GitHub checkout could not be synced for {repo_full_name}."
@@ -1100,6 +1115,7 @@ def _sync_local_repository_checkout(
     *,
     repo_name: str,
     repo_full_name: str | None = None,
+    default_branch: str | None = None,
 ) -> str:
     root = Path(settings.website_local_repo_root).expanduser()
     root.mkdir(parents=True, exist_ok=True)
@@ -1111,6 +1127,7 @@ def _sync_local_repository_checkout(
     )
     repo_url = f"https://github.com/{resolved_repo_full_name}.git"
     auth_header = _build_git_http_auth_header(settings)
+    branch_name = (default_branch or "").strip() or settings.github_default_branch
 
     if (repo_path / ".git").exists():
         try:
@@ -1120,7 +1137,7 @@ def _sync_local_repository_checkout(
                 f"http.extraheader={auth_header}",
                 "fetch",
                 "origin",
-                settings.github_default_branch,
+                branch_name,
                 "--depth",
                 "1",
                 cwd=repo_path,
@@ -1129,7 +1146,11 @@ def _sync_local_repository_checkout(
             _run_git_command("git", "clean", "-fd", cwd=repo_path)
         except WebsiteProvisioningError as exc:
             raise WebsiteProvisioningError(
-                _format_checkout_sync_error(str(exc), repo_full_name=resolved_repo_full_name)
+                _format_checkout_sync_error(
+                    str(exc),
+                    repo_full_name=resolved_repo_full_name,
+                    branch_name=branch_name,
+                )
             ) from exc
         return str(repo_path)
 
@@ -1144,7 +1165,7 @@ def _sync_local_repository_checkout(
             "--depth",
             "1",
             "--branch",
-            settings.github_default_branch,
+            branch_name,
             repo_url,
             str(temp_repo_path),
         )
@@ -1153,7 +1174,11 @@ def _sync_local_repository_checkout(
         temp_repo_path.rename(repo_path)
     except WebsiteProvisioningError as exc:
         raise WebsiteProvisioningError(
-            _format_checkout_sync_error(str(exc), repo_full_name=resolved_repo_full_name)
+            _format_checkout_sync_error(
+                str(exc),
+                repo_full_name=resolved_repo_full_name,
+                branch_name=branch_name,
+            )
         ) from exc
     finally:
         if temp_parent.exists():
@@ -1167,12 +1192,14 @@ def _try_sync_local_repository_checkout(
     *,
     repo_name: str,
     repo_full_name: str | None = None,
+    default_branch: str | None = None,
 ) -> tuple[str | None, str | None]:
     try:
         local_repo_path = _sync_local_repository_checkout(
             settings,
             repo_name=repo_name,
             repo_full_name=repo_full_name,
+            default_branch=default_branch,
         )
         return local_repo_path, None
     except WebsiteProvisioningError as exc:
@@ -1268,7 +1295,9 @@ def _create_vercel_deployment(
     *,
     project_name: str,
     repo_name: str,
+    git_ref: str | None = None,
 ) -> dict[str, object]:
+    resolved_git_ref = (git_ref or "").strip() or settings.github_default_branch
     return _request_json(
         "POST",
         f"{VERCEL_API_BASE}/v13/deployments{_vercel_query(settings, forceNew='1', skipAutoDetectionConfirmation='1')}",
@@ -1282,7 +1311,7 @@ def _create_vercel_deployment(
             "gitSource": {
                 "type": "github",
                 "repo": repo_name,
-                "ref": settings.github_default_branch,
+                "ref": resolved_git_ref,
                 "org": settings.github_repo_owner,
             },
         },
