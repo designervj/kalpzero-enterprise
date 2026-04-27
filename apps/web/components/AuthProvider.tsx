@@ -8,6 +8,7 @@ import type { AccessContext } from '@engine/permission-engine/types';
 import { getRoleMeta, isScopedRoleView, resolveRoleProfileForView, resolveRoleSwitchCandidates, type RoleProfileKey } from '@/lib/role-scope';
 import type { AdminWorkspace } from '@/lib/admin-workspace';
 import { useAuth as useRootAuth } from '@/components/providers/auth-provider';
+import { clearTenantState } from '@/hook/slices/kalp_master/master_tenant/TenantSlice';
 
 export type MockAuthContextType = AccessContext & {
     roleRank: number;
@@ -197,6 +198,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = () => {
         rootAuth.logout();
+
+        dispatch(clearTenantState())
         setProfileKey(null);
     };
 

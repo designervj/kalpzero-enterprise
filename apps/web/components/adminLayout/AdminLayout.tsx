@@ -56,7 +56,7 @@ import {
   SECTION_ORDER,
   FALLBACK_MODULE_NAVS,
 } from "./util/constants";
-import { adminvertical, commerce_vertical } from "./vertical/businessVertical";
+import { adminvertical, commerce_vertical, type VerticalConfig } from "./vertical/businessVertical";
 import { CollapsibleNavGroup } from "./CollapsibleNavGroup";
 import GetTenant from "./GetTenant";
 import { TenantSwitcherOption } from "@/hook/slices/kalp_master/master_tenant/tenantType";
@@ -281,17 +281,6 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
 
   const { currentTenant } = useSelector((state: RootState) => state.tenant);
 
-  // useEffect(() => {
-  //   if (currentTenant && currentTenant.enabledModules) {
-  //     setTenantModules(currentTenant.enabledModules);
-  //   }
-  // }, [currentTenant]);
-
-  // useEffect(() => {
-  //   if (Array.isArray(authCtx.user?.enabledModules)) {
-  //     setTenantModules(authCtx.user.enabledModules);
-  //   }
-  // }, [authCtx.user?.enabledModules]);
 
   const activeRole = authCtx.currentProfile as RoleProfileKey;
   const sessionRole = authCtx.user?.role || authCtx.sessionRole;
@@ -609,16 +598,17 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
       setTenantOptions(allTenant);
     }
   }, [allTenant]);
+const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | null>(null);
 
-
-  const tenantAdminNavItems = useMemo(()=>{
-    if(authUser?.role === "tenant_admin" &&
-      currentTenant && 
-      currentTenant?.vertical_packs?.[0] === "commerce"){
-      return commerce_vertical
+   useEffect(() => {
+    if (currentTenant === null) {
+    setTenantAdminNavItems(adminvertical);
+    } else if (currentTenant?.vertical_packs?.[0] === "commerce") {
+    setTenantAdminNavItems(commerce_vertical);
+    } else {
+     setTenantAdminNavItems(null);
     }
-    return adminvertical
-  },[commerce_vertical,adminvertical,authUser,currentTenant])
+  }, [currentTenant, commerce_vertical, adminvertical]);
     
   // useEffect(() => {
   //   if (!authCtx.user || !canSwitchTenant) {
@@ -1161,17 +1151,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
             )} */}
             {authUser?.role === "platform_owner" && (
               <div className="space-y-1">
-                {/* <h3
-                  className={`flex items-center gap-2 mb-3 font-bold uppercase tracking-[0.2em] text-cyan-500/70 text-[10px] ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"}`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(0,240,255,0.8)]"></span>
-                  {(!sidebarCollapsed || isMobileMenuOpen) &&
-                    (workspaceConfig.sidebar.sectionLabels.frontend !==
-                    DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.frontend
-                      ? workspaceConfig.sidebar.sectionLabels.frontend
-                      : t("section.frontend", "Frontend"))}
-                </h3> */}
-                {adminvertical.sidebar.map((group) => {
+                {tenantAdminNavItems?.sidebar.map((group) => {
                   const IconComponent = resolveNavIcon(group.icon);
                   const hasChildren =
                     Array.isArray(group.children) && group.children.length > 0;
@@ -1208,17 +1188,8 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
             )}
               {authUser?.role === "tenant_admin" && (
               <div className="space-y-1">
-                {/* <h3
-                  className={`flex items-center gap-2 mb-3 font-bold uppercase tracking-[0.2em] text-cyan-500/70 text-[10px] ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"}`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(0,240,255,0.8)]"></span>
-                  {(!sidebarCollapsed || isMobileMenuOpen) &&
-                    (workspaceConfig.sidebar.sectionLabels.frontend !==
-                    DEFAULT_ADMIN_WORKSPACE.sidebar.sectionLabels.frontend
-                      ? workspaceConfig.sidebar.sectionLabels.frontend
-                      : t("section.frontend", "Frontend"))}
-                </h3> */}
-                {tenantAdminNavItems.sidebar.map((group) => {
+            
+                {tenantAdminNavItems?.sidebar.map((group) => {
                   const IconComponent = resolveNavIcon(group.icon);
                   const hasChildren =
                     Array.isArray(group.children) && group.children.length > 0;

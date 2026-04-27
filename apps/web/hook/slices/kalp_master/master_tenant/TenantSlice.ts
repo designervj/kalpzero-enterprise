@@ -47,7 +47,7 @@ export const tenantSlice = createSlice({
                 state.isFetchedAlltenant = true;
                 state.allTenant = action.payload;
                 state.error = null;
-                state.currentTenant=action.payload[0]
+          
             })
             .addCase(fetchTenants.rejected, (state, action) => {
                 state.loading = false;

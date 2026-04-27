@@ -1,128 +1,174 @@
-export const commerce_vertical={
-    name:"commerce",
-    sidebar: [
+export interface SidebarItem {
+    label: string;
+    key: string;
+    icon?: string;
+    route?: string;
+    children?: SidebarItem[];
+}
+
+export interface VerticalConfig {
+    name: string;
+    sidebar: SidebarItem[];
+}
+
+export const commerce_vertical: VerticalConfig = {
+  name: "commerce",
+  sidebar: [
     {
-      "label": "Strategic Overview",
-      "key": "strategic-overview",
-      "icon": "bar-chart-3",
-      "children": [
+      label: "Dashboard",
+      key: "dashboard",
+      icon: "bar-chart-3",
+      children: [
         {
-          "label": "Dashboard",
-          "key": "dashboard",
-          "route": "/admin"
+          label: "Overview",
+          key: "overview",
+          route: "/admin"
         },
         {
-          "label": "Orders",
-          "key": "orders",
-          "route": "/admin/orders"
+          label: "Orders",
+          key: "orders",
+          route: "/admin/orders"
         },
         {
-          "label": "Branding",
-          "key": "branding",
-          "route": "/admin/branding"
+          label: "Branding",
+          key: "branding",
+          route: "/admin/branding"
         }
       ]
     },
     {
-      "label": "Logistics Control",
-      "key": "logistics-control",
-      "icon": "package",
-      "children": [
+      label: "Business Products",
+      key: "catalog",
+      icon: "package",
+      children: [
         {
-          "label": "Products",
-          "key": "products",
-          "route": "/commerce/product"
+          label: "Products",
+          key: "products",
+          route: "/commerce/product"
         },
         {
-          "label": "Categories",
-          "key": "categories",
-          "route": "/commerce/categories"
+          label: "Categories",
+          key: "categories",
+          route: "/commerce/categories"
         },
         {
-          "label": "Attributes",
-          "key": "attributes",
-          "route": "/commerce/attributes"
+          label: "Attributes",
+          key: "attributes",
+          route: "/commerce/attributes"
         },
         {
-          "label": "Brand",
-          "key": "brand",
-          "route": "/commerce/brand"
+          label: "Brands",
+          key: "brands",
+          route: "/commerce/brand"
         },
         {
-          "label": "Vendor",
-          "key": "vendor",
-          "route": "/commerce/vendor"
+          label: "Vendors",
+          key: "vendors",
+          route: "/commerce/vendor"
         },
         {
-          "label": "Warehouse",
-          "key": "warehouse",
-          "route": "/commerce/warehouse"
+          label: "Warehouses",
+          key: "warehouses",
+          route: "/commerce/warehouse"
         }
       ]
     },
     {
-      "label": "Communications Hub",
-      "key": "communications-hub",
-      "icon": "file-text",
-      "children": [
+      label: "Website Content",
+      key: "content",
+      icon: "file-text",
+      children: [
         {
-          "label": "Pages",
-          "key": "pages",
-          "route": "/admin/pages"
+          label: "Pages",
+          key: "pages",
+          route: "/admin/pages"
         },
         {
-          "label": "Media",
-          "key": "media",
-          "route": "/admin/media"
+          label: "Media",
+          key: "media",
+          route: "/admin/media"
         },
         {
-          "label": "Engine",
-          "key": "engine",
-          "route": "/admin/sync"
+          label: "Sync Engine",
+          key: "sync-engine",
+          route: "/admin/sync"
+        }
+      ]
+    },
+     {
+      label: "Engagement",
+      key: "engagement",
+      icon: "megaphone",
+      children: [
+        {
+          label: "Bookings",
+          key: "bookings",
+          route: "/commerce/bookings"
+        },
+        {
+          label: "Marketing",
+          key: "marketing",
+          route: "/commerce/marketing"
+        },
+        {
+          label: "Branding",
+          key: "branding",
+          route: "/commerce/branding"
         }
       ]
     },
     {
-      "label": "Personnel Intelligence",
-      "key": "personnel-intelligence",
-      "icon": "users",
-      "children": [
+      label: "Users",
+      key: "users",
+      icon: "users",
+      children: [
         {
-          "label": "Personnel",
-          "key": "personnel",
-          "route": "/admin/customers"
+          label: "Customers",
+          key: "customer-list",
+          route: "/admin/customers"
         },
         {
-          "label": "Command Staff",
-          "key": "command-staff",
-          "route": "/admin/users"
+          label: "Admin Users",
+          key: "admin-users",
+          route: "/admin/users"
         }
       ]
     },
     {
-      "label": "Field Intelligence",
-      "key": "field-intelligence",
-      "icon": "zap",
-      "children": [
+      label: "Forms",
+      key: "forms",
+      icon: "zap",
+      children: [
         {
-          "label": "Form Matrix",
-          "key": "form-matrix",
-          "route": "/admin/forms"
+          label: "Form Builder",
+          key: "form-builder",
+          route: "/admin/forms"
         },
         {
-          "label": "Captured Data",
-          "key": "captured-data",
-          "route": "/admin/form-submissions"
+          label: "Submissions",
+          key: "submissions",
+          route: "/admin/form-submissions"
         }
       ]
-    }
+    },
+     {
+      label: "Platform",
+      key: "platform",
+      icon: "settings",
+      children: [
+        {
+          label: "Settings",
+          key: "settings",
+          route: "/commerce/settings"
+        }
+      ]
+    },
   ]
 }
- 
 
-export const adminvertical={
-    name:"admin",
-    sidebar:[
+export const adminvertical: VerticalConfig = {
+    name: "admin",
+    sidebar: [
         {
             "label": "Dashboard",
             "key": "dashboard",
