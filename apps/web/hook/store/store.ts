@@ -14,6 +14,7 @@ import attributeReducer from '../slices/commerce/attribute/attributeSlice';
 import brandReducer from '../slices/commerce/brand/BrandSlice';
 import vendorReducer from '../slices/commerce/vendor/VendorSlice';
 import warehouseReducer from '../slices/commerce/warehouse/WarehouseSlice';
+import agencyReducer from '../slices/kalp_master/agencies/AgencySlice';
 
 export const store = configureStore({
     reducer: {
@@ -31,7 +32,8 @@ export const store = configureStore({
         product: productReducer,
         brand: brandReducer,
         vendor: vendorReducer,
-        warehouse: warehouseReducer
+        warehouse: warehouseReducer,
+        agency: agencyReducer
     },
 });
 

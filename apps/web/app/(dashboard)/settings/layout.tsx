@@ -33,6 +33,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     // const { currentProfile, user } = useAuth();
 
     const {authUser} = useSelector((state:RootState)=>state.auth)
+    const {currentAgency} = useSelector((state:RootState)=>state.agency)
     // We treat "/settings" as the hub. The children prop handles actual settings page renders.
     // So if pathname === '/settings', we render the dashboard grid. Otherwise we just render children.
     const isHubView = pathname === '/settings';
@@ -51,6 +52,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     const canSeeSystemRegistry = canRoleAccessAdminPath(activeRole, '/admin/registry');
     const canSeeTenantResources = canRoleAccessAdminPath(activeRole, '/tenant/resources');
     const canSeeAgencyResources = canRoleAccessAdminPath(activeRole, '/agency/resources');
+     const {currentTenant} = useSelector((state:RootState)=>state.tenant)
+   
     // const hasDedicatedWorkspace = authUser?.provisioningMode === 'full_tenant';
     // Setup the groups per the PRD
     const groups: ControlCenterGroup[] = [
@@ -58,8 +61,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         {
             title: "General",
             items: [
-                ...(canSeeTenant ? [{ href: '/settings/tenant', label: 'Business Settings', description: 'Manage brand, public profile, and integrations', icon: <Building2 size={24} />, colorClass: 'text-cyan-400' }] : []),
-                ...(canSeeAgencySettings ? [{ href: '/settings/agency', label: 'Agency Settings', description: 'Manage your agency domain and routing modes', icon: <Globe size={24} />, colorClass: 'text-indigo-400' }] : []),
+                ...(canSeeTenant ? [{ href: currentTenant==null?`/settings/tenant/`:`/settings/tenant/${currentTenant?.id}`, label: 'Business Settings', description: 'Manage brand, public profile, and integrations', icon: <Building2 size={24} />, colorClass: 'text-cyan-400' }] : []),
+                ...(canSeeAgencySettings ? [{ href:currentAgency==null?`/settings/agency/`:`/settings/agency/${currentAgency?.id}`, label: 'Agency Settings', description: 'Manage your agency domain and routing modes', icon: <Globe size={24} />, colorClass: 'text-indigo-400' }] : []),
                 ...(canSeeUser ? [{ href: '/settings/user', label: 'User Preferences', description: 'Manage your personal account profile and security', icon: <UserCircle size={24} />, colorClass: 'text-emerald-400' }] : []),
             ]
         },

@@ -1,14 +1,14 @@
 
  export interface RuntimeDocuments {
-   kind: string;
-   mode: string;
-   database: string;
-   collection_count: number;
-   collections: Record<string, string>;
-   bootstrap: {
-     seeded_documents: any[];
-     seeded_document_count: number;
-     page_slugs: string[];
+   kind?: string;
+   mode?: string;
+   database?: string;
+   collection_count?: number;
+   collections?: Record<string, string>;
+   bootstrap?: {
+     seeded_documents?: any[];
+     seeded_document_count?: number;
+     page_slugs?: string[];
    };
  }
  export interface WebsiteDeployment {

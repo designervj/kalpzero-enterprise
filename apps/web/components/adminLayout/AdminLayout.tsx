@@ -689,6 +689,7 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
   }, [tenantPickerOpen]);
 
   const handleTenantSwitch = async (nextTenant: string) => {
+    router.push(`/dashboard`);
     // if (!nextTenant || nextTenant === activeTenant) return;
     // setTenantSwitchError("");
     // setTenantSwitchingTo(nextTenant);
