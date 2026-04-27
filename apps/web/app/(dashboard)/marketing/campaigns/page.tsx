@@ -103,6 +103,7 @@ export default function CampaignsPage() {
                             ? 'bg-slate-50 border-slate-100 hover:bg-slate-100' 
                             : 'bg-slate-900 border-slate-800 hover:bg-slate-800'
                     }`}>
+                        
                         <Package size={16} />
                         Product
                     </button>
