@@ -21,13 +21,12 @@ export const fetchTenants = createAsyncThunk<
       }
     });
 
-    console.log(" response", response)
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Failed to fetch tenants");
     }
     const data = await response.json();
-    console.log(" all tenant  data", data)
+  
     return data?.tenants as TenantSwitcherOption[];
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch tenants");

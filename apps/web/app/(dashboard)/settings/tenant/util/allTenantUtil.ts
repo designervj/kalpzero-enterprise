@@ -94,3 +94,56 @@ export function normalizeContextArray(value: unknown): string[] {
         .map((item) => normalizeBusinessContextKey(item))
         .filter(Boolean);
 }
+
+export const ALL_MODULES = [
+  "website",
+  "branding",
+  "products",
+  "ecommerce",
+  "bookings",
+  "marketing",
+  "blog",
+  "portfolio",
+  "media",
+  "invoicing",
+  "source",
+  "kalpbodh",
+  "hotel_management",
+  "tour_management",
+];
+
+export const BRAND_ASSET_SPECS: BrandAssetSpec[] = [
+  {
+    key: "light",
+    label: "Logo (For Light Background)",
+    guidance: "Recommended 1200x400, transparent PNG/SVG preferred, max 2 MB.",
+    accept: ".png,.jpg,.jpeg,.webp,.svg",
+    acceptLabel: "PNG, JPG, WEBP, SVG",
+    maxBytes: 2 * 1024 * 1024,
+  },
+  {
+    key: "dark",
+    label: "Logo (For Dark Background)",
+    guidance: "Recommended 1200x400, transparent PNG/SVG preferred, max 2 MB.",
+    accept: ".png,.jpg,.jpeg,.webp,.svg",
+    acceptLabel: "PNG, JPG, WEBP, SVG",
+    maxBytes: 2 * 1024 * 1024,
+  },
+  {
+    key: "thumbnail",
+    label: "Thumbnail / App Icon",
+    guidance: "Recommended 512x512 square, max 1 MB.",
+    accept: ".png,.jpg,.jpeg,.webp,.svg",
+    acceptLabel: "PNG, JPG, WEBP, SVG",
+    maxBytes: 1024 * 1024,
+  },
+  {
+    key: "favicon",
+    label: "Favicon",
+    guidance:
+      "Recommended 64x64 or 128x128. Prefer .ico, .png, or .svg, max 512 KB.",
+    accept: ".ico,.png,.svg,.webp",
+    acceptLabel: "ICO, PNG, SVG, WEBP",
+    maxBytes: 512 * 1024,
+  },
+];

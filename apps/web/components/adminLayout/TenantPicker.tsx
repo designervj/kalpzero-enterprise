@@ -8,6 +8,7 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/hook/store/store";
 import { setCurrentTenant } from "@/hook/slices/kalp_master/master_tenant/TenantSlice";
 import { TenantSwitcherOption } from "@/hook/slices/kalp_master/master_tenant/tenantType";
+import { useRouter } from "next/navigation";
 
 interface TenantPickerProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export function TenantPicker({
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const dispatch = useDispatch<AppDispatch>()
+  const router = useRouter();
   const filteredOptions = useMemo(() => {
     const q = query.trim().toLowerCase();
     const source =
@@ -50,6 +52,7 @@ export function TenantPicker({
 
   const handleSwitch = (item: TenantSwitcherOption) => {
     dispatch(setCurrentTenant(item))
+        router.push(`/dashboard`);
     // onSwitch(item?.slug || item?.key || "");
     onClose();
   };

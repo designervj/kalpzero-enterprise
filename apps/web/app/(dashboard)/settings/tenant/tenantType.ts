@@ -22,25 +22,26 @@ export type AgencyPlanTier = {
 
 
 export type TenantSettingsFormState = {
-    name: string;
-    industry: string;
+    display_name: string;
     googleAnalyticsId: string;
-    businessType: string;
+    business_type: string;
     accountType: 'business' | 'personal_portfolio';
-    provisioningMode: 'full_tenant' | 'lite_profile';
+    infra_mode: 'dedicated' | 'shared';
     subscriptionLevel: string;
     agencyPlanKey: string;
     primary: string;
     secondary: string;
     accent: string;
     background: string;
-    enabledModules: string[];
+    vertical_packs: string[];
     enabledFeatures: string[];
     enabledOptions: string[];
     enabledPlugins: string[];
-    featureFlags: Record<string, boolean>;
+    feature_flags: string[];
     languages: string[];
     primaryLanguage: string;
+    slug: string;
+    aiRuntime: {
     aiRuntime: {
         defaultModel: string;
         fallbackModels: string[];
@@ -67,8 +68,8 @@ export type TenantSettingsFormState = {
     };
     brandKit: Record<string, any>;
 };
-
-export type BrandAssetKey = 'light' | 'dark' | 'thumbnail' | 'favicon';
+}
+export type BrandAssetKey = 'primary' | 'light' | 'dark' | 'icon' | 'thumbnail' | 'favicon';
 
 export type BrandAssetSpec = {
     key: BrandAssetKey;

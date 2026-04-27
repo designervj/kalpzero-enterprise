@@ -159,7 +159,7 @@ export const commerce_vertical: VerticalConfig = {
         {
           label: "Settings",
           key: "settings",
-          route: "/commerce/settings"
+          route: "/settings"
         }
       ]
     },
