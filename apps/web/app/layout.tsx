@@ -29,14 +29,35 @@ export const metadata: Metadata = {
   }
 };
 
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var mode = localStorage.getItem('kalp-theme-mode');
+                  var supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+                  if (!mode && supportDarkMode) mode = 'dark';
+                  if (!mode) mode = 'dark';
+                  document.documentElement.setAttribute('data-theme-mode', mode);
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={`${headingFont.variable} ${bodyFont.variable} font-body antialiased`}>
         <ChunkErrorListener />
-        <ReduxProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </ReduxProvider>
+        <ThemeProvider>
+          <ReduxProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </ReduxProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

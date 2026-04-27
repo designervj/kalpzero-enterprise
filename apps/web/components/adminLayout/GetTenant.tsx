@@ -28,8 +28,6 @@ const GetTenant = () => {
         if (authUser?.role === "tenant_admin" && !isApi.current) {
             isApi.current = true;
             getTenantInfo();
-        } else {
-            isApi.current = false;
         }
     }, [dispatch, authUser]);
     return null;

@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { useTranslation } from "@/lib/i18n/context";
-import { getThemeMode, setThemeMode } from "@/lib/theme-runtime";
+import { useTheme } from "@/components/providers/theme-provider";
 import { PermissionEngine } from "@engine/permission-engine";
 import type { NavEntrySpec, RegistrySnapshot } from "@core/contracts/registry";
 import { canRoleAccessAdminPath, type RoleProfileKey } from "@/lib/role-scope";
@@ -138,22 +138,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
     return window.localStorage.getItem("kalp_admin_sidebar_collapsed") === "1";
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [themeMode, setThemeModeState] = useState<'light' | 'dark'>('dark');
-
-  useEffect(() => {
-    setThemeModeState(getThemeMode());
-    
-    const handleThemeChange = (e: any) => {
-      setThemeModeState(e.detail.mode);
-    };
-    window.addEventListener('kalp-theme-mode-change', handleThemeChange);
-    return () => window.removeEventListener('kalp-theme-mode-change', handleThemeChange);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = themeMode === 'light' ? 'dark' : 'light';
-    setThemeMode(next);
-  };
+  const { themeMode, toggleThemeMode } = useTheme();
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -1025,7 +1010,9 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
       <GetTenant />
 
       <div
-        className="kalp-admin-shell h-screen flex w-full text-slate-100 selection:bg-cyan-500/30 overflow-hidden relative"
+        className={`kalp-admin-shell h-screen flex w-full selection:bg-cyan-500/30 overflow-hidden relative transition-colors ${
+          themeMode === 'light' ? 'text-slate-900' : 'text-slate-100'
+        }`}
         style={shellStyle}
       >
         {/* Background Mesh Gradients */}
@@ -1046,17 +1033,22 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
         <aside
           className={`
             fixed md:sticky top-0 h-screen z-40
-            flex flex-col border-r border-slate-800/80 bg-slate-950/80 backdrop-blur-xl transition-all duration-300
+            flex flex-col transition-all duration-300 backdrop-blur-xl
             ${sidebarCollapsed && !isMobileMenuOpen ? "w-20" : "w-72"}
-            ${isMobileMenuOpen ? "translate-x-0 shadow-2xl shadow-cyan-500/10" : "-translate-x-full md:translate-x-0"}
+            ${isMobileMenuOpen ? "translate-x-0 shadow-2xl shadow-indigo-500/10" : "-translate-x-full md:translate-x-0"}
+            ${themeMode === 'light' ? 'border-r border-slate-100 bg-white/95' : 'border-r border-slate-800/80 bg-slate-950/80'}
           `}
           style={chromeSurfaceStyle}
         >
           {/* Logo Header */}
           <div
-            className={`h-16 flex items-center border-b border-slate-800/80 relative overflow-hidden bg-black/20 ${sidebarCollapsed && !isMobileMenuOpen ? "px-3 justify-center" : "px-6"}`}
+            className={`h-16 flex items-center border-b transition-colors relative overflow-hidden ${
+              themeMode === 'light' ? 'border-slate-100 bg-white' : 'border-slate-800/80 bg-black/20'
+            } ${sidebarCollapsed && !isMobileMenuOpen ? "px-3 justify-center" : "px-6"}`}
           >
-            <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+            <div className={`absolute bottom-0 left-0 w-full h-[1px] transition-all ${
+              themeMode === 'light' ? 'bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent' : 'bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent'
+            }`}></div>
             <div
               className={`relative flex items-center justify-center w-8 h-8 rounded-lg ${sidebarCollapsed && !isMobileMenuOpen ? "" : "mr-3"}`}
             >
@@ -1090,7 +1082,9 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
                     className="h-8 max-w-[170px] object-contain"
                   />
                 ) : (
-                  <h1 className="text-xl font-black tracking-tighter bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent truncate">
+                  <h1 className={`text-xl font-black tracking-tighter transition-colors truncate ${
+                    themeMode === 'light' ? 'text-slate-900' : 'bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent'
+                  }`}>
                     {agencyBranding.brandName}
                   </h1>
                 )}
@@ -1105,7 +1099,11 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
               type="button"
               disabled={isSidebarCollapseLocked}
               onClick={() => setIsSidebarCollapsed((prev) => !prev)}
-              className={`ml-auto rounded-md border border-slate-700 bg-slate-900/60 p-1.5 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50 ${sidebarCollapsed && !isMobileMenuOpen ? "absolute right-3" : ""} ${isMobileMenuOpen ? "hidden" : "flex"}`}
+              className={`ml-auto rounded-md border transition-all duration-300 p-1.5 disabled:cursor-not-allowed disabled:opacity-50 ${
+                themeMode === 'light'
+                  ? "border-slate-200 bg-white text-slate-500 hover:border-indigo-400 hover:text-indigo-600 shadow-sm"
+                  : "border-slate-700 bg-slate-900/60 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-200"
+              } ${sidebarCollapsed && !isMobileMenuOpen ? "absolute right-3" : ""} ${isMobileMenuOpen ? "hidden" : "flex"}`}
               title={
                 isSidebarCollapseLocked
                   ? "Sidebar collapse is locked on System Registry"
@@ -1238,10 +1236,14 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
               return (
                 <div key={group.id} className="space-y-1">
                   <h3
-                    className={`text-[10px] uppercase tracking-[0.2em] font-bold mb-3 flex items-center gap-2 ${meta.headingClass} ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"}`}
+                    className={`text-[10px] uppercase tracking-[0.2em] font-bold mb-3 flex items-center gap-2 transition-colors ${meta.headingClass} ${sidebarCollapsed && !isMobileMenuOpen ? "justify-center px-0" : "px-3"} ${
+                      themeMode === 'light' ? 'text-slate-400' : ''
+                    }`}
                   >
                     <span
-                      className={`w-1.5 h-1.5 rounded-full ${meta.dotClass}`}
+                      className={`w-1.5 h-1.5 rounded-full transition-colors ${meta.dotClass} ${
+                        themeMode === 'light' ? 'bg-slate-300' : ''
+                      }`}
                     ></span>
                     {(!sidebarCollapsed || isMobileMenuOpen) && sectionLabel}
                   </h3>
@@ -1325,15 +1327,19 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
                 <Menu size={20} />
               </button>
 
-              <div className="flex items-center gap-2 text-sm font-mono text-slate-400">
-                <span className="text-cyan-500/50">~</span>
+              <div className="flex items-center gap-2 text-sm font-mono transition-colors">
+                <span className={themeMode === 'light' ? 'text-indigo-400' : 'text-cyan-500/50'}>~</span>
                 <span className="text-slate-500">/</span>
-                <span className="text-slate-200 truncate max-w-[100px] md:max-w-none">
+                <span className={`truncate max-w-[100px] md:max-w-none transition-colors ${
+                  themeMode === 'light' ? 'text-slate-600 font-semibold' : 'text-slate-200'
+                }`}>
                   {pathname === "/"
                     ? t("nav.dashboard", "Dashboard")
                     : pathname.replace("/", "")}
                 </span>
-                <span className="animate-pulse text-cyan-400 font-bold">_</span>
+                <span className={`animate-pulse font-bold transition-colors ${
+                  themeMode === 'light' ? 'text-indigo-600' : 'text-cyan-400'
+                }`}>_</span>
               </div>
             </div>
 
@@ -1341,7 +1347,11 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
               {canRoleAccessAdminPath(activeRole, "/front-builder-v2") && (
                 <Link
                   href="/front-builder-v2"
-                  className="hidden xl:inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-cyan-500/40"
+                  className={`hidden xl:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${
+                    themeMode === 'light'
+                      ? 'border-indigo-100 bg-indigo-50 text-indigo-600 hover:border-indigo-300 hover:bg-indigo-100 shadow-sm'
+                      : 'border-slate-700 bg-slate-900/60 text-slate-200 hover:border-cyan-500/40'
+                  }`}
                   title="Open Website Builder V2"
                 >
                   <Wand2 size={13} />
@@ -1351,7 +1361,11 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
               {canShowProposalBuilder && (
                 <Link
                   href="/proposal-builder"
-                  className="hidden 2xl:inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-cyan-500/40"
+                  className={`hidden 2xl:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${
+                    themeMode === 'light'
+                      ? 'border-indigo-100 bg-indigo-50 text-indigo-600 hover:border-indigo-300 hover:bg-indigo-100 shadow-sm'
+                      : 'border-slate-700 bg-slate-900/60 text-slate-200 hover:border-cyan-500/40'
+                  }`}
                   title="Open Proposal Builder"
                 >
                   <FileText size={13} />
@@ -1361,7 +1375,11 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
               {canShowResumeBuilder && (
                 <Link
                   href="/resume-builder"
-                  className="hidden 2xl:inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-cyan-500/40"
+                  className={`hidden 2xl:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${
+                    themeMode === 'light'
+                      ? 'border-indigo-100 bg-indigo-50 text-indigo-600 hover:border-indigo-300 hover:bg-indigo-100 shadow-sm'
+                      : 'border-slate-700 bg-slate-900/60 text-slate-200 hover:border-cyan-500/40'
+                  }`}
                   title="Open Resume Builder"
                 >
                   <FileText size={13} />
@@ -1371,7 +1389,11 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
               {canShowPortfolioProfileBuilder && (
                 <Link
                   href="/portfolio-profile-builder"
-                  className="hidden 2xl:inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-cyan-500/40"
+                  className={`hidden 2xl:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${
+                    themeMode === 'light'
+                      ? 'border-indigo-100 bg-indigo-50 text-indigo-600 hover:border-indigo-300 hover:bg-indigo-100 shadow-sm'
+                      : 'border-slate-700 bg-slate-900/60 text-slate-200 hover:border-cyan-500/40'
+                  }`}
                   title="Open Portfolio Builder"
                 >
                   <FileText size={13} />
@@ -1382,9 +1404,10 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
                 <button
                   type="button"
                   onClick={() => setQuickBodhOpen((prev) => !prev)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${isQuickBodhDrawerOpen
-                    ? "border-cyan-400/60 bg-cyan-500/20 text-cyan-100"
-                    : "border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500"
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${
+                    isQuickBodhDrawerOpen
+                      ? themeMode === 'light' ? "border-indigo-400 bg-indigo-600 text-white shadow-lg" : "border-cyan-400/60 bg-cyan-500/20 text-cyan-100"
+                      : themeMode === 'light' ? "border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 shadow-sm" : "border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500"
                     }`}
                   title="Open KalpBodh quick assistant"
                 >
@@ -1396,7 +1419,7 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
               {/* Theme Toggle */}
               <button
                 type="button"
-                onClick={toggleTheme}
+                onClick={toggleThemeMode}
                 className={`flex items-center justify-center w-9 h-9 rounded-full border transition-all duration-300 ${
                   themeMode === 'light'
                     ? "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 shadow-sm"
@@ -1407,10 +1430,14 @@ const [tenantAdminNavItems, setTenantAdminNavItems] = useState<VerticalConfig | 
                 {themeMode === 'light' ? <Moon size={16} /> : <Sun size={16} />}
               </button>
 
-              {/* Language Switcher */}
+               {/* Language Switcher */}
               <LanguageSwitcher />
-              <div className="hidden sm:flex items-center gap-4 bg-slate-900/50 px-2 py-1.5 rounded-full border border-slate-800 shadow-inner">
-                <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold ml-2">
+              <div className={`hidden sm:flex items-center gap-4 px-2 py-1.5 rounded-full border shadow-inner transition-all ${
+                themeMode === 'light' ? 'bg-slate-50 border-slate-100' : 'bg-slate-900/50 border-slate-800'
+              }`}>
+                <div className={`text-[10px] uppercase tracking-widest font-bold ml-2 transition-colors ${
+                  themeMode === 'light' ? 'text-slate-400' : 'text-slate-400'
+                }`}>
                   {t("topbar.role", "Role")}:
                 </div>
              
