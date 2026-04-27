@@ -42,6 +42,7 @@ import {
 import { getAppLabel } from "@/lib/app-labels";
 import { INDUSTRIES as BUSINESS_TEMPLATE_GROUPS } from "@/lib/business-templates";
 import { resolveOnboardingVerticalSelection } from "@/lib/onboarding-verticals";
+import { getPlatformDomainState } from "@/lib/website-deployment";
 import { TagInput } from "@/components/ui/tag-input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -295,7 +296,10 @@ type DeploymentSummary = {
   websiteUrl: string | null;
   repoUrl: string | null;
   platformUrl: string | null;
+  platformUrlReady: boolean;
   platformHost: string | null;
+  platformDomainStatus: string | null;
+  platformDomainMessage: string | null;
   websiteMessage: string | null;
   domains: TenantWebsiteDomainDto[];
   ownerAccountMessage: string | null;
@@ -422,11 +426,12 @@ function buildDeploymentSummary(
   }
 ): DeploymentSummary {
   const websiteDeployment = tenant.website_deployment;
+  const platformDomainState = getPlatformDomainState(websiteDeployment);
   const platformUrl =
     websiteDeployment?.platform_url ??
     buildPlatformUrlFallback(tenant.slug);
   const platformHost =
-    websiteDeployment?.platform_host ??
+    platformDomainState.host ??
     (platformUrl ? new URL(platformUrl).host : null);
   return {
     tenantKey: tenant.slug,
@@ -442,7 +447,10 @@ function buildDeploymentSummary(
     websiteUrl: websiteDeployment?.production_url ?? `${window.location.origin}/${tenant.slug}`,
     repoUrl: websiteDeployment?.repo_url ?? null,
     platformUrl,
+    platformUrlReady: platformDomainState.ready,
     platformHost,
+    platformDomainStatus: platformDomainState.status,
+    platformDomainMessage: platformDomainState.message,
     websiteMessage: websiteDeployment?.message ?? null,
     domains: websiteDeployment?.domains ?? [],
     ownerAccountMessage: options.ownerAccountMessage ?? null,
@@ -2760,10 +2768,18 @@ export default function OnboardingWizard() {
                                     ) : (
                                       <div className="mt-1 text-slate-500">Pending</div>
                                     )}
+                                    {deploymentResult.platformDomainStatus === "pending_dns" &&
+                                    deploymentResult.websiteUrl &&
+                                    deploymentResult.websiteUrl !== deploymentResult.platformUrl ? (
+                                      <div className="mt-2 text-xs leading-relaxed text-amber-200">
+                                        This preview is already live. The platform subdomain will open after DNS is ready.
+                                      </div>
+                                    ) : null}
                                   </div>
                                   <div>
                                     <div className="text-slate-500">Platform Host</div>
-                                    {deploymentResult.platformUrl ? (
+                                    {deploymentResult.platformUrl &&
+                                    deploymentResult.platformUrlReady ? (
                                       <a
                                         href={deploymentResult.platformUrl}
                                         target="_blank"
@@ -2772,13 +2788,31 @@ export default function OnboardingWizard() {
                                       >
                                         {deploymentResult.platformUrl}
                                       </a>
-                                    ) : deploymentResult.platformHost ? (
+                                    ) : deploymentResult.platformUrl ||
+                                      deploymentResult.platformHost ? (
                                       <div className="mt-1 break-all font-mono text-white">
-                                        {deploymentResult.platformHost}
+                                        {deploymentResult.platformUrl ??
+                                          deploymentResult.platformHost}
                                       </div>
                                     ) : (
                                       <div className="mt-1 text-slate-500">Pending</div>
                                     )}
+                                    {deploymentResult.platformDomainStatus ? (
+                                      <div
+                                        className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-widest ${
+                                          deploymentResult.platformDomainStatus === "ready"
+                                            ? "bg-emerald-500/15 text-emerald-200"
+                                            : "bg-amber-500/15 text-amber-200"
+                                        }`}
+                                      >
+                                        {deploymentResult.platformDomainStatus.replace(/_/g, " ")}
+                                      </div>
+                                    ) : null}
+                                    {deploymentResult.platformDomainMessage ? (
+                                      <div className="mt-2 text-xs leading-relaxed text-slate-400">
+                                        {deploymentResult.platformDomainMessage}
+                                      </div>
+                                    ) : null}
                                   </div>
                                   <div>
                                     <div className="text-slate-500">GitHub Repo</div>

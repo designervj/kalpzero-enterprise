@@ -17,6 +17,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useAuth as useRootAuth } from "@/components/providers/auth-provider";
 import { canRoleMutateUi } from "@/lib/role-scope";
 import { getTenants as getPlatformTenants, type TenantDto } from "@/lib/api";
+import { getPlatformDomainState } from "@/lib/website-deployment";
 import {
   buildEditForm,
   describeBusinessType,
@@ -397,11 +398,16 @@ export default function TenantIdentitiesPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {platformTenants.map((tenant) => (
-              <div
-                key={tenant.id}
-                className="rounded-xl border border-slate-800/80 bg-black/30 p-5"
-              >
+            {platformTenants.map((tenant) => {
+              const platformDomainState = getPlatformDomainState(
+                tenant.website_deployment,
+              );
+
+              return (
+                <div
+                  key={tenant.id}
+                  className="rounded-xl border border-slate-800/80 bg-black/30 p-5"
+                >
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -436,7 +442,8 @@ export default function TenantIdentitiesPage() {
                         Open live site
                       </a>
                     ) : null}
-                    {tenant.website_deployment?.platform_url ? (
+                    {tenant.website_deployment?.platform_url &&
+                    platformDomainState.ready ? (
                       <a
                         href={tenant.website_deployment.platform_url}
                         target="_blank"
@@ -446,6 +453,10 @@ export default function TenantIdentitiesPage() {
                         <Globe2 size={14} className="mr-2" />
                         Open platform subdomain
                       </a>
+                    ) : tenant.website_deployment?.platform_url ? (
+                      <span className="inline-flex h-10 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 text-sm font-semibold text-amber-200">
+                        Platform subdomain pending DNS
+                      </span>
                     ) : null}
                   </div>
                 </div>
@@ -473,9 +484,25 @@ export default function TenantIdentitiesPage() {
                     </div>
                     <div className="mt-2 break-all text-sm text-slate-200">
                       {tenant.website_deployment?.platform_url ??
-                        tenant.website_deployment?.platform_host ??
+                        platformDomainState.host ??
                         "Pending"}
                     </div>
+                    {platformDomainState.status ? (
+                      <div
+                        className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-widest ${
+                          platformDomainState.ready
+                            ? "bg-emerald-500/15 text-emerald-200"
+                            : "bg-amber-500/15 text-amber-200"
+                        }`}
+                      >
+                        {platformDomainState.status.replace(/_/g, " ")}
+                      </div>
+                    ) : null}
+                    {platformDomainState.message ? (
+                      <div className="mt-2 text-xs leading-relaxed text-slate-400">
+                        {platformDomainState.message}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -500,8 +527,9 @@ export default function TenantIdentitiesPage() {
                     </div>
                   </div>
                 ) : null}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

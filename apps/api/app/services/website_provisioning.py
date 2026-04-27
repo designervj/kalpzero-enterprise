@@ -289,6 +289,7 @@ def sync_self_hosted_website_domains(
     )
     message = _combine_self_hosted_status_message(
         domain_message=message,
+        production_url=production_url,
         local_repo_path=local_repo_path,
         repo_sync_warning=repo_sync_warning,
     )
@@ -548,6 +549,7 @@ def _provision_github_self_hosted(
     )
     message = _combine_self_hosted_status_message(
         domain_message=provisioning_message,
+        production_url=production_url,
         local_repo_path=local_repo_path,
         repo_sync_warning=repo_sync_warning,
     )
@@ -822,10 +824,15 @@ def _build_domain_sync_message(*, ready_hosts: list[str], pending_dns_hosts: lis
 def _combine_self_hosted_status_message(
     *,
     domain_message: str,
+    production_url: str | None,
     local_repo_path: str | None,
     repo_sync_warning: str | None,
 ) -> str:
     parts = [domain_message.strip()]
+    if "waiting for DNS" in domain_message and production_url:
+        parsed_preview = urlparse(production_url)
+        if parsed_preview.scheme and parsed_preview.netloc and parsed_preview.path not in {"", "/"}:
+            parts.append(f"Use {production_url} until DNS is ready.")
     if local_repo_path:
         parts.append("The GitHub repo is also mirrored on this server.")
     elif repo_sync_warning:

@@ -675,11 +675,13 @@ def test_platform_admin_can_sync_self_hosted_domains_after_dns_is_ready(
         },
     )
     assert tenant_response.status_code == 201
-    assert tenant_response.json()["website_deployment"]["production_url"] == "https://kalptree.xyz/sync-tenant"
+    website_deployment = tenant_response.json()["website_deployment"]
+    assert website_deployment["production_url"] == "https://kalptree.xyz/sync-tenant"
     assert all(
         domain["ssl_status"] == "pending_dns"
-        for domain in tenant_response.json()["website_deployment"]["domains"]
+        for domain in website_deployment["domains"]
     )
+    assert "Use https://kalptree.xyz/sync-tenant until DNS is ready." in website_deployment["message"]
 
     monkeypatch.setattr(
         website_provisioning,
