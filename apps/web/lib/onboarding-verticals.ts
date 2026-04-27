@@ -154,21 +154,6 @@ export function describeSelectedBusinessType(value: BusinessTypeLike | null | un
 function inferDomainFromBusinessType(
   input: BusinessTypeLike,
 ): CandidateOnboardingDomain | null {
-  const modules =
-    typeof input === "object" && input
-      ? normalizeModuleList((input as { enabledModules?: unknown }).enabledModules)
-      : [];
-
-  if (modules.includes("tour_management")) {
-    return "travel";
-  }
-  if (modules.includes("hotel_management")) {
-    return "hotel";
-  }
-  if (modules.includes("ecommerce")) {
-    return "commerce";
-  }
-
   const rawSignals =
     typeof input === "string"
       ? [input]
@@ -195,6 +180,21 @@ function inferDomainFromBusinessType(
   }
   if (hasKeyword(signal, UNSUPPORTED_KEYWORDS)) {
     return "unsupported";
+  }
+
+  const modules =
+    typeof input === "object" && input
+      ? normalizeModuleList((input as { enabledModules?: unknown }).enabledModules)
+      : [];
+
+  if (modules.includes("tour_management")) {
+    return "travel";
+  }
+  if (modules.includes("hotel_management")) {
+    return "hotel";
+  }
+  if (modules.includes("ecommerce")) {
+    return "commerce";
   }
 
   return null;
@@ -275,6 +275,17 @@ export function resolveOnboardingVerticalSelection(
       primaryBusinessType,
       businessDomains,
       message: null,
+    };
+  }
+
+  if (labels.length > 0) {
+    return {
+      status: "unsupported",
+      verticalPack: null,
+      primaryBusinessType,
+      businessDomains,
+      message:
+        "Selected business types do not map to the current onboarding pilot. Right now only commerce/ecommerce and hotel businesses can be onboarded here.",
     };
   }
 

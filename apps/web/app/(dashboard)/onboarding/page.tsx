@@ -40,10 +40,7 @@ import {
   mergeAdminTheme,
 } from "@/lib/admin-theme";
 import { getAppLabel } from "@/lib/app-labels";
-import {
-  findBusinessTemplateFromCatalog,
-  getBusinessAttributeCatalog,
-} from "@/lib/business-template-catalog";
+import { INDUSTRIES as BUSINESS_TEMPLATE_GROUPS } from "@/lib/business-templates";
 import { resolveOnboardingVerticalSelection } from "@/lib/onboarding-verticals";
 import { TagInput } from "@/components/ui/tag-input";
 import { Badge } from "@/components/ui/badge";
@@ -210,46 +207,64 @@ async function fetchJson(path: string) {
 }
 
 function buildFallbackIndustryTemplates() {
-  const catalog = getBusinessAttributeCatalog();
-
-  return catalog.industries.map((industryEntry) => {
-    const businessTypes = industryEntry.businessTypes.map((entry) => {
-      const resolved = findBusinessTemplateFromCatalog({
-        industry: industryEntry.industry,
-        businessType: entry.name,
-      });
-
-      return {
-        key: resolved?.businessTypeKey || entry.key,
-        name: resolved?.businessType || entry.name,
-        icon: resolved?.industryIcon || "🏢",
-        description: resolved?.description || entry.description || "",
-        enabledModules: resolved?.enabledModules || [
-          "branding",
-          "website",
-          "kalpbodh",
-        ],
-        featureFlags: resolved?.featureFlags || {},
-        businessContexts: resolved?.businessContexts || [],
-        attributePool: resolved?.attributePool || [],
-        attributeSetPreset: resolved?.attributeSetPresets || [],
-        attributeSets: resolved?.attributeSetPresets || [],
-        categorySeedPreset: resolved?.categorySeedPreset || [],
-      };
-    });
-
-    return {
-      key: industryEntry.key,
-      industry: industryEntry.industry,
-      icon: businessTypes[0]?.icon || "🏢",
-      businessTypes,
-      source: "business-attributes-catalog",
-    };
-  });
+  return BUSINESS_TEMPLATE_GROUPS.map((industryEntry) => ({
+    key: slugifyValue(industryEntry.industry, industryEntry.industry, 80),
+    industry: industryEntry.industry,
+    icon: industryEntry.icon || "🏢",
+    businessTypes: industryEntry.businessTypes.map((entry) => ({
+      key: slugifyValue(entry.businessType, entry.businessType, 80),
+      name: entry.businessType,
+      icon: entry.icon || industryEntry.icon || "🏢",
+      description: entry.description || "",
+      enabledModules: Array.isArray(entry.enabledModules)
+        ? entry.enabledModules
+        : ["branding", "website", "kalpbodh"],
+      featureFlags:
+        entry.featureFlags && typeof entry.featureFlags === "object"
+          ? entry.featureFlags
+          : {},
+      businessContexts: [],
+      attributePool: Array.isArray(entry.attributePool) ? entry.attributePool : [],
+      attributeSetPreset: [],
+      attributeSets: [],
+      categorySeedPreset: [],
+    })),
+    source: "business-template-registry",
+  }));
 }
 
-const FALLBACK_INDUSTRY_TEMPLATES = buildFallbackIndustryTemplates();
-const FALLBACK_ATTRIBUTE_CATALOG = getBusinessAttributeCatalog();
+function filterSupportedOnboardingIndustries(templates: any[]) {
+  return templates
+    .map((industryEntry: any) => {
+      const businessTypes = Array.isArray(industryEntry?.businessTypes)
+        ? industryEntry.businessTypes.filter((entry: any) => {
+            const resolution = resolveOnboardingVerticalSelection(
+              [entry],
+              Array.isArray(entry?.enabledModules) ? entry.enabledModules : [],
+            );
+            return (
+              resolution.status === "supported" &&
+              (resolution.verticalPack === "commerce" ||
+                resolution.verticalPack === "hotel")
+            );
+          })
+        : [];
+
+      if (businessTypes.length === 0) {
+        return null;
+      }
+
+      return {
+        ...industryEntry,
+        businessTypes,
+      };
+    })
+    .filter(Boolean);
+}
+
+const FALLBACK_INDUSTRY_TEMPLATES = filterSupportedOnboardingIndustries(
+  buildFallbackIndustryTemplates(),
+);
 
 const AI_QUICK_PROMPTS = [
   "Explain why these modules were selected",
@@ -540,10 +555,14 @@ export default function OnboardingWizard() {
         if (!active) {
           return;
         }
-        const hasLiveIndustryTemplates =
-          Array.isArray(templates) && templates.length > 0;
+        const supportedLiveIndustryTemplates = filterSupportedOnboardingIndustries(
+          Array.isArray(templates) ? templates : [],
+        );
+        const hasLiveIndustryTemplates = supportedLiveIndustryTemplates.length > 0;
         setIndustries(
-          hasLiveIndustryTemplates ? templates : FALLBACK_INDUSTRY_TEMPLATES,
+          hasLiveIndustryTemplates
+            ? supportedLiveIndustryTemplates
+            : FALLBACK_INDUSTRY_TEMPLATES,
         );
         setIsUsingCatalogFallback(!hasLiveIndustryTemplates);
         setAvailableLanguages(Array.isArray(langs) ? langs : []);
@@ -552,7 +571,7 @@ export default function OnboardingWizard() {
             typeof attrCatalog === "object" &&
             Array.isArray((attrCatalog as any).industries)
             ? attrCatalog
-            : FALLBACK_ATTRIBUTE_CATALOG,
+            : null,
         );
         const landingList = Array.isArray(landing) ? landing : [];
         setLandingTemplates(landingList);
@@ -1590,9 +1609,10 @@ export default function OnboardingWizard() {
                         </label>
                         {!isLoadingData && isUsingCatalogFallback && (
                           <p className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
-                            Live industry templates are unavailable right now.
-                            Kalp is using the bundled onboarding catalog so you
-                            can still select an industry and business type.
+                            Live industry templates are missing or are not
+                            aligned with the current onboarding pilot. Kalp is
+                            showing the built-in commerce and hotel catalog
+                            instead.
                           </p>
                         )}
                         {isLoadingData ? (
@@ -1634,9 +1654,9 @@ export default function OnboardingWizard() {
                         )}
                         {!isLoadingData && industries.length === 0 && (
                           <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100">
-                            No industry templates are available for onboarding.
-                            Sync the system template registry or use the bundled
-                            business catalog.
+                            No commerce or hotel onboarding templates are
+                            available right now. Sync the system template
+                            registry with pilot-supported business types.
                           </div>
                         )}
                       </div>
