@@ -1,24 +1,34 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { TenantSwitcherOption } from "@/components/adminLayout/AdminLayout";
 import { Tenant } from "@/app/(dashboard)/settings/tenant/tenantType";
 import { buildApiUrl } from "@/lib/api";
+import { TenantSwitcherOption } from "./tenantType";
+
+
 
 // Fetch all tenants
 export const fetchTenants = createAsyncThunk<
   TenantSwitcherOption[],
-  void,
+  { auth_token: string },
   { rejectValue: string }
->("tenant/fetchTenants", async (_, { rejectWithValue }) => {
+>("tenant/fetchTenants", async ({ auth_token }, { rejectWithValue }) => {
   try {
-    const response = await fetch("/api/auth/tenant-options");
+    const url = buildApiUrl("/platform/tenants");
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${auth_token}`
+      }
+    });
 
+    console.log(" response", response)
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Failed to fetch tenants");
     }
     const data = await response.json();
-
-    return data?.items as TenantSwitcherOption[];
+    console.log(" all tenant  data", data)
+    return data?.tenants as TenantSwitcherOption[];
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch tenants");
   }

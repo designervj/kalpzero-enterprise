@@ -7,23 +7,27 @@ import { AppDispatch, RootState } from "@/hook/store/store";
 import { fetchTenants } from "@/hook/slices/kalp_master/master_tenant/TenantThunk";
 
 const GetAllTenant = () => {
-  const authCtx = useAuth();
+
+  const {authUser}= useSelector((state:RootState)=>state.auth);
   const dispatch = useDispatch<AppDispatch>();
   const isApi = useRef<boolean>(false);
   const { allTenant, currentTenant, isFetchedAlltenant } = useSelector(
     (state: RootState) => state.tenant,
   );
   useEffect(() => {
-    if (!authCtx.user) {
-      return;
-    }
-    if (!isFetchedAlltenant && !isApi.current) {
+
+    if (!isFetchedAlltenant &&
+      authUser?.role==="platform_owner" && 
+      !isApi.current) {
       isApi.current = true;
-      dispatch(fetchTenants());
+    
+      if (authUser?.access_token) {
+        dispatch(fetchTenants({ auth_token: authUser.access_token }));
+      }
     } else {
       isApi.current = false;
     }
-  }, [authCtx.user, isFetchedAlltenant]);
+  }, [authUser, isFetchedAlltenant]);
   return null;
 };
 

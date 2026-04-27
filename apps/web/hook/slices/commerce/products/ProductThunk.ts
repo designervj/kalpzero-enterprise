@@ -35,7 +35,8 @@ export const fetchProducts = createAsyncThunk<
     }
     
     const data = await response.json();
-    return (data?.products || data) as Product[];
+   const result:Product[] = data?.data || data?.products || data;
+   return (Array.isArray(result) ? result : []) as Product[];
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch products");
   }

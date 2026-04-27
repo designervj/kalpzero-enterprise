@@ -59,6 +59,7 @@ import {
 import { adminvertical, commerce_vertical } from "./vertical/businessVertical";
 import { CollapsibleNavGroup } from "./CollapsibleNavGroup";
 import GetTenant from "./GetTenant";
+import { TenantSwitcherOption } from "@/hook/slices/kalp_master/master_tenant/tenantType";
 
 
 
@@ -80,14 +81,6 @@ function hasBusinessContext(
 }
 
 
-
-export interface TenantSwitcherOption {
-  _id?: string;
-  key?: string;
-  name?: string;
-  subscriptionLevel?: string;
-  agencyId?: string | null;
-}
 
 interface AgencyBranding {
   agencyName: string;
@@ -612,7 +605,7 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
 
   const { allTenant } = useAppSelector((state: RootState) => state.tenant);
   useEffect(() => {
-    if (allTenant.length > 0) {
+    if ( allTenant&&allTenant.length > 0) {
       setTenantOptions(allTenant);
     }
   }, [allTenant]);
@@ -706,31 +699,31 @@ export function AdminLayout({ children, activeTenant }: AdminLayoutProps) {
   }, [tenantPickerOpen]);
 
   const handleTenantSwitch = async (nextTenant: string) => {
-    if (!nextTenant || nextTenant === activeTenant) return;
-    setTenantSwitchError("");
-    setTenantSwitchingTo(nextTenant);
-    try {
-      const res = await fetch("/api/auth/switch-tenant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantKey: nextTenant }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(
-          typeof payload?.error === "string" && payload.error.trim()
-            ? payload.error
-            : "Failed to switch tenant.",
-        );
-      }
-      setTenantPickerOpen(false);
-      window.location.href = pathname || "/dashboard";
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to switch tenant.";
-      setTenantSwitchError(message);
-      setTenantSwitchingTo(null);
-    }
+    // if (!nextTenant || nextTenant === activeTenant) return;
+    // setTenantSwitchError("");
+    // setTenantSwitchingTo(nextTenant);
+    // try {
+    //   const res = await fetch("/api/auth/switch-tenant", {
+    //     method: "POST",
+    //     headers: { "Content-Type": "application/json" },
+    //     body: JSON.stringify({ tenantKey: nextTenant }),
+    //   });
+    //   const payload = await res.json().catch(() => ({}));
+    //   if (!res.ok) {
+    //     throw new Error(
+    //       typeof payload?.error === "string" && payload.error.trim()
+    //         ? payload.error
+    //         : "Failed to switch tenant.",
+    //     );
+    //   }
+    //   setTenantPickerOpen(false);
+    //   window.location.href = pathname || "/dashboard";
+    // } catch (error: unknown) {
+    //   const message =
+    //     error instanceof Error ? error.message : "Failed to switch tenant.";
+    //   setTenantSwitchError(message);
+    //   setTenantSwitchingTo(null);
+    // }
   };
 
   const canOpenKalpBodhDrawer = useMemo(() => {

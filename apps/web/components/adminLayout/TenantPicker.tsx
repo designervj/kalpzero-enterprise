@@ -3,7 +3,11 @@
 import React, { useState, useMemo } from "react";
 import { X, Search as SearchIcon } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/context";
-import { TenantSwitcherOption } from "./AdminLayout";
+
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/hook/store/store";
+import { setCurrentTenant } from "@/hook/slices/kalp_master/master_tenant/TenantSlice";
+import { TenantSwitcherOption } from "@/hook/slices/kalp_master/master_tenant/tenantType";
 
 interface TenantPickerProps {
   isOpen: boolean;
@@ -24,7 +28,7 @@ export function TenantPicker({
 }: TenantPickerProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
-
+  const dispatch = useDispatch<AppDispatch>()
   const filteredOptions = useMemo(() => {
     const q = query.trim().toLowerCase();
     const source =
@@ -33,14 +37,23 @@ export function TenantPicker({
         : [{ key: activeTenant, name: activeTenant }];
     if (!q) return source;
     return source.filter(
-      (item) =>
-        item?.key?.toLowerCase().includes(q) ||
-        item?.name?.toLowerCase().includes(q)
+      (item) => {
+        const searchKey = (item?.slug || item?.key || "").toLowerCase();
+        const searchName = (item?.display_name || item?.name || "").toLowerCase();
+        return searchKey.includes(q) || searchName.includes(q);
+      }
     );
   }, [tenantOptions, query, activeTenant]);
 
   if (!isOpen) return null;
 
+
+  const handleSwitch = (item: TenantSwitcherOption) => {
+    dispatch(setCurrentTenant(item))
+    // onSwitch(item?.slug || item?.key || "");
+    onClose();
+  };
+  
   return (
     <div className="absolute inset-0 z-[80] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4">
       <div className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl">
@@ -86,12 +99,14 @@ export function TenantPicker({
               </div>
             ) : (
               filteredOptions.map((item) => {
-                const isActive = item.key === activeTenant;
+                const itemKey = item.slug || item.key;
+                const isActive = itemKey === activeTenant;
                 return (
                   <button
-                    key={item.key}
+                    key={itemKey}
                     type="button"
-                    onClick={() => onSwitch(item?.key ?? "")}
+                    onClick={()=>handleSwitch(item)}
+                    // onClick={() => onSwitch(item?.slug || item?.key || "")}
                     disabled={switchingTo !== null}
                     className={`w-full rounded-lg border px-3 py-2 text-left transition ${
                       isActive
@@ -102,10 +117,10 @@ export function TenantPicker({
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-slate-100">
-                          {item.name}
+                          {item.display_name || item.name}
                         </div>
                         <div className="truncate text-[11px] font-mono text-slate-500">
-                          {item.key}
+                          {item.slug || item.key}
                         </div>
                       </div>
                       <span
