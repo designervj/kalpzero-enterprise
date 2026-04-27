@@ -99,7 +99,7 @@ const handleView = (product: Product) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filtered.map((product) => (
+          {filtered?.map((product) => (
             <TableRow key={product.id} className="group border-slate-800/40 hover:bg-emerald-500/[0.03] transition-all duration-300">
               <TableCell className="px-10 py-5">
                 <div className="flex items-center gap-5">

@@ -5,7 +5,10 @@ import Link from "next/link";
 import { Settings, LogOut } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/context";
 import { useAuth } from "../AuthProvider";
-import { TenantSwitcherOption } from "./AdminLayout";
+
+import { useSelector } from "react-redux";
+import { RootState } from "@/hook/store/store";
+import { TenantSwitcherOption } from "@/hook/slices/kalp_master/master_tenant/tenantType";
 
 interface SidebarFooterProps {
   sidebarCollapsed: boolean;
@@ -33,8 +36,8 @@ export function SidebarFooter({
   onLogout,
 }: SidebarFooterProps) {
   const { t } = useTranslation();
-  const authCtx = useAuth();
-
+  const {currentTenant}= useSelector((state:RootState)=>state.tenant)
+  const {authUser}= useSelector((state:RootState)=>state.auth)
   const isActuallyCollapsed = sidebarCollapsed && !isMobileMenuOpen;
 
   return (
@@ -67,11 +70,11 @@ export function SidebarFooter({
         }`}
       >
         {isActuallyCollapsed ? (
-          <span className="text-slate-400">{activeTenant}</span>
+          <span className="text-slate-400">{currentTenant?.mongo_db_name}</span>
         ) : (
           <>
-            <span className="text-slate-500 mr-2">db:</span>kalp_tenant_
-            {activeTenant}
+            <span className="text-slate-500 mr-2">db:</span>
+            {currentTenant?.mongo_db_name}
           </>
         )}
       </div>
@@ -93,9 +96,10 @@ export function SidebarFooter({
             ) : (
               <span className="flex items-center justify-between">
                 <span className="truncate">
-                  {tenantOptions.find((item) => item.key === activeTenant)?.name ||
+                  {/* {tenantOptions.find((item) => item.key === activeTenant)?.name ||
                     activeTenant}{" "}
-                  ({activeTenant})
+                  ({activeTenant}) */}
+                  {currentTenant?.display_name}
                 </span>
                 <span className="text-slate-500">
                   {tenantOptions.length || 1}
@@ -115,7 +119,7 @@ export function SidebarFooter({
       )}
 
       {/* User Info */}
-      {authCtx.user && (
+      {authUser && (
         <div
           className={`mt-3 rounded-lg border border-slate-800 bg-slate-900/60 ${
             isActuallyCollapsed ? "p-2" : "p-3"
@@ -128,15 +132,15 @@ export function SidebarFooter({
           >
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xs font-bold">
-                {authCtx.user.name?.charAt(0).toUpperCase() || "U"}
+                {authUser?.name?.charAt(0).toUpperCase() || "U"}
               </div>
               {!isActuallyCollapsed && (
                 <div className="min-w-0">
                   <div className="text-xs text-white font-medium leading-none truncate">
-                    {authCtx.user.name}
+                    {authUser?.name}
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono truncate">
-                    {authCtx.user.email}
+                    {authUser?.email}
                   </div>
                 </div>
               )}
