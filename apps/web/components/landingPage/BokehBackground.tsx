@@ -32,18 +32,32 @@ const lightLines = Array.from({ length: 20 }, (_, i) => {
   };
 });
 
+import { useTheme } from '@/components/providers/theme-provider';
+
 export default function BokehBackground() {
+  const { themeMode } = useTheme();
+
   return (
-    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slate-950">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950" />
+    <div className={`fixed inset-0 z-0 overflow-hidden pointer-events-none transition-colors duration-500 ${
+      themeMode === 'light' ? 'bg-[#fcfdff]' : 'bg-slate-950'
+    }`}>
+      <div className={`absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] transition-opacity duration-500 ${
+        themeMode === 'light' 
+          ? 'from-indigo-100/40 via-[#fcfdff] to-[#fcfdff] opacity-100' 
+          : 'from-indigo-900/20 via-slate-950 to-slate-950 opacity-100'
+      }`} />
       
       {/* Animated Bokeh Circles */}
       {bokehCircles.map((circle, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full mix-blend-screen filter blur-[100px] opacity-30"
+          className={`absolute rounded-full filter blur-[100px] transition-all duration-500 ${
+            themeMode === 'light' 
+              ? 'mix-blend-multiply opacity-15' 
+              : 'mix-blend-screen opacity-30'
+          }`}
           style={{
-            background: circle.background, // Pink and Blue colors
+            background: circle.background,
             width: circle.width,
             height: circle.height,
             top: circle.top,
@@ -63,11 +77,13 @@ export default function BokehBackground() {
       ))}
       
       {/* Light Speed Lines (Subtle) */}
-      <div className="absolute inset-0 opacity-20">
+      <div className={`absolute inset-0 transition-opacity duration-500 ${themeMode === 'light' ? 'opacity-10' : 'opacity-20'}`}>
          {lightLines.map((line, i) => (
             <motion.div
               key={`line-${i}`}
-              className="absolute h-[1px] bg-gradient-to-r from-transparent via-fuchsia-500 to-transparent"
+              className={`absolute h-[1px] bg-gradient-to-r from-transparent to-transparent ${
+                themeMode === 'light' ? 'via-indigo-500' : 'via-fuchsia-500'
+              }`}
               style={{
                 top: line.top,
                 left: '-100%',
