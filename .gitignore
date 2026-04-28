@@ -67,6 +67,7 @@ logs/
 .codex
 actions-runner/
 graphify-out/
+.business-sites/
 /actions-runner
 /scripts
 README.md

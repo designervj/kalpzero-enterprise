@@ -253,6 +253,28 @@ export const adminvertical: VerticalConfig = {
                     "route": "/forms/submissions"
                 }
             ]
+        },
+        {
+            "label": "Marketing Hub",
+            "key": "marketing-hub",
+            "icon": "zap",
+            "children": [
+                {
+                    "label": "Business DNA",
+                    "key": "business-dna",
+                    "route": "/marketing/business-dna"
+                },
+                {
+                    "label": "Campaigns",
+                    "key": "campaigns",
+                    "route": "/marketing/campaigns"
+                },
+                {
+                    "label": "Photoshoot",
+                    "key": "photoshoot",
+                    "route": "/marketing/photoshoot"
+                }
+            ]
         }
     ]
 }

@@ -65,6 +65,10 @@ def get_or_create_tenant_website_deployment(
     return deployment
 
 
+def list_website_deployments(db: Session) -> list[TenantWebsiteDeploymentModel]:
+    return list(db.scalars(select(TenantWebsiteDeploymentModel)))
+
+
 def list_tenant_website_domains(db: Session, *, tenant_id: str) -> list[TenantWebsiteDomainModel]:
     query = (
         select(TenantWebsiteDomainModel)

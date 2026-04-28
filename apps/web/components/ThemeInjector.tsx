@@ -93,7 +93,7 @@ export function ThemeInjector() {
                 const publicRes = await fetch(`/api/public/business/${encodeURIComponent(tenantHint)}`);
                 if (publicRes.ok) {
                     const data = await publicRes.json();
-                    applyRuntimeTheme(data.brandKit || { brand: data.brand || {} });
+                    applyRuntimeTheme(data.brandKit || { brand: data.brand || {} }, 'kalp-admin-mode');
                     return;
                 }
             }
@@ -101,28 +101,28 @@ export function ThemeInjector() {
             const adminThemeRes = await fetch('/api/settings/admin-theme');
             if (adminThemeRes.ok) {
                 const adminThemeData = await adminThemeRes.json();
-                applyRuntimeTheme(adminThemeData || {});
+                applyRuntimeTheme(adminThemeData || {}, 'kalp-admin-mode');
                 return;
             }
 
             const brandRes = await fetch('/api/settings/brand');
             if (brandRes.ok) {
                 const brandData = await brandRes.json();
-                applyRuntimeTheme(brandData || {});
+                applyRuntimeTheme(brandData || {}, 'kalp-admin-mode');
                 return;
             }
 
             const tenantRes = await fetch('/api/settings/tenant');
             if (tenantRes.ok) {
                 const tenantData = await tenantRes.json();
-                applyRuntimeTheme({ brand: tenantData.brand || {} });
+                applyRuntimeTheme({ brand: tenantData.brand || {} }, 'kalp-admin-mode');
             }
         };
 
         const handleRefresh = (event: Event) => {
             const detail = (event as CustomEvent<{ payload?: unknown }>).detail;
             if (detail?.payload && typeof detail.payload === 'object') {
-                applyRuntimeTheme(detail.payload as Record<string, unknown>);
+                applyRuntimeTheme(detail.payload as Record<string, unknown>, 'kalp-admin-mode');
                 return;
             }
             loadTheme().catch(() => { });

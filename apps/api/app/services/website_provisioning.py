@@ -1,6 +1,7 @@
 from base64 import b64encode
 import json
 import logging
+import os
 import re
 import shutil
 import socket
@@ -27,6 +28,10 @@ PENDING_DEPLOYMENT_STATUSES = {"QUEUED", "BUILDING", "INITIALIZING"}
 DEPLOYMENT_POLL_ATTEMPTS = 6
 DEPLOYMENT_POLL_INTERVAL_SECONDS = 5
 DOMAIN_PROVISION_TIMEOUT_SECONDS = 180
+SELF_HOSTED_APP_COMMAND_TIMEOUT_SECONDS = 900
+SELF_HOSTED_APP_HEALTH_ATTEMPTS = 20
+SELF_HOSTED_APP_HEALTH_INTERVAL_SECONDS = 3
+SELF_HOSTED_APP_REQUEST_TIMEOUT_SECONDS = 5
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +115,12 @@ def serialize_website_deployment(deployment, *, domains: list[object] | None = N
         "message": message,
         "last_error": deployment.last_error,
         "local_repo_path": metadata.get("local_repo_path"),
+        "local_runtime_path": metadata.get("local_runtime_path"),
+        "local_app_host": metadata.get("local_app_host"),
+        "local_app_port": metadata.get("local_app_port"),
+        "local_app_upstream": metadata.get("local_app_upstream"),
+        "local_app_url": metadata.get("local_app_url"),
+        "local_app_process_name": metadata.get("local_app_process_name"),
         "platform_url": metadata.get("platform_url"),
         "platform_host": metadata.get("platform_host"),
         "domains": serialize_website_domains(domains),
@@ -258,7 +269,8 @@ def sync_self_hosted_website_domains(
         tenant_id=str(tenant.id),
         provider=settings.website_provider,
     )
-    requested_primary_domains = deployment.metadata_json.get("requested_primary_domains")
+    deployment_metadata = deployment.metadata_json if isinstance(deployment.metadata_json, dict) else {}
+    requested_primary_domains = deployment_metadata.get("requested_primary_domains")
     normalized_primary_domains = (
         [normalize_host(value) for value in requested_primary_domains if isinstance(value, str)]
         if isinstance(requested_primary_domains, list)
@@ -273,25 +285,57 @@ def sync_self_hosted_website_domains(
         primary_domains=normalized_primary_domains,
     )
     repo_name = deployment.repo_name or build_repository_name(settings, tenant_slug=tenant.slug)
-    repo_full_name = deployment.metadata_json.get("github_full_name")
-    github_default_branch = deployment.metadata_json.get("github_default_branch")
+    repo_full_name = deployment_metadata.get("github_full_name")
+    github_default_branch = deployment_metadata.get("github_default_branch")
+    existing_local_app_metadata = _extract_local_app_metadata(deployment_metadata)
     local_repo_path, repo_sync_warning = _try_sync_local_repository_checkout(
         settings,
         repo_name=repo_name,
         repo_full_name=repo_full_name if isinstance(repo_full_name, str) else None,
         default_branch=github_default_branch if isinstance(github_default_branch, str) else None,
     )
+    local_app_metadata = dict(existing_local_app_metadata or {})
+    app_deploy_warning: str | None = None
+    if local_repo_path:
+        try:
+            local_app_metadata = _deploy_local_repository_website_app(
+                db,
+                settings,
+                deployment=deployment,
+                tenant_slug=tenant.slug,
+                repo_path=local_repo_path,
+            )
+        except WebsiteProvisioningError as exc:
+            if existing_local_app_metadata is None:
+                raise
+            app_deploy_warning = str(exc)
+            local_app_metadata = dict(existing_local_app_metadata)
+    elif existing_local_app_metadata is None:
+        raise WebsiteProvisioningError(
+            repo_sync_warning or "The business website repository could not be synced on this server."
+        )
+
+    web_upstream = local_app_metadata.get("local_app_upstream")
+    if not isinstance(web_upstream, str) or not web_upstream.strip():
+        raise WebsiteProvisioningError("The self-hosted business website does not have a valid local upstream target.")
+
     _, production_url, message = _activate_self_hosted_domains(
         db,
         settings,
         tenant=tenant,
-        admin_email=admin_email or deployment.metadata_json.get("admin_email"),
+        admin_email=admin_email or deployment_metadata.get("admin_email"),
+        web_upstream=web_upstream,
     )
     message = _combine_self_hosted_status_message(
         domain_message=message,
         production_url=production_url,
         local_repo_path=local_repo_path,
+        local_runtime_path=local_app_metadata.get("local_runtime_path")
+        if isinstance(local_app_metadata.get("local_runtime_path"), str)
+        else None,
+        local_app_upstream=web_upstream,
         repo_sync_warning=repo_sync_warning,
+        app_deploy_warning=app_deploy_warning,
     )
     metadata: dict[str, object] = {
         "platform_host": _build_platform_subdomain_host(settings, tenant_slug=tenant.slug),
@@ -302,6 +346,7 @@ def sync_self_hosted_website_domains(
         "requested_primary_domains": normalized_primary_domains,
         "repo_sync_error": repo_sync_warning,
     }
+    metadata.update(local_app_metadata)
     if local_repo_path:
         metadata["local_repo_path"] = local_repo_path
 
@@ -535,23 +580,45 @@ def _provision_github_self_hosted(
         tenant_slug=tenant.slug,
         primary_domains=primary_domains,
     )
-    _domains, production_url, provisioning_message = _activate_self_hosted_domains(
-        db,
-        settings,
-        tenant=tenant,
-        admin_email=admin_email,
-    )
     local_repo_path, repo_sync_warning = _try_sync_local_repository_checkout(
         settings,
         repo_name=deployment.repo_name or repo_name,
         repo_full_name=repo_response.get("full_name") if isinstance(repo_response.get("full_name"), str) else None,
         default_branch=repo_response.get("default_branch") if isinstance(repo_response.get("default_branch"), str) else None,
     )
+    if not local_repo_path:
+        raise WebsiteProvisioningError(
+            repo_sync_warning or "The business website repository could not be synced on this server."
+        )
+
+    local_app_metadata = _deploy_local_repository_website_app(
+        db,
+        settings,
+        deployment=deployment,
+        tenant_slug=tenant.slug,
+        repo_path=local_repo_path,
+    )
+    web_upstream = local_app_metadata.get("local_app_upstream")
+    if not isinstance(web_upstream, str) or not web_upstream.strip():
+        raise WebsiteProvisioningError("The self-hosted business website does not have a valid local upstream target.")
+
+    _domains, production_url, provisioning_message = _activate_self_hosted_domains(
+        db,
+        settings,
+        tenant=tenant,
+        admin_email=admin_email,
+        web_upstream=web_upstream,
+    )
     message = _combine_self_hosted_status_message(
         domain_message=provisioning_message,
         production_url=production_url,
         local_repo_path=local_repo_path,
+        local_runtime_path=local_app_metadata.get("local_runtime_path")
+        if isinstance(local_app_metadata.get("local_runtime_path"), str)
+        else None,
+        local_app_upstream=web_upstream,
         repo_sync_warning=repo_sync_warning,
+        app_deploy_warning=None,
     )
     metadata: dict[str, object] = {
         "platform_host": platform_host,
@@ -560,8 +627,8 @@ def _provision_github_self_hosted(
         "requested_primary_domains": primary_domains,
         "repo_sync_error": repo_sync_warning,
     }
-    if local_repo_path:
-        metadata["local_repo_path"] = local_repo_path
+    metadata.update(local_app_metadata)
+    metadata["local_repo_path"] = local_repo_path
 
     deployment = _update_deployment(
         db,
@@ -826,17 +893,27 @@ def _combine_self_hosted_status_message(
     domain_message: str,
     production_url: str | None,
     local_repo_path: str | None,
+    local_runtime_path: str | None,
+    local_app_upstream: str | None,
     repo_sync_warning: str | None,
+    app_deploy_warning: str | None,
 ) -> str:
     parts = [domain_message.strip()]
     if "waiting for DNS" in domain_message and production_url:
         parsed_preview = urlparse(production_url)
         if parsed_preview.scheme and parsed_preview.netloc and parsed_preview.path not in {"", "/"}:
             parts.append(f"Use {production_url} until DNS is ready.")
-    if local_repo_path:
-        parts.append("The GitHub repo is also mirrored on this server.")
-    elif repo_sync_warning:
+    if local_runtime_path and local_app_upstream:
+        if local_repo_path:
+            parts.append("The GitHub website is deployed on this server.")
+        else:
+            parts.append("The current GitHub website remains live on this server.")
+    elif local_repo_path:
+        parts.append("The GitHub repo is mirrored on this server.")
+    if repo_sync_warning:
         parts.append(f"Server repo mirror needs attention. {repo_sync_warning}")
+    if app_deploy_warning:
+        parts.append(f"Server website deploy needs attention. {app_deploy_warning}")
     return " ".join(part for part in parts if part)
 
 
@@ -871,7 +948,393 @@ def _select_self_hosted_production_url(
     return _build_self_hosted_public_url(settings, tenant_slug=tenant_slug)
 
 
-def _run_domain_provisioner(settings: Settings, *, host: str, email: str) -> dict[str, object]:
+def _self_hosted_runtime_root(settings: Settings) -> Path:
+    return Path(settings.website_local_repo_root).expanduser() / "_runtime"
+
+
+def _coerce_metadata_int(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
+
+
+def _extract_local_app_metadata(metadata: dict[str, object] | None) -> dict[str, object] | None:
+    if not isinstance(metadata, dict):
+        return None
+
+    local_app_port = _coerce_metadata_int(metadata.get("local_app_port"))
+    local_app_host = metadata.get("local_app_host")
+    local_runtime_path = metadata.get("local_runtime_path")
+    local_app_process_name = metadata.get("local_app_process_name")
+    local_app_upstream = metadata.get("local_app_upstream")
+    local_app_url = metadata.get("local_app_url")
+    local_repo_path = metadata.get("local_repo_path")
+
+    if not isinstance(local_app_host, str) or not local_app_host.strip() or local_app_port is None:
+        return None
+    if not isinstance(local_runtime_path, str) or not local_runtime_path.strip():
+        return None
+    if not isinstance(local_app_process_name, str) or not local_app_process_name.strip():
+        return None
+
+    if not isinstance(local_app_upstream, str) or not local_app_upstream.strip():
+        local_app_upstream = f"{local_app_host}:{local_app_port}"
+    if not isinstance(local_app_url, str) or not local_app_url.strip():
+        local_app_url = f"http://{local_app_host}:{local_app_port}"
+
+    extracted: dict[str, object] = {
+        "local_app_host": local_app_host,
+        "local_app_port": local_app_port,
+        "local_app_upstream": local_app_upstream,
+        "local_app_url": local_app_url,
+        "local_runtime_path": local_runtime_path,
+        "local_app_process_name": local_app_process_name,
+    }
+    if isinstance(local_repo_path, str) and local_repo_path.strip():
+        extracted["local_repo_path"] = local_repo_path
+    return extracted
+
+
+def _build_self_hosted_process_name(settings: Settings, *, tenant_slug: str) -> str:
+    prefix = _sanitize_identifier(settings.website_app_process_prefix or "kalpzero-site", max_length=32)
+    slug = _sanitize_identifier(tenant_slug, max_length=48)
+    return _sanitize_identifier(f"{prefix}-{slug}", max_length=90)
+
+
+def _allocate_self_hosted_app_port(db: Session, settings: Settings, *, deployment) -> int:
+    existing_metadata = _extract_local_app_metadata(deployment.metadata_json)
+    existing_port = _coerce_metadata_int((existing_metadata or {}).get("local_app_port"))
+    if existing_port is not None and settings.website_app_port_start <= existing_port <= settings.website_app_port_end:
+        return existing_port
+
+    used_ports: set[int] = set()
+    for candidate in platform_repository.list_website_deployments(db):
+        if str(candidate.id) == str(deployment.id):
+            continue
+        candidate_metadata = _extract_local_app_metadata(candidate.metadata_json)
+        candidate_port = _coerce_metadata_int((candidate_metadata or {}).get("local_app_port"))
+        if candidate_port is None:
+            continue
+        if settings.website_app_port_start <= candidate_port <= settings.website_app_port_end:
+            used_ports.add(candidate_port)
+
+    for port in range(settings.website_app_port_start, settings.website_app_port_end + 1):
+        if port not in used_ports:
+            return port
+
+    raise WebsiteProvisioningError(
+        "No self-hosted website app ports are available on this server. Increase the configured website port range."
+    )
+
+
+def _load_package_json(repo_path: Path) -> dict[str, object]:
+    manifest_path = repo_path / "package.json"
+    if not manifest_path.exists():
+        raise WebsiteProvisioningError(f"The generated website at {repo_path} is missing package.json.")
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise WebsiteProvisioningError(f"The generated website at {repo_path} has an invalid package.json file.") from exc
+
+    if not isinstance(manifest, dict):
+        raise WebsiteProvisioningError(f"The generated website at {repo_path} has an invalid package.json structure.")
+    return manifest
+
+
+def _detect_self_hosted_site_kind(repo_path: Path) -> str:
+    manifest = _load_package_json(repo_path)
+    dependencies = manifest.get("dependencies")
+    dev_dependencies = manifest.get("devDependencies")
+    scripts = manifest.get("scripts")
+    dependencies = dependencies if isinstance(dependencies, dict) else {}
+    dev_dependencies = dev_dependencies if isinstance(dev_dependencies, dict) else {}
+    scripts = scripts if isinstance(scripts, dict) else {}
+
+    if "next" in dependencies or "next" in dev_dependencies:
+        if "build" not in scripts or "start" not in scripts:
+            raise WebsiteProvisioningError("The generated Next.js website is missing the required build/start scripts.")
+        return "nextjs"
+
+    raise WebsiteProvisioningError(
+        "The generated business website template is not supported for server deployment yet. Only Next.js sites can be hosted here."
+    )
+
+
+def _detect_package_manager(repo_path: Path) -> str:
+    manifest = _load_package_json(repo_path)
+    package_manager = manifest.get("packageManager")
+    if isinstance(package_manager, str):
+        normalized = package_manager.strip().lower()
+        if normalized.startswith("pnpm@"):
+            return "pnpm"
+        if normalized.startswith("yarn@"):
+            return "yarn"
+        if normalized.startswith("npm@"):
+            return "npm"
+
+    if (repo_path / "pnpm-lock.yaml").exists():
+        return "pnpm"
+    if (repo_path / "yarn.lock").exists():
+        return "yarn"
+    return "npm"
+
+
+def _install_command_for_package_manager(repo_path: Path, *, package_manager: str) -> tuple[str, ...]:
+    if package_manager == "pnpm":
+        if (repo_path / "pnpm-lock.yaml").exists():
+            return ("pnpm", "install", "--frozen-lockfile")
+        return ("pnpm", "install")
+    if package_manager == "yarn":
+        if (repo_path / "yarn.lock").exists():
+            return ("yarn", "install", "--frozen-lockfile")
+        return ("yarn", "install")
+    if (repo_path / "package-lock.json").exists():
+        return ("npm", "ci", "--no-audit", "--no-fund")
+    return ("npm", "install", "--no-audit", "--no-fund")
+
+
+def _build_command_for_package_manager(package_manager: str) -> tuple[str, ...]:
+    if package_manager == "pnpm":
+        return ("pnpm", "build")
+    if package_manager == "yarn":
+        return ("yarn", "build")
+    return ("npm", "run", "build")
+
+
+def _resolve_server_executable(command: str) -> str:
+    resolved = shutil.which(command)
+    if resolved:
+        return resolved
+    raise WebsiteProvisioningError(f"Required server command '{command}' is not installed or not available in PATH.")
+
+
+def _run_server_command(
+    *args: str,
+    cwd: Path,
+    timeout: int,
+    failure_message: str,
+    env: dict[str, str] | None = None,
+) -> str:
+    if not args:
+        raise WebsiteProvisioningError(failure_message)
+
+    command = list(args)
+    if "/" not in command[0]:
+        command[0] = _resolve_server_executable(command[0])
+
+    merged_env = os.environ.copy()
+    merged_env.setdefault("NEXT_TELEMETRY_DISABLED", "1")
+    if env:
+        merged_env.update(env)
+
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd),
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=merged_env,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.strip() or exc.stdout.strip()
+        if detail:
+            raise WebsiteProvisioningError(f"{failure_message} {detail}") from exc
+        raise WebsiteProvisioningError(failure_message) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise WebsiteProvisioningError(f"{failure_message} Timed out while waiting for the command to finish.") from exc
+
+    return completed.stdout.strip()
+
+
+def _run_pm2_command(
+    *args: str,
+    cwd: Path | None = None,
+    timeout: int = 180,
+    allow_missing: bool = False,
+    env: dict[str, str] | None = None,
+) -> str:
+    pm2_path = _resolve_server_executable("pm2")
+    merged_env = os.environ.copy()
+    merged_env.setdefault("NEXT_TELEMETRY_DISABLED", "1")
+    if env:
+        merged_env.update(env)
+
+    try:
+        completed = subprocess.run(
+            [pm2_path, *args],
+            cwd=str(cwd) if cwd else None,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=merged_env,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.strip() or exc.stdout.strip() or "pm2 command failed"
+        lowered = detail.lower()
+        if allow_missing and (
+            "process or namespace" in lowered
+            or "not found" in lowered
+            or "doesn't exist" in lowered
+        ):
+            return detail
+        raise WebsiteProvisioningError(f"Failed to manage the self-hosted website process. {detail}") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise WebsiteProvisioningError("Timed out while managing the self-hosted website process.") from exc
+
+    return completed.stdout.strip()
+
+
+def _wait_for_self_hosted_site(*, host: str, port: int) -> None:
+    url = f"http://{host}:{port}/"
+    last_error: str | None = None
+
+    for _ in range(SELF_HOSTED_APP_HEALTH_ATTEMPTS):
+        try:
+            request = Request(url, headers={"User-Agent": USER_AGENT})
+            with urlopen(request, timeout=SELF_HOSTED_APP_REQUEST_TIMEOUT_SECONDS) as response:
+                if 200 <= response.status < 500:
+                    return
+        except HTTPError as exc:
+            if exc.code < 500:
+                return
+            last_error = f"HTTP {exc.code}"
+        except URLError as exc:
+            reason = exc.reason
+            last_error = str(reason if reason else exc)
+
+        time.sleep(SELF_HOSTED_APP_HEALTH_INTERVAL_SECONDS)
+
+    detail = f"Self-hosted website app did not become ready at {url}."
+    if last_error:
+        detail = f"{detail} Last error: {last_error}"
+    raise WebsiteProvisioningError(detail)
+
+
+def _deploy_local_repository_website_app(
+    db: Session,
+    settings: Settings,
+    *,
+    deployment,
+    tenant_slug: str,
+    repo_path: str,
+) -> dict[str, object]:
+    source_repo_path = Path(repo_path)
+    if not source_repo_path.exists():
+        raise WebsiteProvisioningError(f"Local website repository checkout is missing at {repo_path}.")
+
+    site_kind = _detect_self_hosted_site_kind(source_repo_path)
+    package_manager = _detect_package_manager(source_repo_path)
+    runtime_root = _self_hosted_runtime_root(settings)
+    runtime_root.mkdir(parents=True, exist_ok=True)
+
+    stable_runtime_path = runtime_root / source_repo_path.name
+    temp_parent = Path(tempfile.mkdtemp(prefix=f".{source_repo_path.name}-runtime-", dir=str(runtime_root)))
+    temp_runtime_path = temp_parent / source_repo_path.name
+
+    shutil.copytree(
+        source_repo_path,
+        temp_runtime_path,
+        ignore=shutil.ignore_patterns(".git", "node_modules", ".next"),
+    )
+
+    existing_metadata = _extract_local_app_metadata(deployment.metadata_json)
+    process_name = _build_self_hosted_process_name(settings, tenant_slug=tenant_slug)
+    existing_process_name = (
+        existing_metadata.get("local_app_process_name")
+        if isinstance(existing_metadata, dict) and isinstance(existing_metadata.get("local_app_process_name"), str)
+        else process_name
+    )
+    local_app_port = _allocate_self_hosted_app_port(db, settings, deployment=deployment)
+    local_app_host = settings.website_app_host
+    command_env = {
+        "NODE_ENV": "production",
+        "NEXT_TELEMETRY_DISABLED": "1",
+    }
+
+    try:
+        _run_server_command(
+            *_install_command_for_package_manager(temp_runtime_path, package_manager=package_manager),
+            cwd=temp_runtime_path,
+            timeout=SELF_HOSTED_APP_COMMAND_TIMEOUT_SECONDS,
+            failure_message="Failed to install the business website dependencies on the server.",
+            env=command_env,
+        )
+        _run_server_command(
+            *_build_command_for_package_manager(package_manager),
+            cwd=temp_runtime_path,
+            timeout=SELF_HOSTED_APP_COMMAND_TIMEOUT_SECONDS,
+            failure_message="Failed to build the business website on the server.",
+            env=command_env,
+        )
+
+        if site_kind == "nextjs":
+            next_entrypoint = temp_runtime_path / "node_modules" / "next" / "dist" / "bin" / "next"
+            if not next_entrypoint.exists():
+                raise WebsiteProvisioningError(
+                    "The built business website is missing the Next.js runtime entrypoint on the server."
+                )
+        else:  # pragma: no cover - defensive guard for future site kinds
+            raise WebsiteProvisioningError("Unsupported self-hosted website runtime.")
+
+        _run_pm2_command("delete", existing_process_name, allow_missing=True, env=command_env)
+        if stable_runtime_path.exists():
+            _remove_checkout_path(stable_runtime_path)
+        temp_runtime_path.rename(stable_runtime_path)
+
+        start_entrypoint = stable_runtime_path / "node_modules" / "next" / "dist" / "bin" / "next"
+        _run_pm2_command(
+            "start",
+            str(start_entrypoint),
+            "--name",
+            process_name,
+            "--cwd",
+            str(stable_runtime_path),
+            "--",
+            "start",
+            "--hostname",
+            local_app_host,
+            "--port",
+            str(local_app_port),
+            env=command_env,
+        )
+        try:
+            _wait_for_self_hosted_site(host=local_app_host, port=local_app_port)
+        except WebsiteProvisioningError:
+            _run_pm2_command("delete", process_name, allow_missing=True, env=command_env)
+            raise
+        _run_pm2_command("save", env=command_env)
+    finally:
+        if temp_parent.exists():
+            shutil.rmtree(temp_parent, ignore_errors=True)
+
+    return {
+        "local_repo_path": str(source_repo_path),
+        "local_runtime_path": str(stable_runtime_path),
+        "local_app_host": local_app_host,
+        "local_app_port": local_app_port,
+        "local_app_upstream": f"{local_app_host}:{local_app_port}",
+        "local_app_url": f"http://{local_app_host}:{local_app_port}",
+        "local_app_process_name": process_name,
+        "local_app_kind": site_kind,
+        "local_app_started_at": _timestamp_iso(),
+    }
+
+
+def _run_domain_provisioner(
+    settings: Settings,
+    *,
+    host: str,
+    email: str,
+    web_upstream: str,
+) -> dict[str, object]:
     provisioner_path = Path(settings.website_domain_provisioner_command)
     if not provisioner_path.exists():
         raise WebsiteProvisioningError(
@@ -883,7 +1346,7 @@ def _run_domain_provisioner(settings: Settings, *, host: str, email: str) -> dic
         "--host",
         host,
         "--web-upstream",
-        "127.0.0.1:3002",
+        web_upstream,
         "--api-upstream",
         "127.0.0.1:8012",
         "--email",
@@ -922,6 +1385,7 @@ def _activate_self_hosted_domains(
     *,
     tenant,
     admin_email: str | None,
+    web_upstream: str,
 ) -> tuple[list[object], str, str]:
     domains = platform_repository.list_tenant_website_domains(db, tenant_id=str(tenant.id))
     contact_email = (settings.website_acme_email or admin_email or "").strip()
@@ -986,7 +1450,12 @@ def _activate_self_hosted_domains(
             continue
 
         try:
-            provisioner_payload = _run_domain_provisioner(settings, host=domain.host, email=contact_email)
+            provisioner_payload = _run_domain_provisioner(
+                settings,
+                host=domain.host,
+                email=contact_email,
+                web_upstream=web_upstream,
+            )
         except WebsiteProvisioningError as exc:
             message = str(exc)
             domain = platform_repository.update_tenant_website_domain(
