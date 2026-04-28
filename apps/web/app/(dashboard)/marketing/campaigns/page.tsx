@@ -97,13 +97,16 @@ export default function CampaignsPage() {
             <div className="flex flex-wrap items-center justify-between gap-4 mt-0 pt-0 border-t border-slate-100/10">
                 <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100/10">
                     <button 
+                    
                         onClick={() => setIsProductModalOpen(true)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${
                         themeMode === 'light' 
                             ? 'bg-slate-50 border-slate-100 hover:bg-slate-100' 
                             : 'bg-slate-900 border-slate-800 hover:bg-slate-800'
                     }`}>
+                        '
                         
+                        '
                         <Package size={16} />
                         Product
                     </button>
