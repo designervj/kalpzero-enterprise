@@ -1600,6 +1600,7 @@ export default function OnboardingWizard() {
                               businessName: e.target.value,
                             })
                           }
+                          
                           className="w-full bg-black/50 border border-slate-700/80 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 transition-all font-medium"
                           style={
                             {
